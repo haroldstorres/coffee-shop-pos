@@ -194,7 +194,7 @@ const todayStr=()=>dstr(Date.now());
 const tstr=ts=>{const d=new Date(ts);return pad(d.getHours())+':'+pad(d.getMinutes())};
 function toast(t){const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',3000)}
 function modal(h){$('#modal').innerHTML=h;$('#overlay').classList.add('on')}
-function closeModal(){$('#overlay').classList.remove('on')}
+function closeModal(){$('#overlay').classList.remove('on');if(view==='admin'&&aTab==='menu')aMenu()}
 function modalOpen(){return $('#overlay').classList.contains('on')}
 function errMsg(e){
   const c=(e&&e.code)||'';
@@ -290,7 +290,7 @@ async function doSetup(){
     renderAuth('setup',errMsg(e));
   }
 }
-async function logout(){try{await auth.signOut()}catch(e){toast(errMsg(e))}}
+async function logout(){try{localStorage.removeItem('pos_nav')}catch(e){}try{await auth.signOut()}catch(e){toast(errMsg(e))}}
 
 /* =====================================================================
    BOOT
@@ -346,21 +346,33 @@ function startListeners(){
   unsubs.push(fs.collection('orders').where('day','>=',y).onSnapshot(q=>{
     ORDERS=q.docs.map(d=>Object.assign({id:d.id},d.data()));
     renderQueue();
+    if(view==='admin'&&(aTab==='dash'||aTab==='reports')&&rt>=todayStr()){
+      clearTimeout(startListeners.t);
+      startListeners.t=setTimeout(()=>{
+        if(view!=='admin'||modalOpen())return;
+        if(aTab==='dash')aDash(true);else if(aTab==='reports')aReports(true);
+      },700);
+    }
   },er));
 }
 function applyRole(){
   ['pos','bar','admin'].forEach(x=>{$('#nav-'+x).style.display=can[x].includes(ME.role)?'':'none'});
   $('#who').textContent=ME.name+' · '+ME.role;
-  view='';go(ME.role==='barista'?'bar':'pos');
+  const nav=loadNav();
+  if(['dash','reports','exp','menu','staff','settings'].includes(nav.aTab))aTab=nav.aTab;
+  view='';
+  go(nav.view&&can[nav.view]&&can[nav.view].includes(ME.role)?nav.view:(ME.role==='barista'?'bar':'pos'));
   renderAll();
 }
 function netBadge(){$('#net').textContent=navigator.onLine?'● online':'○ offline'}
 window.addEventListener('online',netBadge);window.addEventListener('offline',netBadge);
 
 /* ---------- navigation ---------- */
+function saveNav(){try{localStorage.setItem('pos_nav',JSON.stringify({view,aTab}))}catch(e){}}
+function loadNav(){try{return JSON.parse(localStorage.getItem('pos_nav'))||{}}catch(e){return {}}}
 function go(v){
   if(!ME||!can[v]||!can[v].includes(ME.role))return;
-  view=v;
+  view=v;saveNav();
   ['pos','bar','admin'].forEach(x=>{$('#v-'+x).classList.toggle('on',x===v);$('#nav-'+x).classList.toggle('on',x===v)});
   if(v==='bar')renderQueue();
   if(v==='admin')renderAdmin();
@@ -555,6 +567,7 @@ async function setStatus(id,s){
    ADMIN
    ===================================================================== */
 function renderAdmin(){
+  saveNav();
   const T={dash:'Dashboard',reports:'Sales Report',exp:'Expenses',menu:'Menu &amp; Stock',staff:'Staff',settings:'Settings'};
   $('#adminBody').innerHTML=`<div class="subtabs">${Object.keys(T).map(t=>`<button class="${aTab===t?'on':''}" onclick="aTab='${t}';renderAdmin()">${T[t]}</button>`).join('')}</div><div class="card" id="aContent"></div>`;
   ({dash:aDash,reports:aReports,exp:aExpenses,menu:aMenu,staff:aStaff,settings:aSettings})[aTab]();
@@ -688,8 +701,8 @@ function chartSVG(A){
   return `<div class="chartbox"><svg viewBox="0 0 ${W} ${H}" width="100%" style="min-width:${Math.max(480,rows.length*22)}px">${g}</svg>
   <div class="legend"><span><i style="background:#6f4e37"></i>Sales</span><span><i style="background:#c47f17"></i>Cost of goods</span><span><i style="background:#b3392f"></i>Expenses</span><span><i style="background:#2f7d4f"></i>Net profit (line)</span></div></div>`;
 }
-async function aDash(){
-  $('#aContent').innerHTML='<div class="empty">Loading…</div>';
+async function aDash(silent){
+  if(silent!==true)$('#aContent').innerHTML='<div class="empty">Loading…</div>';
   await loadRange();
   if(view!=='admin'||aTab!=='dash')return;
   const A=analyze();
@@ -745,8 +758,8 @@ async function delExpense(id){
 }
 
 /* ----- sales report (with cost & profit) ----- */
-async function aReports(){
-  $('#aContent').innerHTML='<div class="empty">Loading…</div>';
+async function aReports(silent){
+  if(silent!==true)$('#aContent').innerHTML='<div class="empty">Loading…</div>';
   await loadRange();
   if(view!=='admin'||aTab!=='reports')return;
   const A=analyze(),list=RORDERS.slice().sort((a,b)=>b.ts-a.ts);
