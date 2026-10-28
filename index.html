@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="fil">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Coffee Shop POS</title>
+<style>
+:root{--bg:#f6f1ea;--card:#fff;--ink:#2b2018;--mut:#7a6a5c;--brand:#6f4e37;--brand2:#a47148;--ok:#2f7d4f;--warn:#c47f17;--bad:#b3392f;--line:#e6dccf}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink);font-size:15px}
+button{font:inherit;cursor:pointer;border:0;border-radius:10px;padding:9px 14px;background:var(--brand);color:#fff}
+button.ghost{background:#fff;color:var(--brand);border:1px solid var(--line)}
+button.bad{background:var(--bad)}
+button.ok{background:var(--ok)}
+button:disabled{opacity:.45;cursor:not-allowed}
+input,select,textarea{font:inherit;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);width:100%}
+header{background:var(--brand);color:#fff;padding:10px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;position:sticky;top:0;z-index:5}
+header h1{font-size:18px;margin:0;flex:1}
+header .badge{background:rgba(255,255,255,.2);color:#fff}
+nav{display:flex;gap:6px}
+nav button{background:rgba(255,255,255,.15)}
+nav button.on{background:#fff;color:var(--brand);font-weight:600}
+main{padding:14px;max-width:1300px;margin:0 auto}
+.view{display:none}.view.on{display:block}
+.pos{display:grid;grid-template-columns:1fr 380px;gap:14px;align-items:start}
+@media(max-width:900px){.pos{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+.cats{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.cats button{background:#fff;color:var(--brand);border:1px solid var(--line);padding:6px 12px}
+.cats button.on{background:var(--brand);color:#fff}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+.item{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;text-align:left;color:var(--ink);display:flex;flex-direction:column;gap:4px;min-height:84px}
+.item:hover{border-color:var(--brand2)}
+.item b{font-size:15px}.item span{color:var(--brand2);font-weight:600}
+.item small{color:var(--mut)}
+.item.out{opacity:.45}
+.search{margin-bottom:10px}
+.ci{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px dashed var(--line)}
+.ci .sub{color:var(--mut);font-size:12px}
+.qty{display:flex;align-items:center;gap:6px}
+.qty button{padding:2px 9px;background:#fff;color:var(--brand);border:1px solid var(--line)}
+.amt{min-width:70px;text-align:right;font-weight:600}
+.empty{color:var(--mut);text-align:center;padding:22px 0}
+.row{display:flex;justify-content:space-between;margin:5px 0}
+.row.total{font-size:20px;font-weight:700;border-top:2px solid var(--ink);padding-top:8px;margin-top:8px}
+.lbl{font-size:12px;color:var(--mut);margin:10px 0 4px;text-transform:uppercase;letter-spacing:.04em}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.quick{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.quick button{padding:5px 10px;background:#fff;color:var(--brand);border:1px solid var(--line)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip input{display:none}
+.chip span{display:inline-block;padding:7px 12px;border:1px solid var(--line);border-radius:999px;cursor:pointer;background:#fff}
+.chip input:checked+span{background:var(--brand);color:#fff;border-color:var(--brand)}
+.queue{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:800px){.queue{grid-template-columns:1fr}}
+.ticket{border:1px solid var(--line);border-left:6px solid var(--warn);border-radius:12px;padding:12px;margin-bottom:10px;background:#fff}
+.ticket.ready{border-left-color:var(--ok)}
+.ticket h4{margin:0 0 6px;display:flex;justify-content:space-between}
+.ticket ul{margin:6px 0 10px;padding-left:18px}
+.ticket li small{color:var(--mut)}
+.badge{font-size:12px;padding:2px 8px;border-radius:999px;background:#eee;color:var(--mut)}
+.subtabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.subtabs button{background:#fff;color:var(--brand);border:1px solid var(--line)}
+.subtabs button.on{background:var(--brand);color:#fff}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{color:var(--mut);font-weight:600;font-size:12px;text-transform:uppercase}
+td.n,th.n{text-align:right}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:12px 0}
+.stat{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px}
+.stat small{color:var(--mut)}.stat div{font-size:22px;font-weight:700}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-bottom:10px}
+.toolbar>div{min-width:140px}
+.low{color:var(--bad);font-weight:600}
+.void{text-decoration:line-through;color:var(--mut)}
+#overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:20;padding:14px}
+#overlay.on{display:flex}
+#modal{background:#fff;border-radius:16px;padding:18px;width:100%;max-width:440px;max-height:92vh;overflow:auto}
+#modal h3{margin:0 0 8px}
+.actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:10px;display:none;z-index:30;max-width:90vw;text-align:center}
+.receipt{font-family:"Courier New",monospace;font-size:13px;width:100%;max-width:300px;margin:0 auto}
+.receipt .c{text-align:center}.receipt hr{border:0;border-top:1px dashed #000;margin:8px 0}
+.receipt .r{display:flex;justify-content:space-between;gap:8px}
+#auth{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
+#auth .box{background:#fff;border:1px solid var(--line);border-radius:16px;padding:22px;width:100%;max-width:420px}
+#auth h2{margin:0 0 4px}
+#auth ol{padding-left:18px;line-height:1.6}
+.err{color:var(--bad);margin:8px 0;font-size:14px}
+code{background:#f1e9df;padding:1px 5px;border-radius:5px}
+@media print{
+  body *{visibility:hidden}
+  #receiptPrint,#receiptPrint *{visibility:visible}
+  #receiptPrint{position:absolute;left:0;top:0;width:58mm;max-width:none}
+}
+</style>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+<div id="auth"></div>
+
+<div id="app" style="display:none">
+  <header>
+    <h1 id="shopName">Coffee POS</h1>
+    <nav>
+      <button id="nav-pos" onclick="go('pos')">Kahera</button>
+      <button id="nav-bar" onclick="go('bar')">Barista</button>
+      <button id="nav-admin" onclick="go('admin')">Admin</button>
+    </nav>
+    <span class="badge" id="who"></span>
+    <span class="badge" id="net"></span>
+    <button class="ghost" onclick="logout()">Logout</button>
+  </header>
+  <main>
+    <section id="v-pos" class="view">
+      <div class="pos">
+        <div class="card">
+          <input class="search" id="q" placeholder="Hanapin ang item..." oninput="renderMenu()">
+          <div class="cats" id="cats"></div>
+          <div class="grid" id="menuGrid"></div>
+        </div>
+        <div class="card">
+          <h3 style="margin:0 0 6px">Kasalukuyang Order</h3>
+          <div class="two">
+            <select id="otype"><option>Dine-in</option><option>Take-out</option></select>
+            <button class="ghost" onclick="clearCart()">Burahin lahat</button>
+          </div>
+          <div id="cartList"></div>
+          <div class="lbl">Discount</div>
+          <div class="two">
+            <select id="disc" onchange="renderTotals()"><option value="none">Walang discount</option><option value="pwd">PWD / Senior</option><option value="custom">Custom %</option></select>
+            <input id="customPct" type="number" min="0" max="100" placeholder="%" style="display:none" oninput="renderTotals()">
+          </div>
+          <div class="row" style="margin-top:12px"><span>Subtotal</span><span id="tSub"></span></div>
+          <div class="row"><span>Discount</span><span id="tDisc"></span></div>
+          <div class="row total"><span>Total</span><span id="tTotal"></span></div>
+          <div class="lbl">Bayad</div>
+          <select id="pay" onchange="renderTotals()"><option value="Cash">Cash</option><option value="GCash">GCash</option></select>
+          <div id="cashBox">
+            <input id="tender" type="number" min="0" placeholder="Natanggap na cash" oninput="renderTotals()" style="margin-top:6px">
+            <div class="quick" id="quick"></div>
+            <div class="row"><span>Sukli</span><b id="tChange">₱0.00</b></div>
+          </div>
+          <button id="placeBtn" class="ok" style="width:100%;margin-top:12px;padding:13px;font-size:16px" onclick="placeOrder()">Bayaran at i-print</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="v-bar" class="view">
+      <div class="queue">
+        <div><h3>Ginagawa pa <span class="badge" id="cPrep"></span></h3><div id="qPrep"></div></div>
+        <div><h3>Handa na <span class="badge" id="cReady"></span></h3><div id="qReady"></div></div>
+      </div>
+    </section>
+
+    <section id="v-admin" class="view"><div id="adminBody"></div></section>
+  </main>
+</div>
+
+<div id="overlay" onclick="if(event.target===this)closeModal()"><div id="modal"></div></div>
+<div id="toast"></div>
+
+<script>
+/* =====================================================================
+   1) I-PASTE DITO ANG FIREBASE CONFIG MO
+      Firebase Console > Project settings > Your apps > Web app > Config
+   ===================================================================== */
+const FIREBASE_CONFIG = {
+  apiKey: "PASTE_API_KEY",
+  authDomain: "PASTE_PROJECT_ID.firebaseapp.com",
+  projectId: "PASTE_PROJECT_ID",
+  storageBucket: "",
+  messagingSenderId: "",
+  appId: "PASTE_APP_ID"
+};
+const CONFIGURED = !String(FIREBASE_CONFIG.apiKey).startsWith('PASTE');
+
+/* ---------- helpers ---------- */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt=n=>'₱'+(Number(n)||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});
+const r2=n=>Math.round(n*100)/100;
+const pad=n=>String(n).padStart(2,'0');
+const dstr=ts=>{const d=new Date(ts);return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())};
+const todayStr=()=>dstr(Date.now());
+const tstr=ts=>{const d=new Date(ts);return pad(d.getHours())+':'+pad(d.getMinutes())};
+function toast(t){const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',3000)}
+function modal(h){$('#modal').innerHTML=h;$('#overlay').classList.add('on')}
+function closeModal(){$('#overlay').classList.remove('on')}
+function modalOpen(){return $('#overlay').classList.contains('on')}
+function errMsg(e){
+  const c=(e&&e.code)||'';
+  const m={'auth/invalid-credential':'Mali ang email o password','auth/wrong-password':'Mali ang email o password','auth/user-not-found':'Mali ang email o password',
+    'auth/invalid-email':'Hindi valid ang email','auth/email-already-in-use':'Gamit na ang email na iyan','auth/weak-password':'Masyadong maikli ang password (min 6)',
+    'auth/network-request-failed':'Walang internet','auth/too-many-requests':'Sobrang daming try, maghintay sandali',
+    'permission-denied':'Walang pahintulot sa action na ito','unavailable':'Walang koneksyon sa server','auth/operation-not-allowed':'I-enable ang Email/Password sa Firebase Authentication'};
+  return m[c]||(e&&e.message)||'May error';
+}
+function download(name,text,type){
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+text],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+
+/* ---------- defaults ---------- */
+function defaultSettings(){
+  return {shop:'Kape Corner',pwdRate:20,
+    sizes:[{n:'Small',up:0},{n:'Medium',up:10},{n:'Large',up:20}],
+    addons:[{n:'Extra shot',p:20},{n:'Oat milk',p:30},{n:'Whipped cream',p:15},{n:'Caramel syrup',p:15}]};
+}
+function seedMenu(){
+  const d=(name,cat,price)=>({name,cat,price,sized:true,track:false,stock:0});
+  const p=(name,price,stock)=>({name,cat:'Pastry',price,sized:false,track:true,stock});
+  return [d('Americano','Coffee',90),d('Cafe Latte','Coffee',120),d('Cappuccino','Coffee',120),d('Caramel Macchiato','Coffee',140),d('Spanish Latte','Coffee',140),
+    d('Matcha Latte','Non-coffee',140),d('Hot Chocolate','Non-coffee',120),d('Iced Tea','Non-coffee',80),
+    p('Croissant',85,12),p('Banana Bread',70,10),p('Choco Chip Cookie',55,15)];
+}
+
+/* ---------- state ---------- */
+let fs,auth,ME=null,S=defaultSettings(),MENU=[],ORDERS=[],RORDERS=[],STAFF=[],unsubs=[];
+let settingUp=false,placing=false;
+let cart=[],cat='All',view='pos',aTab='menu',rf=todayStr(),rt=todayStr();
+const can={pos:['admin','cashier'],bar:['admin','cashier','barista'],admin:['admin']};
+
+/* =====================================================================
+   AUTH SCREENS
+   ===================================================================== */
+function renderAuth(mode,msg){
+  $('#app').style.display='none';
+  const a=$('#auth');a.style.display='flex';
+  const err=msg?`<div class="err">${esc(msg)}</div>`:'';
+  if(mode==='config'){
+    a.innerHTML=`<div class="box"><h2>I-setup ang Firebase</h2><p>Hindi pa naka-connect sa Firebase. Gawin ito nang isang beses:</p>
+    <ol><li>Gumawa ng project sa <b>console.firebase.google.com</b></li>
+    <li><b>Authentication</b> → Sign-in method → i-enable ang <b>Email/Password</b></li>
+    <li><b>Firestore Database</b> → Create database</li>
+    <li>Firestore → <b>Rules</b> → i-paste ang laman ng <code>firestore.rules</code> → Publish</li>
+    <li>Project settings → Your apps → Web app → kopyahin ang config at i-paste sa <code>FIREBASE_CONFIG</code> sa itaas ng script ng <code>index.html</code></li>
+    <li>I-deploy (Firebase Hosting) o buksan ang page, tapos gawin ang first-time setup</li></ol></div>`;
+  }else if(mode==='setup'){
+    a.innerHTML=`<div class="box"><h2>First-time setup</h2><p style="color:var(--mut);margin-top:0">Gawin ang Admin account. Gawin ito agad pagka-deploy.</p>
+    <div class="lbl">Pangalan ng shop</div><input id="suShop" placeholder="hal. Kape Corner">
+    <div class="lbl">Pangalan mo</div><input id="suName">
+    <div class="lbl">Email</div><input id="suEmail" type="email">
+    <div class="lbl">Password (min 6)</div><input id="suPass" type="password" onkeydown="if(event.key==='Enter')doSetup()">
+    ${err}<button style="width:100%;margin-top:12px" onclick="doSetup()">Gawin ang Admin</button></div>`;
+  }else{
+    a.innerHTML=`<div class="box"><h2>☕ Login</h2><p style="color:var(--mut);margin-top:0">Coffee Shop POS</p>
+    <div class="lbl">Email</div><input id="liEmail" type="email" onkeydown="if(event.key==='Enter')$('#liPass').focus()">
+    <div class="lbl">Password</div><input id="liPass" type="password" onkeydown="if(event.key==='Enter')doLogin()">
+    ${err}<button id="liBtn" style="width:100%;margin-top:12px" onclick="doLogin()">Pasok</button></div>`;
+  }
+}
+async function doLogin(){
+  const email=$('#liEmail').value.trim(),pass=$('#liPass').value;
+  if(!email||!pass){renderAuth('login','Ilagay ang email at password');return}
+  $('#liBtn').disabled=true;
+  try{await auth.signInWithEmailAndPassword(email,pass)}
+  catch(e){renderAuth('login',errMsg(e))}
+}
+async function doSetup(){
+  const shop=$('#suShop').value.trim()||'Coffee Shop',name=$('#suName').value.trim(),email=$('#suEmail').value.trim(),pass=$('#suPass').value;
+  if(!name||!email){renderAuth('setup','Kumpletuhin ang pangalan at email');return}
+  if(pass.length<6){renderAuth('setup','Masyadong maikli ang password (min 6)');return}
+  settingUp=true;
+  try{
+    const cred=await auth.createUserWithEmailAndPassword(email,pass);
+    const uid=cred.user.uid;
+    // 1) admin profile + setup marker (rules allow this only once)
+    const b=fs.batch();
+    b.set(fs.collection('users').doc(uid),{name,email,role:'admin',active:true,createdAt:Date.now()});
+    b.set(fs.collection('meta').doc('setup'),{done:true,by:uid,at:Date.now()});
+    await b.commit();
+    // 2) starter settings + sample menu (now allowed because we are admin)
+    const b2=fs.batch();
+    b2.set(fs.collection('settings').doc('main'),Object.assign(defaultSettings(),{shop}));
+    seedMenu().forEach(m=>b2.set(fs.collection('menu').doc(),m));
+    await b2.commit();
+    settingUp=false;
+    await bootUser(cred.user);
+  }catch(e){
+    settingUp=false;
+    try{await auth.signOut()}catch(_){}
+    renderAuth('setup',errMsg(e));
+  }
+}
+async function logout(){try{await auth.signOut()}catch(e){toast(errMsg(e))}}
+
+/* =====================================================================
+   BOOT
+   ===================================================================== */
+function init(){
+  if(!CONFIGURED){renderAuth('config');return}
+  firebase.initializeApp(FIREBASE_CONFIG);
+  auth=firebase.auth();fs=firebase.firestore();
+  fs.enablePersistence({synchronizeTabs:true}).catch(()=>{});
+  auth.onAuthStateChanged(async u=>{
+    if(settingUp)return;
+    stopListeners();
+    if(!u){ME=null;await showEntry();return}
+    await bootUser(u);
+  });
+}
+async function showEntry(){
+  try{const s=await fs.collection('meta').doc('setup').get();renderAuth(s.exists?'login':'setup')}
+  catch(e){renderAuth('login','Hindi ma-check ang setup: '+errMsg(e))}
+}
+async function bootUser(u){
+  try{
+    const snap=await fs.collection('users').doc(u.uid).get();
+    if(!snap.exists||snap.data().active!==true){
+      await auth.signOut();
+      renderAuth('login',snap.exists?'Naka-disable ang account na ito. Kausapin ang admin.':'Walang access ang account na ito.');
+      return;
+    }
+    ME=Object.assign({uid:u.uid},snap.data());
+    $('#auth').style.display='none';$('#auth').innerHTML='';
+    $('#app').style.display='block';
+    startListeners();
+    applyRole();
+  }catch(e){
+    try{await auth.signOut()}catch(_){}
+    renderAuth('login',errMsg(e));
+  }
+}
+function stopListeners(){unsubs.forEach(f=>{try{f()}catch(e){}});unsubs=[];MENU=[];ORDERS=[];cart=[]}
+function startListeners(){
+  const er=e=>toast(errMsg(e));
+  unsubs.push(fs.collection('settings').doc('main').onSnapshot(s=>{
+    S=Object.assign(defaultSettings(),s.exists?s.data():{});
+    renderMenu();
+    if(view==='admin'&&aTab==='settings'&&!modalOpen()&&!document.activeElement.closest('#aContent'))aSettings();
+  },er));
+  unsubs.push(fs.collection('menu').onSnapshot(q=>{
+    MENU=q.docs.map(d=>Object.assign({id:d.id},d.data())).sort((a,b)=>String(a.cat).localeCompare(b.cat)||String(a.name).localeCompare(b.name));
+    renderMenu();renderCart();
+    if(view==='admin'&&aTab==='menu'&&!modalOpen())aMenu();
+  },er));
+  const y=dstr(Date.now()-864e5);
+  unsubs.push(fs.collection('orders').where('day','>=',y).onSnapshot(q=>{
+    ORDERS=q.docs.map(d=>Object.assign({id:d.id},d.data()));
+    renderQueue();
+  },er));
+}
+function applyRole(){
+  ['pos','bar','admin'].forEach(x=>{$('#nav-'+x).style.display=can[x].includes(ME.role)?'':'none'});
+  $('#who').textContent=ME.name+' · '+ME.role;
+  view='';go(ME.role==='barista'?'bar':'pos');
+  renderAll();
+}
+function netBadge(){$('#net').textContent=navigator.onLine?'● online':'○ offline'}
+window.addEventListener('online',netBadge);window.addEventListener('offline',netBadge);
+
+/* ---------- navigation ---------- */
+function go(v){
+  if(!ME||!can[v]||!can[v].includes(ME.role))return;
+  view=v;
+  ['pos','bar','admin'].forEach(x=>{$('#v-'+x).classList.toggle('on',x===v);$('#nav-'+x).classList.toggle('on',x===v)});
+  if(v==='bar')renderQueue();
+  if(v==='admin')renderAdmin();
+}
+
+/* =====================================================================
+   POS: menu
+   ===================================================================== */
+function catList(){return ['All',...new Set(MENU.map(m=>m.cat))]}
+function setCat(i){cat=catList()[i]||'All';renderMenu()}
+function renderMenu(){
+  $('#shopName').textContent=S.shop+' POS';
+  document.title=S.shop+' POS';
+  const cl=catList();if(!cl.includes(cat))cat='All';
+  $('#cats').innerHTML=cl.map((c,i)=>`<button class="${c===cat?'on':''}" onclick="setCat(${i})">${esc(c)}</button>`).join('');
+  const q=($('#q').value||'').toLowerCase();
+  const list=MENU.filter(m=>(cat==='All'||m.cat===cat)&&String(m.name).toLowerCase().includes(q));
+  $('#menuGrid').innerHTML=list.length?list.map(m=>{
+    const out=m.track&&m.stock<=0;
+    return `<button class="item ${out?'out':''}" onclick="openItem('${m.id}')"><b>${esc(m.name)}</b><span>${fmt(m.price)}${m.sized?'+':''}</span>${m.track?`<small>${out?'Ubos na':'Stock: '+m.stock}</small>`:`<small>${esc(m.cat)}</small>`}</button>`;
+  }).join(''):'<div class="empty">Walang item.</div>';
+}
+function openItem(id){
+  const it=MENU.find(m=>m.id===id);if(!it)return;
+  if(it.track&&it.stock<=0){toast('Ubos na ang '+it.name);return}
+  if(!it.sized){addToCart(it,'',[],1,'');return}
+  modal(`<h3>${esc(it.name)}</h3>
+  <div class="lbl">Size</div>
+  <div class="chips">${S.sizes.map((z,i)=>`<label class="chip"><input type="radio" name="sz" value="${esc(z.n)}" ${i===0?'checked':''} onchange="prev('${id}')"><span>${esc(z.n)}${z.up?' +'+z.up:''}</span></label>`).join('')}</div>
+  ${S.addons.length?`<div class="lbl">Add-ons</div><div class="chips">${S.addons.map(a=>`<label class="chip"><input type="checkbox" name="ad" value="${esc(a.n)}" onchange="prev('${id}')"><span>${esc(a.n)} +${a.p}</span></label>`).join('')}</div>`:''}
+  <div class="two"><div><div class="lbl">Dami</div><input id="mq" type="number" min="1" value="1" oninput="prev('${id}')"></div>
+  <div><div class="lbl">Note</div><input id="mn" placeholder="hal. less ice"></div></div>
+  <div class="actions"><button class="ghost" onclick="closeModal()">Kansela</button><button id="mAdd" onclick="confirmItem('${id}')">Idagdag</button></div>`);
+  prev(id);
+}
+function pickState(){
+  return {
+    size:(document.querySelector('input[name=sz]:checked')||{}).value||'',
+    addons:[...document.querySelectorAll('input[name=ad]:checked')].map(x=>x.value),
+    qty:Math.max(1,parseInt($('#mq').value)||1),
+    note:($('#mn').value||'').trim()
+  };
+}
+function unitPrice(it,size,addons){
+  const up=size?((S.sizes.find(s=>s.n===size)||{}).up||0):0;
+  const ap=addons.reduce((a,n)=>a+((S.addons.find(x=>x.n===n)||{}).p||0),0);
+  return it.price+up+ap;
+}
+function prev(id){
+  const it=MENU.find(m=>m.id===id),p=pickState();
+  $('#mAdd').textContent='Idagdag · '+fmt(unitPrice(it,p.size,p.addons)*p.qty);
+}
+function confirmItem(id){
+  const it=MENU.find(m=>m.id===id),p=pickState();
+  if(addToCart(it,p.size,p.addons,p.qty,p.note))closeModal();
+}
+function addToCart(it,size,addons,qty,note){
+  if(it.track){
+    const inCart=cart.filter(c=>c.id===it.id).reduce((a,c)=>a+c.qty,0);
+    if(inCart+qty>it.stock){toast('Stock lang: '+it.stock+' ('+it.name+')');return false}
+  }
+  const key=[it.id,size,addons.slice().sort().join('+'),note].join('|');
+  const ex=cart.find(c=>c.key===key);
+  if(ex)ex.qty+=qty;
+  else cart.push({key,id:it.id,name:it.name,size,addons,note,unit:unitPrice(it,size,addons),qty});
+  renderCart();return true;
+}
+function chg(i,d){
+  const c=cart[i];if(!c)return;
+  const it=MENU.find(m=>m.id===c.id);
+  if(d>0&&it&&it.track){
+    const inCart=cart.filter(x=>x.id===c.id).reduce((a,x)=>a+x.qty,0);
+    if(inCart+1>it.stock){toast('Stock lang: '+it.stock);return}
+  }
+  c.qty+=d;if(c.qty<=0)cart.splice(i,1);
+  renderCart();
+}
+function clearCart(){cart=[];$('#tender').value='';renderCart()}
+
+/* ---------- POS: cart & totals ---------- */
+function calc(){
+  const sub=r2(cart.reduce((a,c)=>a+c.unit*c.qty,0));
+  const mode=$('#disc').value;
+  let rate=0,label='';
+  if(mode==='pwd'){rate=Number(S.pwdRate)||0;label='PWD/Senior '+rate+'%'}
+  else if(mode==='custom'){rate=Math.min(100,Math.max(0,parseFloat($('#customPct').value)||0));label=rate?'Discount '+rate+'%':''}
+  const disc=r2(sub*rate/100);
+  return {sub,disc,label,total:r2(sub-disc)};
+}
+function renderCart(){
+  const el=$('#cartList');
+  el.innerHTML=cart.length?cart.map((c,i)=>`<div class="ci"><div><b>${esc(c.name)}</b>${c.size?` <small>(${esc(c.size)})</small>`:''}<div class="sub">${esc(c.addons.join(', '))}${c.note?(c.addons.length?' · ':'')+'“'+esc(c.note)+'”':''}</div></div>
+  <div class="qty"><button onclick="chg(${i},-1)">−</button><span>${c.qty}</span><button onclick="chg(${i},1)">+</button></div><div class="amt">${fmt(c.unit*c.qty)}</div></div>`).join(''):'<div class="empty">Wala pang order. Pumili sa menu.</div>';
+  renderTotals();
+}
+function renderTotals(){
+  $('#customPct').style.display=$('#disc').value==='custom'?'block':'none';
+  const t=calc(),cash=$('#pay').value==='Cash';
+  $('#tSub').textContent=fmt(t.sub);$('#tDisc').textContent='− '+fmt(t.disc);$('#tTotal').textContent=fmt(t.total);
+  $('#cashBox').style.display=cash?'block':'none';
+  const tend=parseFloat($('#tender').value)||0;
+  $('#tChange').textContent=fmt(Math.max(0,tend-t.total));
+  const q=[['Eksakto',t.total],[100,100],[200,200],[500,500],[1000,1000]];
+  $('#quick').innerHTML=q.map(([l,v])=>`<button onclick="$('#tender').value=${v};renderTotals()">${typeof l==='number'?'₱'+l:l}</button>`).join('');
+  $('#placeBtn').disabled=placing||!cart.length||(cash&&tend<t.total);
+}
+async function placeOrder(){
+  if(!cart.length||placing)return;
+  const t=calc(),cash=$('#pay').value==='Cash',tend=parseFloat($('#tender').value)||0;
+  if(cash&&tend<t.total){toast('Kulang ang bayad');return}
+  if(!navigator.onLine){toast('Walang internet. Kailangan ng koneksyon para ma-save ang order.');return}
+  placing=true;renderTotals();
+  const day=todayStr();
+  const need={};cart.forEach(c=>{need[c.id]=(need[c.id]||0)+c.qty});
+  const trackedIds=Object.keys(need).filter(id=>{const m=MENU.find(x=>x.id===id);return m&&m.track});
+  const orderRef=fs.collection('orders').doc();
+  const cref=fs.collection('counters').doc(day);
+  const items=cart.map(c=>({id:c.id,name:c.name,size:c.size,addons:c.addons,note:c.note,unit:c.unit,qty:c.qty}));
+  const type=$('#otype').value,pay=$('#pay').value;
+  try{
+    const order=await fs.runTransaction(async tx=>{
+      const cs=await tx.get(cref);
+      const mdocs=await Promise.all(trackedIds.map(id=>tx.get(fs.collection('menu').doc(id))));
+      mdocs.forEach(d=>{
+        if(!d.exists)throw new Error('May item na wala na sa menu. I-refresh ang page.');
+        if((d.data().stock||0)<need[d.id])throw new Error('Kulang na ang stock ng '+d.data().name);
+      });
+      const no=(cs.exists?(cs.data().n||0):0)+1;
+      tx.set(cref,{n:no});
+      mdocs.forEach(d=>tx.update(d.ref,{stock:(d.data().stock||0)-need[d.id]}));
+      const o={no,day,ts:Date.now(),type,items,sub:t.sub,discLabel:t.label,disc:t.disc,total:t.total,pay,
+        tendered:cash?tend:t.total,change:cash?r2(tend-t.total):0,status:'preparing',cashier:ME.name,cashierUid:ME.uid};
+      tx.set(orderRef,o);
+      return Object.assign({id:orderRef.id},o);
+    });
+    cart=[];$('#tender').value='';$('#disc').value='none';$('#customPct').value='';
+    placing=false;renderCart();
+    showReceipt(order);
+  }catch(e){
+    placing=false;renderTotals();
+    toast(errMsg(e));
+  }
+}
+
+/* ---------- receipt ---------- */
+function ono(o){return '#'+String(o.no).padStart(3,'0')}
+function showReceipt(ref){
+  const o=typeof ref==='string'?(ORDERS.concat(RORDERS).find(x=>x.id===ref)):ref;
+  if(!o)return;
+  modal(`<div id="receiptPrint" class="receipt">
+    <div class="c"><b>${esc(S.shop)}</b><br>Resibo</div><hr>
+    <div class="r"><span>Order ${ono(o)}</span><span>${esc(o.type)}</span></div>
+    <div>${dstr(o.ts)} ${tstr(o.ts)}</div>
+    <div>Kahera: ${esc(o.cashier||'')}</div><hr>
+    ${o.items.map(i=>`<div class="r"><span>${i.qty} x ${esc(i.name)}${i.size?' ('+esc(i.size)+')':''}</span><span>${fmt(i.unit*i.qty)}</span></div>${i.addons.length?`<div>&nbsp;&nbsp;+ ${esc(i.addons.join(', '))}</div>`:''}${i.note?`<div>&nbsp;&nbsp;“${esc(i.note)}”</div>`:''}`).join('')}
+    <hr>
+    <div class="r"><span>Subtotal</span><span>${fmt(o.sub)}</span></div>
+    ${o.disc?`<div class="r"><span>${esc(o.discLabel||'Discount')}</span><span>− ${fmt(o.disc)}</span></div>`:''}
+    <div class="r"><b>TOTAL</b><b>${fmt(o.total)}</b></div>
+    <div class="r"><span>${esc(o.pay)}</span><span>${fmt(o.tendered)}</span></div>
+    ${o.pay==='Cash'?`<div class="r"><span>Sukli</span><span>${fmt(o.change)}</span></div>`:''}
+    ${o.status==='void'?'<div class="c"><b>*** VOID ***</b></div>':''}
+    <hr><div class="c">Salamat! Balik ka ulit ☕</div>
+  </div>
+  <div class="actions"><button class="ghost" onclick="closeModal()">Isara</button><button onclick="window.print()">I-print</button></div>`);
+}
+
+/* =====================================================================
+   BARISTA queue
+   ===================================================================== */
+function renderQueue(){
+  const live=ORDERS.filter(o=>o.status==='preparing'||o.status==='ready').sort((a,b)=>a.ts-b.ts);
+  const card=o=>`<div class="ticket ${o.status==='ready'?'ready':''}"><h4><span>${ono(o)}</span><span class="badge">${esc(o.type)} · ${tstr(o.ts)}</span></h4>
+    <ul>${o.items.map(i=>`<li><b>${i.qty}×</b> ${esc(i.name)}${i.size?' ('+esc(i.size)+')':''}${i.addons.length?`<br><small>+ ${esc(i.addons.join(', '))}</small>`:''}${i.note?`<br><small>“${esc(i.note)}”</small>`:''}</li>`).join('')}</ul>
+    ${o.status==='preparing'?`<button class="ok" onclick="setStatus('${o.id}','ready')">Handa na</button>`:`<button onclick="setStatus('${o.id}','served')">Naibigay na</button>`}</div>`;
+  const prep=live.filter(o=>o.status==='preparing'),rdy=live.filter(o=>o.status==='ready');
+  $('#qPrep').innerHTML=prep.map(card).join('')||'<div class="empty">Walang pending.</div>';
+  $('#qReady').innerHTML=rdy.map(card).join('')||'<div class="empty">Wala pa.</div>';
+  $('#cPrep').textContent=prep.length;$('#cReady').textContent=rdy.length;
+}
+async function setStatus(id,s){
+  try{await fs.collection('orders').doc(id).update({status:s})}catch(e){toast(errMsg(e))}
+}
+
+/* =====================================================================
+   ADMIN
+   ===================================================================== */
+function renderAdmin(){
+  const T={menu:'Menu at Stock',reports:'Sales Report',staff:'Staff',settings:'Settings'};
+  $('#adminBody').innerHTML=`<div class="subtabs">${Object.keys(T).map(t=>`<button class="${aTab===t?'on':''}" onclick="aTab='${t}';renderAdmin()">${T[t]}</button>`).join('')}</div><div class="card" id="aContent"></div>`;
+  ({menu:aMenu,reports:aReports,staff:aStaff,settings:aSettings})[aTab]();
+}
+
+/* ----- menu ----- */
+function aMenu(){
+  $('#aContent').innerHTML=`<div class="toolbar"><button onclick="editItem(null)">+ Bagong item</button></div>
+  <table><tr><th>Item</th><th>Category</th><th class="n">Presyo</th><th class="n">Stock</th><th></th></tr>
+  ${MENU.map(m=>`<tr><td>${esc(m.name)}${m.sized?' <span class="badge">size</span>':''}</td><td>${esc(m.cat)}</td><td class="n">${fmt(m.price)}</td>
+  <td class="n">${m.track?`<span class="${m.stock<=3?'low':''}">${m.stock}</span>`:'—'}</td>
+  <td class="n"><button class="ghost" onclick="editItem('${m.id}')">Edit</button> <button class="bad" onclick="delItem('${m.id}')">Burahin</button></td></tr>`).join('')||'<tr><td colspan="5">Wala pang item.</td></tr>'}</table>`;
+}
+function editItem(id){
+  const m=id?MENU.find(x=>x.id===id):{name:'',cat:'Coffee',price:0,sized:false,track:false,stock:0};
+  if(!m)return;
+  modal(`<h3>${id?'I-edit':'Bagong'} item</h3>
+  <div class="lbl">Pangalan</div><input id="fN" value="${esc(m.name)}">
+  <div class="two"><div><div class="lbl">Category</div><input id="fC" list="catList" value="${esc(m.cat)}"><datalist id="catList">${catList().filter(c=>c!=='All').map(c=>`<option value="${esc(c)}">`).join('')}</datalist></div>
+  <div><div class="lbl">Presyo (base)</div><input id="fP" type="number" min="0" step="0.01" value="${m.price}"></div></div>
+  <label style="display:block;margin-top:10px"><input id="fS" type="checkbox" style="width:auto" ${m.sized?'checked':''}> May size at add-ons (inumin)</label>
+  <label style="display:block;margin-top:6px"><input id="fT" type="checkbox" style="width:auto" ${m.track?'checked':''}> Bilangin ang stock</label>
+  <div class="lbl">Stock</div><input id="fK" type="number" min="0" step="1" value="${m.stock}">
+  <div class="actions"><button class="ghost" onclick="closeModal()">Kansela</button><button onclick="saveItem(${id?`'${id}'`:'null'})">I-save</button></div>`);
+}
+async function saveItem(id){
+  const name=$('#fN').value.trim();if(!name){toast('Lagyan ng pangalan');return}
+  const d={name,cat:$('#fC').value.trim()||'Others',price:Math.max(0,r2(parseFloat($('#fP').value)||0)),sized:$('#fS').checked,track:$('#fT').checked,stock:Math.max(0,parseInt($('#fK').value)||0)};
+  try{
+    if(id)await fs.collection('menu').doc(id).update(d);else await fs.collection('menu').add(d);
+    closeModal();
+  }catch(e){toast(errMsg(e))}
+}
+async function delItem(id){
+  const m=MENU.find(x=>x.id===id);
+  if(!m||!confirm('Burahin ang "'+m.name+'"? (Mananatili ang lumang orders sa report.)'))return;
+  try{await fs.collection('menu').doc(id).delete()}catch(e){toast(errMsg(e))}
+}
+
+/* ----- reports ----- */
+async function aReports(){
+  $('#aContent').innerHTML='<div class="empty">Naglo-load…</div>';
+  try{
+    const q=await fs.collection('orders').where('day','>=',rf).where('day','<=',rt).get();
+    RORDERS=q.docs.map(d=>Object.assign({id:d.id},d.data()));
+  }catch(e){toast(errMsg(e));RORDERS=[]}
+  if(view!=='admin'||aTab!=='reports')return;
+  const list=RORDERS.slice().sort((a,b)=>b.ts-a.ts);
+  const ok=list.filter(o=>o.status!=='void');
+  const gross=r2(ok.reduce((a,o)=>a+o.total,0)),disc=r2(ok.reduce((a,o)=>a+o.disc,0));
+  const byPay={};ok.forEach(o=>{byPay[o.pay]=r2((byPay[o.pay]||0)+o.total)});
+  const top={};ok.forEach(o=>o.items.forEach(i=>{const t=top[i.name]||(top[i.name]={q:0,s:0});t.q+=i.qty;t.s=r2(t.s+i.unit*i.qty)}));
+  const topL=Object.entries(top).sort((a,b)=>b[1].q-a[1].q).slice(0,8);
+  $('#aContent').innerHTML=`<div class="toolbar">
+    <div><div class="lbl">Mula</div><input type="date" id="rF" value="${rf}" onchange="rf=this.value;aReports()"></div>
+    <div><div class="lbl">Hanggang</div><input type="date" id="rT" value="${rt}" onchange="rt=this.value;aReports()"></div>
+    <button class="ghost" onclick="aReports()">I-refresh</button>
+    <button class="ghost" onclick="exportCSV()">I-export CSV</button></div>
+  <div class="cards"><div class="stat"><small>Benta</small><div>${fmt(gross)}</div></div>
+  <div class="stat"><small>Orders</small><div>${ok.length}</div></div>
+  <div class="stat"><small>Average / order</small><div>${fmt(ok.length?gross/ok.length:0)}</div></div>
+  <div class="stat"><small>Total discount</small><div>${fmt(disc)}</div></div>
+  ${Object.entries(byPay).map(([k,v])=>`<div class="stat"><small>${esc(k)}</small><div>${fmt(v)}</div></div>`).join('')}</div>
+  <h4>Best sellers</h4>
+  <table><tr><th>Item</th><th class="n">Nabenta</th><th class="n">Halaga</th></tr>${topL.map(([n,t])=>`<tr><td>${esc(n)}</td><td class="n">${t.q}</td><td class="n">${fmt(t.s)}</td></tr>`).join('')||'<tr><td colspan="3">Walang data.</td></tr>'}</table>
+  <h4>Mga order</h4>
+  <table><tr><th>#</th><th>Oras</th><th>Items</th><th class="n">Total</th><th>Bayad</th><th>Kahera</th><th></th></tr>
+  ${list.map(o=>`<tr class="${o.status==='void'?'void':''}"><td>${ono(o)}</td><td>${dstr(o.ts)} ${tstr(o.ts)}</td><td>${esc(o.items.map(i=>i.qty+'× '+i.name).join(', '))}</td><td class="n">${fmt(o.total)}</td><td>${esc(o.pay)}</td><td>${esc(o.cashier||'')}</td>
+  <td class="n"><button class="ghost" onclick="showReceipt('${o.id}')">Resibo</button> ${o.status!=='void'?`<button class="bad" onclick="voidOrder('${o.id}')">Void</button>`:''}</td></tr>`).join('')||'<tr><td colspan="7">Walang order sa petsang ito.</td></tr>'}</table>`;
+}
+async function voidOrder(id){
+  const o=RORDERS.find(x=>x.id===id);
+  if(!o||!confirm('I-void ang order '+ono(o)+'? Ibabalik ang stock.'))return;
+  try{
+    await fs.runTransaction(async tx=>{
+      const oref=fs.collection('orders').doc(id);
+      const od=await tx.get(oref);
+      if(!od.exists||od.data().status==='void')throw new Error('Void na ang order na ito');
+      const back={};od.data().items.forEach(i=>{back[i.id]=(back[i.id]||0)+i.qty});
+      const md=await Promise.all(Object.keys(back).map(k=>tx.get(fs.collection('menu').doc(k))));
+      md.forEach(d=>{if(d.exists&&d.data().track)tx.update(d.ref,{stock:(d.data().stock||0)+back[d.id]})});
+      tx.update(oref,{status:'void',voidedBy:ME.name,voidedAt:Date.now()});
+    });
+    toast('Na-void ang order');aReports();
+  }catch(e){toast(errMsg(e))}
+}
+function exportCSV(){
+  const q=v=>'"'+String(v).replace(/"/g,'""')+'"';
+  const rows=[['Order','Petsa','Oras','Uri','Items','Subtotal','Discount','Total','Bayad','Kahera','Status']];
+  RORDERS.slice().sort((a,b)=>a.ts-b.ts).forEach(o=>rows.push([ono(o),dstr(o.ts),tstr(o.ts),o.type,o.items.map(i=>i.qty+'x '+i.name+(i.size?' ('+i.size+')':'')).join('; '),o.sub,o.disc,o.total,o.pay,o.cashier||'',o.status]));
+  download('sales_'+rf+'_to_'+rt+'.csv',rows.map(r=>r.map(q).join(',')).join('\n'),'text/csv');
+}
+
+/* ----- staff ----- */
+async function aStaff(){
+  $('#aContent').innerHTML='<div class="empty">Naglo-load…</div>';
+  try{
+    const q=await fs.collection('users').get();
+    STAFF=q.docs.map(d=>Object.assign({uid:d.id},d.data())).sort((a,b)=>String(a.name).localeCompare(String(b.name)));
+  }catch(e){toast(errMsg(e));STAFF=[]}
+  if(view!=='admin'||aTab!=='staff')return;
+  $('#aContent').innerHTML=`<h4 style="margin-top:0">Magdagdag ng staff</h4>
+  <div class="two"><input id="stN" placeholder="Pangalan"><select id="stR"><option value="cashier">Cashier</option><option value="barista">Barista</option><option value="admin">Admin</option></select></div>
+  <div class="two" style="margin-top:8px"><input id="stE" type="email" placeholder="Email"><input id="stP" type="text" placeholder="Password (min 6)"></div>
+  <div class="actions" style="justify-content:flex-start"><button id="stBtn" onclick="addStaff()">Idagdag</button></div>
+  <h4>Mga staff</h4>
+  <table><tr><th>Pangalan</th><th>Email</th><th>Role</th><th>Status</th><th></th></tr>
+  ${STAFF.map((u,i)=>{const self=u.uid===ME.uid;return `<tr><td>${esc(u.name)}${self?' <span class="badge">ikaw</span>':''}</td><td>${esc(u.email)}</td>
+  <td><select ${self?'disabled':''} onchange="setRole(${i},this.value)">${['admin','cashier','barista'].map(r=>`<option value="${r}" ${u.role===r?'selected':''}>${r}</option>`).join('')}</select></td>
+  <td>${u.active?'Active':'<span class="low">Naka-disable</span>'}</td>
+  <td class="n">${self?'':`<button class="ghost" onclick="setActive(${i},${!u.active})">${u.active?'I-disable':'I-enable'}</button> `}<button class="ghost" onclick="resetPw(${i})">Reset password</button></td></tr>`}).join('')}</table>
+  <p style="color:var(--mut)">Ang bagong staff ay magla-login gamit ang email at password na inilagay mo. Hindi ma-delete ang account; i-disable na lang.</p>`;
+}
+async function addStaff(){
+  const name=$('#stN').value.trim(),email=$('#stE').value.trim(),pass=$('#stP').value,role=$('#stR').value;
+  if(!name||!email){toast('Kumpletuhin ang pangalan at email');return}
+  if(pass.length<6){toast('Masyadong maikli ang password (min 6)');return}
+  $('#stBtn').disabled=true;
+  let sec=null;
+  try{
+    // second app instance so the admin stays logged in
+    sec=firebase.initializeApp(FIREBASE_CONFIG,'sec'+Date.now());
+    const cred=await sec.auth().createUserWithEmailAndPassword(email,pass);
+    try{
+      await fs.collection('users').doc(cred.user.uid).set({name,email,role,active:true,createdAt:Date.now(),createdBy:ME.uid});
+    }catch(e){
+      toast('Nagawa ang login pero hindi na-save ang profile: '+errMsg(e));
+      throw e;
+    }
+    await sec.auth().signOut();
+    toast('Naidagdag si '+name);
+  }catch(e){if(!/profile/.test(String(e&&e.message)))toast(errMsg(e))}
+  finally{if(sec){try{await sec.delete()}catch(_){}}}
+  aStaff();
+}
+async function setRole(i,role){
+  const u=STAFF[i];if(!u)return;
+  try{await fs.collection('users').doc(u.uid).update({role});toast('Na-update ang role');}catch(e){toast(errMsg(e))}
+  aStaff();
+}
+async function setActive(i,active){
+  const u=STAFF[i];if(!u)return;
+  try{await fs.collection('users').doc(u.uid).update({active})}catch(e){toast(errMsg(e))}
+  aStaff();
+}
+async function resetPw(i){
+  const u=STAFF[i];if(!u)return;
+  try{await auth.sendPasswordResetEmail(u.email);toast('Naipadala ang reset email kay '+u.name)}catch(e){toast(errMsg(e))}
+}
+
+/* ----- settings ----- */
+function aSettings(){
+  $('#aContent').innerHTML=`<div class="lbl" style="margin-top:0">Pangalan ng shop</div><input id="sShop" value="${esc(S.shop)}">
+  <div class="lbl">PWD / Senior discount (%)</div><input id="sPwd" type="number" min="0" max="100" value="${S.pwdRate}">
+  <div class="lbl">Sizes (isang linya bawat size: Pangalan,dagdag na presyo)</div><textarea id="sSizes" rows="4">${esc(S.sizes.map(z=>z.n+','+z.up).join('\n'))}</textarea>
+  <div class="lbl">Add-ons (Pangalan,presyo)</div><textarea id="sAdd" rows="5">${esc(S.addons.map(a=>a.n+','+a.p).join('\n'))}</textarea>
+  <div class="actions" style="justify-content:flex-start"><button onclick="saveSettings()">I-save ang settings</button></div>`;
+}
+function parseLines(t){
+  return t.split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{
+    const i=l.lastIndexOf(',');
+    const n=(i>-1?l.slice(0,i):l).trim(),v=i>-1?parseFloat(l.slice(i+1)):0;
+    return {n,v:isNaN(v)?0:Math.max(0,v)};
+  }).filter(x=>x.n);
+}
+async function saveSettings(){
+  const sizes=parseLines($('#sSizes').value).map(x=>({n:x.n,up:x.v}));
+  if(!sizes.length){toast('Kailangan ng kahit isang size');return}
+  const d={shop:$('#sShop').value.trim()||'Coffee Shop',pwdRate:Math.min(100,Math.max(0,parseFloat($('#sPwd').value)||0)),
+    sizes,addons:parseLines($('#sAdd').value).map(x=>({n:x.n,p:x.v}))};
+  try{await fs.collection('settings').doc('main').set(d,{merge:true});toast('Na-save')}catch(e){toast(errMsg(e))}
+}
+
+function renderAll(){renderMenu();renderCart();renderQueue();netBadge()}
+init();
+</script>
+</body>
+</html>
