@@ -72,6 +72,11 @@ td.n,th.n{text-align:right}
 .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-bottom:10px}
 .toolbar>div{min-width:140px}
 .low{color:var(--bad);font-weight:600}
+.neg{color:var(--bad)}.pos-n{color:var(--ok)}
+.warnbox{background:#fff4e0;border:1px solid #f0cf94;color:#7a4b00;border-radius:10px;padding:9px 12px;margin:10px 0;font-size:14px}
+.chartbox{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px;margin:10px 0;overflow-x:auto}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--mut);margin-top:4px}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
 .void{text-decoration:line-through;color:var(--mut)}
 #overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:20;padding:14px}
 #overlay.on{display:flex}
@@ -218,9 +223,9 @@ function seedMenu(){
 }
 
 /* ---------- state ---------- */
-let fs,auth,ME=null,S=defaultSettings(),MENU=[],ORDERS=[],RORDERS=[],STAFF=[],unsubs=[];
+let fs,auth,ME=null,S=defaultSettings(),MENU=[],ORDERS=[],RORDERS=[],REXP=[],STAFF=[],unsubs=[];
 let settingUp=false,placing=false;
-let cart=[],cat='All',view='pos',aTab='menu',rf=todayStr(),rt=todayStr();
+let cart=[],cat='All',view='pos',aTab='dash',rf=todayStr(),rt=todayStr();
 const can={pos:['admin','cashier'],bar:['admin','cashier','barista'],admin:['admin']};
 
 /* =====================================================================
@@ -404,6 +409,12 @@ function unitPrice(it,size,addons){
   const ap=addons.reduce((a,n)=>a+((S.addons.find(x=>x.n===n)||{}).p||0),0);
   return it.price+up+ap;
 }
+function unitCost(it,size,addons){
+  if(it.cost==null)return null; // cost not set yet
+  const sc=size?((S.sizes.find(s=>s.n===size)||{}).cost||0):0;
+  const ac=addons.reduce((a,n)=>a+((S.addons.find(x=>x.n===n)||{}).cost||0),0);
+  return r2(it.cost+sc+ac);
+}
 function prev(id){
   const it=MENU.find(m=>m.id===id),p=pickState();
   $('#mAdd').textContent='Add · '+fmt(unitPrice(it,p.size,p.addons)*p.qty);
@@ -420,7 +431,7 @@ function addToCart(it,size,addons,qty,note){
   const key=[it.id,size,addons.slice().sort().join('+'),note].join('|');
   const ex=cart.find(c=>c.key===key);
   if(ex)ex.qty+=qty;
-  else cart.push({key,id:it.id,name:it.name,size,addons,note,unit:unitPrice(it,size,addons),qty});
+  else cart.push({key,id:it.id,name:it.name,size,addons,note,unit:unitPrice(it,size,addons),cost:unitCost(it,size,addons),qty});
   renderCart();return true;
 }
 function chg(i,d){
@@ -473,7 +484,7 @@ async function placeOrder(){
   const trackedIds=Object.keys(need).filter(id=>{const m=MENU.find(x=>x.id===id);return m&&m.track});
   const orderRef=fs.collection('orders').doc();
   const cref=fs.collection('counters').doc(day);
-  const items=cart.map(c=>({id:c.id,name:c.name,size:c.size,addons:c.addons,note:c.note,unit:c.unit,qty:c.qty}));
+  const items=cart.map(c=>({id:c.id,name:c.name,size:c.size,addons:c.addons,note:c.note,unit:c.unit,cost:c.cost==null?null:c.cost,qty:c.qty}));
   const type=$('#otype').value,pay=$('#pay').value;
   try{
     const order=await fs.runTransaction(async tx=>{
@@ -544,18 +555,20 @@ async function setStatus(id,s){
    ADMIN
    ===================================================================== */
 function renderAdmin(){
-  const T={menu:'Menu &amp; Stock',reports:'Sales Report',staff:'Staff',settings:'Settings'};
+  const T={dash:'Dashboard',reports:'Sales Report',exp:'Expenses',menu:'Menu &amp; Stock',staff:'Staff',settings:'Settings'};
   $('#adminBody').innerHTML=`<div class="subtabs">${Object.keys(T).map(t=>`<button class="${aTab===t?'on':''}" onclick="aTab='${t}';renderAdmin()">${T[t]}</button>`).join('')}</div><div class="card" id="aContent"></div>`;
-  ({menu:aMenu,reports:aReports,staff:aStaff,settings:aSettings})[aTab]();
+  ({dash:aDash,reports:aReports,exp:aExpenses,menu:aMenu,staff:aStaff,settings:aSettings})[aTab]();
 }
 
 /* ----- menu ----- */
 function aMenu(){
   $('#aContent').innerHTML=`<div class="toolbar"><button onclick="editItem(null)">+ New item</button></div>
-  <table><tr><th>Item</th><th>Category</th><th class="n">Price</th><th class="n">Stock</th><th></th></tr>
+  <table><tr><th>Item</th><th>Category</th><th class="n">Price</th><th class="n">Cost</th><th class="n">Margin</th><th class="n">Stock</th><th></th></tr>
   ${MENU.map(m=>`<tr><td>${esc(m.name)}${m.sized?' <span class="badge">size</span>':''}</td><td>${esc(m.cat)}</td><td class="n">${fmt(m.price)}</td>
+  <td class="n">${m.cost==null?'<span class="low">not set</span>':fmt(m.cost)}</td>
+  <td class="n">${m.cost==null||!(m.price>0)?'—':((m.price-m.cost)/m.price*100).toFixed(1)+'%'}</td>
   <td class="n">${m.track?`<span class="${m.stock<=3?'low':''}">${m.stock}</span>`:'—'}</td>
-  <td class="n"><button class="ghost" onclick="editItem('${m.id}')">Edit</button> <button class="bad" onclick="delItem('${m.id}')">Delete</button></td></tr>`).join('')||'<tr><td colspan="5">No items yet.</td></tr>'}</table>`;
+  <td class="n"><button class="ghost" onclick="editItem('${m.id}')">Edit</button> <button class="bad" onclick="delItem('${m.id}')">Delete</button></td></tr>`).join('')||'<tr><td colspan="7">No items yet.</td></tr>'}</table>`;
 }
 function editItem(id){
   const m=id?MENU.find(x=>x.id===id):{name:'',cat:'Coffee',price:0,sized:false,track:false,stock:0};
@@ -564,6 +577,8 @@ function editItem(id){
   <div class="lbl">Name</div><input id="fN" value="${esc(m.name)}">
   <div class="two"><div><div class="lbl">Category</div><input id="fC" list="catList" value="${esc(m.cat)}"><datalist id="catList">${catList().filter(c=>c!=='All').map(c=>`<option value="${esc(c)}">`).join('')}</datalist></div>
   <div><div class="lbl">Price (base)</div><input id="fP" type="number" min="0" step="0.01" value="${m.price}"></div></div>
+  <div class="lbl">Cost per item (base, your cost to make it)</div><input id="fCo" type="number" min="0" step="0.01" placeholder="e.g. 28.50" value="${m.cost==null?'':m.cost}">
+  <small style="color:var(--mut)">Sizes and add-on costs are set in Settings.</small>
   <label style="display:block;margin-top:10px"><input id="fS" type="checkbox" style="width:auto" ${m.sized?'checked':''}> Has sizes &amp; add-ons (drinks)</label>
   <label style="display:block;margin-top:6px"><input id="fT" type="checkbox" style="width:auto" ${m.track?'checked':''}> Track stock</label>
   <div class="lbl">Stock</div><input id="fK" type="number" min="0" step="1" value="${m.stock}">
@@ -571,7 +586,7 @@ function editItem(id){
 }
 async function saveItem(id){
   const name=$('#fN').value.trim();if(!name){toast('Enter a name');return}
-  const d={name,cat:$('#fC').value.trim()||'Others',price:Math.max(0,r2(parseFloat($('#fP').value)||0)),sized:$('#fS').checked,track:$('#fT').checked,stock:Math.max(0,parseInt($('#fK').value)||0)};
+  const d={name,cat:$('#fC').value.trim()||'Others',price:Math.max(0,r2(parseFloat($('#fP').value)||0)),cost:$('#fCo').value.trim()===''?null:Math.max(0,r2(parseFloat($('#fCo').value)||0)),sized:$('#fS').checked,track:$('#fT').checked,stock:Math.max(0,parseInt($('#fK').value)||0)};
   try{
     if(id)await fs.collection('menu').doc(id).update(d);else await fs.collection('menu').add(d);
     closeModal();
@@ -584,35 +599,173 @@ async function delItem(id){
 }
 
 /* ----- reports ----- */
+/* ----- shared: load + analyze a date range ----- */
+const pct=(a,b)=>b>0?(a/b*100).toFixed(1)+'%':'—';
+async function loadRange(){
+  if(rf>rt)rt=rf;
+  try{
+    const [q,e]=await Promise.all([
+      fs.collection('orders').where('day','>=',rf).where('day','<=',rt).get(),
+      fs.collection('expenses').where('date','>=',rf).where('date','<=',rt).get()]);
+    RORDERS=q.docs.map(d=>Object.assign({id:d.id},d.data()));
+    REXP=e.docs.map(d=>Object.assign({id:d.id},d.data()));
+  }catch(err){toast(errMsg(err));RORDERS=[];REXP=[]}
+}
+function orderProfit(o){
+  if(o.items.some(i=>i.cost==null))return null;
+  return r2(o.total-o.items.reduce((a,i)=>a+i.cost*i.qty,0));
+}
+function analyze(){
+  const ok=RORDERS.filter(o=>o.status!=='void');
+  const A={orders:ok.length,sales:0,disc:0,cogs:0,unc:0,exp:0,days:{},items:{},byPay:{},byCat:{}};
+  const day=k=>A.days[k]||(A.days[k]={sales:0,cogs:0,exp:0});
+  ok.forEach(o=>{
+    A.sales+=o.total;A.disc+=o.disc||0;A.byPay[o.pay]=(A.byPay[o.pay]||0)+o.total;
+    const f=o.sub>0?o.total/o.sub:1,d=day(o.day);d.sales+=o.total;
+    o.items.forEach(i=>{
+      const t=A.items[i.name]||(A.items[i.name]={q:0,s:0,c:0,cq:0,unc:0});
+      t.q+=i.qty;t.s+=i.unit*i.qty*f; // net of discount
+      if(i.cost==null){t.unc+=i.qty;A.unc+=i.qty}
+      else{const c=i.cost*i.qty;t.c+=c;t.cq+=i.qty;A.cogs+=c;d.cogs+=c}
+    });
+  });
+  REXP.forEach(e=>{const a=Number(e.amount)||0;A.exp+=a;day(e.date).exp+=a;A.byCat[e.cat]=(A.byCat[e.cat]||0)+a});
+  A.sales=r2(A.sales);A.disc=r2(A.disc);A.cogs=r2(A.cogs);A.exp=r2(A.exp);
+  A.gross=r2(A.sales-A.cogs);A.net=r2(A.gross-A.exp);
+  Object.values(A.items).forEach(t=>{t.s=r2(t.s);t.c=r2(t.c)});
+  return A;
+}
+function dateRange(a,b){
+  const out=[],d=new Date(a+'T12:00:00'),e=new Date(b+'T12:00:00');
+  while(d<=e&&out.length<93){out.push(dstr(d.getTime()));d.setDate(d.getDate()+1)}
+  return out;
+}
+function setRange(k){
+  const t=todayStr();
+  if(k==='today'){rf=t;rt=t}
+  else if(k==='7'){rf=dstr(Date.now()-6*864e5);rt=t}
+  else{rf=t.slice(0,8)+'01';rt=t}
+  renderAdmin();
+}
+function rangeBar(fn,extra){
+  return `<div class="toolbar">
+    <div><div class="lbl">From</div><input type="date" value="${rf}" onchange="rf=this.value;${fn}()"></div>
+    <div><div class="lbl">To</div><input type="date" value="${rt}" onchange="rt=this.value;${fn}()"></div>
+    <button class="ghost" onclick="setRange('today')">Today</button>
+    <button class="ghost" onclick="setRange('7')">Last 7 days</button>
+    <button class="ghost" onclick="setRange('month')">This month</button>
+    <button class="ghost" onclick="${fn}()">Refresh</button>${extra||''}</div>`;
+}
+function uncBanner(A){
+  return A.unc?`<div class="warnbox">⚠ ${A.unc} item(s) sold in this period have no cost set, so cost and profit are understated or missing for them. Set the cost under Menu &amp; Stock (and sizes/add-ons under Settings).</div>`:'';
+}
+function money(n){return `<span class="${n<0?'neg':''}">${fmt(n)}</span>`}
+
+/* ----- dashboard ----- */
+function chartSVG(A){
+  const keys=dateRange(rf,rt);
+  const rows=keys.map(k=>{const d=A.days[k]||{sales:0,cogs:0,exp:0};return {k,s:d.sales,c:d.cogs,e:d.exp,n:d.sales-d.cogs-d.exp}});
+  const W=760,H=270,L=56,R=12,T=14,B=32;
+  let mx=Math.max(1,...rows.flatMap(r=>[r.s,r.c,r.e,r.n])),mn=Math.min(0,...rows.map(r=>r.n));
+  const raw=(mx-mn)/4,mag=Math.pow(10,Math.floor(Math.log10(raw))),step=[1,2,2.5,5,10].map(m=>m*mag).find(v=>v>=raw)||raw;
+  mx=Math.ceil(mx/step)*step;mn=Math.floor(mn/step)*step;
+  const y=v=>T+(H-T-B)*(1-(v-mn)/(mx-mn));
+  const gw=(W-L-R)/rows.length,bw=Math.min(16,gw*.8/3);
+  let g='';
+  for(let v=mn;v<=mx+1e-9;v+=step){g+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="${v===0?'#8a7a6a':'#eadfd2'}"/><text x="${L-6}" y="${y(v)+4}" font-size="11" text-anchor="end" fill="#7a6a5c">${Math.round(v).toLocaleString('en-PH')}</text>`}
+  const every=Math.ceil(rows.length/10);
+  const cols=['#6f4e37','#c47f17','#b3392f'];
+  rows.forEach((r,i)=>{
+    const cx=L+gw*i+gw/2;
+    [r.s,r.c,r.e].forEach((v,j)=>{
+      const x=cx+(j-1)*bw-bw/2,y0=y(0),y1=y(v);
+      g+=`<rect x="${x}" y="${Math.min(y0,y1)}" width="${bw}" height="${Math.max(0.5,Math.abs(y0-y1))}" fill="${cols[j]}" rx="2"><title>${r.k}: ${['Sales','Cost of goods','Expenses'][j]} ${fmt(v)}</title></rect>`;
+    });
+    if(i%every===0)g+=`<text x="${cx}" y="${H-10}" font-size="11" text-anchor="middle" fill="#7a6a5c">${r.k.slice(5)}</text>`;
+  });
+  const pts=rows.map((r,i)=>`${L+gw*i+gw/2},${y(r.n)}`).join(' ');
+  g+=`<polyline points="${pts}" fill="none" stroke="#2f7d4f" stroke-width="2.5"/>`+rows.map((r,i)=>`<circle cx="${L+gw*i+gw/2}" cy="${y(r.n)}" r="3.5" fill="#2f7d4f"><title>${r.k}: Net profit ${fmt(r.n)}</title></circle>`).join('');
+  return `<div class="chartbox"><svg viewBox="0 0 ${W} ${H}" width="100%" style="min-width:${Math.max(480,rows.length*22)}px">${g}</svg>
+  <div class="legend"><span><i style="background:#6f4e37"></i>Sales</span><span><i style="background:#c47f17"></i>Cost of goods</span><span><i style="background:#b3392f"></i>Expenses</span><span><i style="background:#2f7d4f"></i>Net profit (line)</span></div></div>`;
+}
+async function aDash(){
+  $('#aContent').innerHTML='<div class="empty">Loading…</div>';
+  await loadRange();
+  if(view!=='admin'||aTab!=='dash')return;
+  const A=analyze();
+  const cats=Object.entries(A.byCat).sort((a,b)=>b[1]-a[1]);
+  $('#aContent').innerHTML=rangeBar('aDash')+uncBanner(A)+`
+  <div class="cards">
+    <div class="stat"><small>Sales (after discounts)</small><div>${fmt(A.sales)}</div></div>
+    <div class="stat"><small>Cost of goods</small><div>${fmt(A.cogs)}</div></div>
+    <div class="stat"><small>Gross profit · ${pct(A.gross,A.sales)}</small><div>${money(A.gross)}</div></div>
+    <div class="stat"><small>Expenses</small><div>${fmt(A.exp)}</div></div>
+    <div class="stat"><small>Net profit · ${pct(A.net,A.sales)}</small><div>${money(A.net)}</div></div>
+    <div class="stat"><small>Orders</small><div>${A.orders}</div></div></div>
+  <h4 style="margin:6px 0">By day</h4>${chartSVG(A)}
+  ${Math.round((new Date(rt+'T12:00:00')-new Date(rf+'T12:00:00'))/864e5)+1>93?'<div class="warnbox">The chart shows the first 93 days only. The totals above cover the whole range.</div>':''}
+  <h4>Expenses by category</h4>
+  <table><tr><th>Category</th><th class="n">Amount</th><th class="n">% of sales</th></tr>${cats.map(([c,v])=>`<tr><td>${esc(c)}</td><td class="n">${fmt(v)}</td><td class="n">${pct(v,A.sales)}</td></tr>`).join('')||'<tr><td colspan="3">No expenses recorded for these dates.</td></tr>'}</table>
+  <div style="color:var(--mut);font-size:12px;margin-top:10px">Net profit = Sales − Cost of goods − Expenses. Voided orders are excluded.</div>`;
+}
+
+/* ----- expenses ----- */
+const EXP_CATS=['Rent','Electricity','Water','Internet','Supplies','Salaries','Maintenance','Marketing','Others'];
+async function aExpenses(){
+  $('#aContent').innerHTML='<div class="empty">Loading…</div>';
+  await loadRange();
+  if(view!=='admin'||aTab!=='exp')return;
+  const list=REXP.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))||(b.ts||0)-(a.ts||0));
+  const total=r2(list.reduce((a,e)=>a+(Number(e.amount)||0),0));
+  $('#aContent').innerHTML=rangeBar('aExpenses')+`
+  <div class="card" style="background:#faf6f0;margin-bottom:12px"><b>Add expense</b>
+    <div class="two" style="margin-top:6px"><div><div class="lbl">Date</div><input id="xD" type="date" value="${todayStr()}"></div>
+    <div><div class="lbl">Category</div><input id="xC" list="xCats" placeholder="e.g. Rent"><datalist id="xCats">${EXP_CATS.map(c=>`<option value="${c}">`).join('')}</datalist></div></div>
+    <div class="two"><div><div class="lbl">Description (optional)</div><input id="xN" placeholder="e.g. October electricity bill"></div>
+    <div><div class="lbl">Amount</div><input id="xA" type="number" min="0" step="0.01" placeholder="0.00"></div></div>
+    <button style="margin-top:10px" onclick="addExpense()">Add expense</button></div>
+  <div class="cards"><div class="stat"><small>Total expenses (${rf} to ${rt})</small><div>${fmt(total)}</div></div></div>
+  <table><tr><th>Date</th><th>Category</th><th>Description</th><th class="n">Amount</th><th>By</th><th></th></tr>
+  ${list.map(e=>`<tr><td>${esc(e.date)}</td><td>${esc(e.cat)}</td><td>${esc(e.desc||'')}</td><td class="n">${fmt(e.amount)}</td><td>${esc(e.by||'')}</td><td class="n"><button class="bad" onclick="delExpense('${e.id}')">Delete</button></td></tr>`).join('')||'<tr><td colspan="6">No expenses for these dates.</td></tr>'}</table>`;
+}
+async function addExpense(){
+  const date=$('#xD').value,cat=$('#xC').value.trim(),amount=r2(parseFloat($('#xA').value)||0);
+  if(!date){toast('Pick a date');return}
+  if(!cat){toast('Enter a category');return}
+  if(!(amount>0)){toast('Enter an amount greater than 0');return}
+  try{
+    await fs.collection('expenses').add({date,cat,desc:$('#xN').value.trim(),amount,by:ME.name,ts:Date.now()});
+    if(date<rf)rf=date;if(date>rt)rt=date; // make sure the new entry is visible
+    toast('Expense added');aExpenses();
+  }catch(e){toast(errMsg(e))}
+}
+async function delExpense(id){
+  if(!confirm('Delete this expense?'))return;
+  try{await fs.collection('expenses').doc(id).delete();aExpenses()}catch(e){toast(errMsg(e))}
+}
+
+/* ----- sales report (with cost & profit) ----- */
 async function aReports(){
   $('#aContent').innerHTML='<div class="empty">Loading…</div>';
-  try{
-    const q=await fs.collection('orders').where('day','>=',rf).where('day','<=',rt).get();
-    RORDERS=q.docs.map(d=>Object.assign({id:d.id},d.data()));
-  }catch(e){toast(errMsg(e));RORDERS=[]}
+  await loadRange();
   if(view!=='admin'||aTab!=='reports')return;
-  const list=RORDERS.slice().sort((a,b)=>b.ts-a.ts);
-  const ok=list.filter(o=>o.status!=='void');
-  const gross=r2(ok.reduce((a,o)=>a+o.total,0)),disc=r2(ok.reduce((a,o)=>a+o.disc,0));
-  const byPay={};ok.forEach(o=>{byPay[o.pay]=r2((byPay[o.pay]||0)+o.total)});
-  const top={};ok.forEach(o=>o.items.forEach(i=>{const t=top[i.name]||(top[i.name]={q:0,s:0});t.q+=i.qty;t.s=r2(t.s+i.unit*i.qty)}));
-  const topL=Object.entries(top).sort((a,b)=>b[1].q-a[1].q).slice(0,8);
-  $('#aContent').innerHTML=`<div class="toolbar">
-    <div><div class="lbl">From</div><input type="date" id="rF" value="${rf}" onchange="rf=this.value;aReports()"></div>
-    <div><div class="lbl">To</div><input type="date" id="rT" value="${rt}" onchange="rt=this.value;aReports()"></div>
-    <button class="ghost" onclick="aReports()">Refresh</button>
-    <button class="ghost" onclick="exportCSV()">Export CSV</button></div>
-  <div class="cards"><div class="stat"><small>Sales</small><div>${fmt(gross)}</div></div>
-  <div class="stat"><small>Orders</small><div>${ok.length}</div></div>
-  <div class="stat"><small>Average / order</small><div>${fmt(ok.length?gross/ok.length:0)}</div></div>
-  <div class="stat"><small>Total discount</small><div>${fmt(disc)}</div></div>
-  ${Object.entries(byPay).map(([k,v])=>`<div class="stat"><small>${esc(k)}</small><div>${fmt(v)}</div></div>`).join('')}</div>
-  <h4>Best sellers</h4>
-  <table><tr><th>Item</th><th class="n">Sold</th><th class="n">Amount</th></tr>${topL.map(([n,t])=>`<tr><td>${esc(n)}</td><td class="n">${t.q}</td><td class="n">${fmt(t.s)}</td></tr>`).join('')||'<tr><td colspan="3">No data.</td></tr>'}</table>
+  const A=analyze(),list=RORDERS.slice().sort((a,b)=>b.ts-a.ts);
+  const topL=Object.entries(A.items).sort((a,b)=>b[1].q-a[1].q).slice(0,15);
+  $('#aContent').innerHTML=rangeBar('aReports','<button class="ghost" onclick="exportCSV()">Export CSV</button>')+uncBanner(A)+`
+  <div class="cards"><div class="stat"><small>Sales</small><div>${fmt(A.sales)}</div></div>
+  <div class="stat"><small>Orders</small><div>${A.orders}</div></div>
+  <div class="stat"><small>Average / order</small><div>${fmt(A.orders?A.sales/A.orders:0)}</div></div>
+  <div class="stat"><small>Total discount</small><div>${fmt(A.disc)}</div></div>
+  <div class="stat"><small>Cost of goods</small><div>${fmt(A.cogs)}</div></div>
+  <div class="stat"><small>Gross profit · ${pct(A.gross,A.sales)}</small><div>${money(A.gross)}</div></div>
+  ${Object.entries(A.byPay).map(([k,v])=>`<div class="stat"><small>${esc(k)}</small><div>${fmt(r2(v))}</div></div>`).join('')}</div>
+  <h4>Best sellers &amp; profit per item</h4>
+  <table><tr><th>Item</th><th class="n">Sold</th><th class="n">Sales</th><th class="n">Cost / unit</th><th class="n">Total cost</th><th class="n">Profit</th><th class="n">Margin</th></tr>
+  ${topL.map(([n,t])=>{const full=t.unc===0;return `<tr><td>${esc(n)}</td><td class="n">${t.q}</td><td class="n">${fmt(t.s)}</td><td class="n">${t.cq?fmt(t.c/t.cq):'—'}</td><td class="n">${full?fmt(t.c):'—'}</td><td class="n">${full?money(r2(t.s-t.c)):'—'}</td><td class="n">${full?pct(t.s-t.c,t.s):'—'}</td></tr>`}).join('')||'<tr><td colspan="7">No data.</td></tr>'}</table>
   <h4>Orders</h4>
-  <table><tr><th>#</th><th>Time</th><th>Items</th><th class="n">Total</th><th>Payment</th><th>Cashier</th><th></th></tr>
-  ${list.map(o=>`<tr class="${o.status==='void'?'void':''}"><td>${ono(o)}</td><td>${dstr(o.ts)} ${tstr(o.ts)}</td><td>${esc(o.items.map(i=>i.qty+'× '+i.name).join(', '))}</td><td class="n">${fmt(o.total)}</td><td>${esc(o.pay)}</td><td>${esc(o.cashier||'')}</td>
-  <td class="n"><button class="ghost" onclick="showReceipt('${o.id}')">Receipt</button> ${o.status!=='void'?`<button class="bad" onclick="voidOrder('${o.id}')">Void</button>`:''}</td></tr>`).join('')||'<tr><td colspan="7">No orders for these dates.</td></tr>'}</table>`;
+  <table><tr><th>#</th><th>Time</th><th>Items</th><th class="n">Total</th><th class="n">Profit</th><th>Payment</th><th>Cashier</th><th></th></tr>
+  ${list.map(o=>{const p=orderProfit(o);return `<tr class="${o.status==='void'?'void':''}"><td>${ono(o)}</td><td>${dstr(o.ts)} ${tstr(o.ts)}</td><td>${esc(o.items.map(i=>i.qty+'× '+i.name).join(', '))}</td><td class="n">${fmt(o.total)}</td><td class="n">${p==null?'—':money(p)}</td><td>${esc(o.pay)}</td><td>${esc(o.cashier||'')}</td>
+  <td class="n"><button class="ghost" onclick="showReceipt('${o.id}')">Receipt</button> ${o.status!=='void'?`<button class="bad" onclick="voidOrder('${o.id}')">Void</button>`:''}</td></tr>`}).join('')||'<tr><td colspan="8">No orders for these dates.</td></tr>'}</table>`;
 }
 async function voidOrder(id){
   const o=RORDERS.find(x=>x.id===id);
@@ -632,8 +785,11 @@ async function voidOrder(id){
 }
 function exportCSV(){
   const q=v=>'"'+String(v).replace(/"/g,'""')+'"';
-  const rows=[['Order','Date','Time','Type','Items','Subtotal','Discount','Total','Payment','Cashier','Status']];
-  RORDERS.slice().sort((a,b)=>a.ts-b.ts).forEach(o=>rows.push([ono(o),dstr(o.ts),tstr(o.ts),o.type,o.items.map(i=>i.qty+'x '+i.name+(i.size?' ('+i.size+')':'')).join('; '),o.sub,o.disc,o.total,o.pay,o.cashier||'',o.status]));
+  const rows=[['Order','Date','Time','Type','Items','Subtotal','Discount','Total','Cost','Profit','Payment','Cashier','Status']];
+  RORDERS.slice().sort((a,b)=>a.ts-b.ts).forEach(o=>{
+    const p=orderProfit(o);
+    rows.push([ono(o),dstr(o.ts),tstr(o.ts),o.type,o.items.map(i=>i.qty+'x '+i.name+(i.size?' ('+i.size+')':'')).join('; '),o.sub,o.disc,o.total,p==null?'':r2(o.total-p),p==null?'':p,o.pay,o.cashier||'',o.status]);
+  });
   download('sales_'+rf+'_to_'+rt+'.csv',rows.map(r=>r.map(q).join(',')).join('\n'),'text/csv');
 }
 
@@ -698,22 +854,25 @@ async function resetPw(i){
 function aSettings(){
   $('#aContent').innerHTML=`<div class="lbl" style="margin-top:0">Shop name</div><input id="sShop" value="${esc(S.shop)}">
   <div class="lbl">PWD / Senior discount (%)</div><input id="sPwd" type="number" min="0" max="100" value="${S.pwdRate}">
-  <div class="lbl">Sizes (one per line: Name,extra price)</div><textarea id="sSizes" rows="4">${esc(S.sizes.map(z=>z.n+','+z.up).join('\n'))}</textarea>
-  <div class="lbl">Add-ons (Name,price)</div><textarea id="sAdd" rows="5">${esc(S.addons.map(a=>a.n+','+a.p).join('\n'))}</textarea>
+  <div class="lbl">Sizes (one per line: Name, extra price, extra cost)</div><textarea id="sSizes" rows="4">${esc(S.sizes.map(z=>z.n+','+z.up+','+(z.cost||0)).join('\n'))}</textarea>
+  <div class="lbl">Add-ons (one per line: Name, price, cost)</div><textarea id="sAdd" rows="5">${esc(S.addons.map(a=>a.n+','+a.p+','+(a.cost||0)).join('\n'))}</textarea>
+  <small style="color:var(--mut)">Example: Large,20,6 means +₱20 price and +₱6 cost. The third number is optional.</small>
   <div class="actions" style="justify-content:flex-start"><button onclick="saveSettings()">Save settings</button></div>`;
 }
 function parseLines(t){
+  const num=x=>{const v=parseFloat(x);return isNaN(v)?0:Math.max(0,v)};
   return t.split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{
-    const i=l.lastIndexOf(',');
-    const n=(i>-1?l.slice(0,i):l).trim(),v=i>-1?parseFloat(l.slice(i+1)):0;
-    return {n,v:isNaN(v)?0:Math.max(0,v)};
+    const p=l.split(',').map(x=>x.trim());
+    if(p.length>=3)return {n:p.slice(0,-2).join(','),v:num(p[p.length-2]),c:num(p[p.length-1])};
+    if(p.length===2)return {n:p[0],v:num(p[1]),c:0};
+    return {n:p[0],v:0,c:0};
   }).filter(x=>x.n);
 }
 async function saveSettings(){
-  const sizes=parseLines($('#sSizes').value).map(x=>({n:x.n,up:x.v}));
+  const sizes=parseLines($('#sSizes').value).map(x=>({n:x.n,up:x.v,cost:x.c}));
   if(!sizes.length){toast('At least one size is required');return}
   const d={shop:$('#sShop').value.trim()||'Coffee Shop',pwdRate:Math.min(100,Math.max(0,parseFloat($('#sPwd').value)||0)),
-    sizes,addons:parseLines($('#sAdd').value).map(x=>({n:x.n,p:x.v}))};
+    sizes,addons:parseLines($('#sAdd').value).map(x=>({n:x.n,p:x.v,cost:x.c}))};
   try{await fs.collection('settings').doc('main').set(d,{merge:true});toast('Saved')}catch(e){toast(errMsg(e))}
 }
 
