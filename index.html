@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fil">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -106,7 +106,7 @@ code{background:#f1e9df;padding:1px 5px;border-radius:5px}
   <header>
     <h1 id="shopName">Coffee POS</h1>
     <nav>
-      <button id="nav-pos" onclick="go('pos')">Kahera</button>
+      <button id="nav-pos" onclick="go('pos')">POS</button>
       <button id="nav-bar" onclick="go('bar')">Barista</button>
       <button id="nav-admin" onclick="go('admin')">Admin</button>
     </nav>
@@ -118,41 +118,41 @@ code{background:#f1e9df;padding:1px 5px;border-radius:5px}
     <section id="v-pos" class="view">
       <div class="pos">
         <div class="card">
-          <input class="search" id="q" placeholder="Hanapin ang item..." oninput="renderMenu()">
+          <input class="search" id="q" placeholder="Search items..." oninput="renderMenu()">
           <div class="cats" id="cats"></div>
           <div class="grid" id="menuGrid"></div>
         </div>
         <div class="card">
-          <h3 style="margin:0 0 6px">Kasalukuyang Order</h3>
+          <h3 style="margin:0 0 6px">Current Order</h3>
           <div class="two">
             <select id="otype"><option>Dine-in</option><option>Take-out</option></select>
-            <button class="ghost" onclick="clearCart()">Burahin lahat</button>
+            <button class="ghost" onclick="clearCart()">Clear all</button>
           </div>
           <div id="cartList"></div>
           <div class="lbl">Discount</div>
           <div class="two">
-            <select id="disc" onchange="renderTotals()"><option value="none">Walang discount</option><option value="pwd">PWD / Senior</option><option value="custom">Custom %</option></select>
+            <select id="disc" onchange="renderTotals()"><option value="none">No discount</option><option value="pwd">PWD / Senior</option><option value="custom">Custom %</option></select>
             <input id="customPct" type="number" min="0" max="100" placeholder="%" style="display:none" oninput="renderTotals()">
           </div>
           <div class="row" style="margin-top:12px"><span>Subtotal</span><span id="tSub"></span></div>
           <div class="row"><span>Discount</span><span id="tDisc"></span></div>
           <div class="row total"><span>Total</span><span id="tTotal"></span></div>
-          <div class="lbl">Bayad</div>
+          <div class="lbl">Payment</div>
           <select id="pay" onchange="renderTotals()"><option value="Cash">Cash</option><option value="GCash">GCash</option></select>
           <div id="cashBox">
-            <input id="tender" type="number" min="0" placeholder="Natanggap na cash" oninput="renderTotals()" style="margin-top:6px">
+            <input id="tender" type="number" min="0" placeholder="Cash received" oninput="renderTotals()" style="margin-top:6px">
             <div class="quick" id="quick"></div>
-            <div class="row"><span>Sukli</span><b id="tChange">₱0.00</b></div>
+            <div class="row"><span>Change</span><b id="tChange">₱0.00</b></div>
           </div>
-          <button id="placeBtn" class="ok" style="width:100%;margin-top:12px;padding:13px;font-size:16px" onclick="placeOrder()">Bayaran at i-print</button>
+          <button id="placeBtn" class="ok" style="width:100%;margin-top:12px;padding:13px;font-size:16px" onclick="placeOrder()">Complete order</button>
         </div>
       </div>
     </section>
 
     <section id="v-bar" class="view">
       <div class="queue">
-        <div><h3>Ginagawa pa <span class="badge" id="cPrep"></span></h3><div id="qPrep"></div></div>
-        <div><h3>Handa na <span class="badge" id="cReady"></span></h3><div id="qReady"></div></div>
+        <div><h3>Preparing <span class="badge" id="cPrep"></span></h3><div id="qPrep"></div></div>
+        <div><h3>Ready <span class="badge" id="cReady"></span></h3><div id="qReady"></div></div>
       </div>
     </section>
 
@@ -165,7 +165,7 @@ code{background:#f1e9df;padding:1px 5px;border-radius:5px}
 
 <script>
 /* =====================================================================
-   1) I-PASTE DITO ANG FIREBASE CONFIG MO
+   1) PASTE YOUR FIREBASE CONFIG HERE
       Firebase Console > Project settings > Your apps > Web app > Config
    ===================================================================== */
 const FIREBASE_CONFIG = {
@@ -193,11 +193,11 @@ function closeModal(){$('#overlay').classList.remove('on')}
 function modalOpen(){return $('#overlay').classList.contains('on')}
 function errMsg(e){
   const c=(e&&e.code)||'';
-  const m={'auth/invalid-credential':'Mali ang email o password','auth/wrong-password':'Mali ang email o password','auth/user-not-found':'Mali ang email o password',
-    'auth/invalid-email':'Hindi valid ang email','auth/email-already-in-use':'Gamit na ang email na iyan','auth/weak-password':'Masyadong maikli ang password (min 6)',
-    'auth/network-request-failed':'Walang internet','auth/too-many-requests':'Sobrang daming try, maghintay sandali',
-    'permission-denied':'Walang pahintulot sa action na ito','unavailable':'Walang koneksyon sa server','auth/operation-not-allowed':'I-enable ang Email/Password sa Firebase Authentication'};
-  return m[c]||(e&&e.message)||'May error';
+  const m={'auth/invalid-credential':'Incorrect email or password','auth/wrong-password':'Incorrect email or password','auth/user-not-found':'Incorrect email or password',
+    'auth/invalid-email':'Invalid email address','auth/email-already-in-use':'That email is already in use','auth/weak-password':'Password is too short (min 6 characters)',
+    'auth/network-request-failed':'No internet connection','auth/too-many-requests':'Too many attempts, please wait a moment',
+    'permission-denied':'You do not have permission for this action','unavailable':'Cannot reach the server','auth/operation-not-allowed':'Enable Email/Password in Firebase Authentication'};
+  return m[c]||(e&&e.message)||'Something went wrong';
 }
 function download(name,text,type){
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+text],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
@@ -231,38 +231,38 @@ function renderAuth(mode,msg){
   const a=$('#auth');a.style.display='flex';
   const err=msg?`<div class="err">${esc(msg)}</div>`:'';
   if(mode==='config'){
-    a.innerHTML=`<div class="box"><h2>I-setup ang Firebase</h2><p>Hindi pa naka-connect sa Firebase. Gawin ito nang isang beses:</p>
-    <ol><li>Gumawa ng project sa <b>console.firebase.google.com</b></li>
-    <li><b>Authentication</b> → Sign-in method → i-enable ang <b>Email/Password</b></li>
+    a.innerHTML=`<div class="box"><h2>Set up Firebase</h2><p>Not connected to Firebase yet. Do this once:</p>
+    <ol><li>Create a project at <b>console.firebase.google.com</b></li>
+    <li><b>Authentication</b> → Sign-in method → enable <b>Email/Password</b></li>
     <li><b>Firestore Database</b> → Create database</li>
-    <li>Firestore → <b>Rules</b> → i-paste ang laman ng <code>firestore.rules</code> → Publish</li>
-    <li>Project settings → Your apps → Web app → kopyahin ang config at i-paste sa <code>FIREBASE_CONFIG</code> sa itaas ng script ng <code>index.html</code></li>
-    <li>I-deploy (Firebase Hosting) o buksan ang page, tapos gawin ang first-time setup</li></ol></div>`;
+    <li>Firestore → <b>Rules</b> → paste the contents of <code>firestore.rules</code> → Publish</li>
+    <li>Project settings → Your apps → Web app → copy the config and paste it into <code>FIREBASE_CONFIG</code> at the top of the script in <code>index.html</code></li>
+    <li>Deploy (Firebase Hosting or GitHub Pages) or open the page, then do the first-time setup</li></ol></div>`;
   }else if(mode==='setup'){
-    a.innerHTML=`<div class="box"><h2>First-time setup</h2><p style="color:var(--mut);margin-top:0">Gawin ang Admin account. Gawin ito agad pagka-deploy.</p>
-    <div class="lbl">Pangalan ng shop</div><input id="suShop" placeholder="hal. Kape Corner">
-    <div class="lbl">Pangalan mo</div><input id="suName">
+    a.innerHTML=`<div class="box"><h2>First-time setup</h2><p style="color:var(--mut);margin-top:0">Create the Admin account. Do this right after deploying.</p>
+    <div class="lbl">Shop name</div><input id="suShop" placeholder="e.g. Kape Corner">
+    <div class="lbl">Your name</div><input id="suName">
     <div class="lbl">Email</div><input id="suEmail" type="email">
     <div class="lbl">Password (min 6)</div><input id="suPass" type="password" onkeydown="if(event.key==='Enter')doSetup()">
-    ${err}<button style="width:100%;margin-top:12px" onclick="doSetup()">Gawin ang Admin</button></div>`;
+    ${err}<button style="width:100%;margin-top:12px" onclick="doSetup()">Create Admin</button></div>`;
   }else{
     a.innerHTML=`<div class="box"><h2>☕ Login</h2><p style="color:var(--mut);margin-top:0">Coffee Shop POS</p>
     <div class="lbl">Email</div><input id="liEmail" type="email" onkeydown="if(event.key==='Enter')$('#liPass').focus()">
     <div class="lbl">Password</div><input id="liPass" type="password" onkeydown="if(event.key==='Enter')doLogin()">
-    ${err}<button id="liBtn" style="width:100%;margin-top:12px" onclick="doLogin()">Pasok</button></div>`;
+    ${err}<button id="liBtn" style="width:100%;margin-top:12px" onclick="doLogin()">Sign in</button></div>`;
   }
 }
 async function doLogin(){
   const email=$('#liEmail').value.trim(),pass=$('#liPass').value;
-  if(!email||!pass){renderAuth('login','Ilagay ang email at password');return}
+  if(!email||!pass){renderAuth('login','Enter your email and password');return}
   $('#liBtn').disabled=true;
   try{await auth.signInWithEmailAndPassword(email,pass)}
   catch(e){renderAuth('login',errMsg(e))}
 }
 async function doSetup(){
   const shop=$('#suShop').value.trim()||'Coffee Shop',name=$('#suName').value.trim(),email=$('#suEmail').value.trim(),pass=$('#suPass').value;
-  if(!name||!email){renderAuth('setup','Kumpletuhin ang pangalan at email');return}
-  if(pass.length<6){renderAuth('setup','Masyadong maikli ang password (min 6)');return}
+  if(!name||!email){renderAuth('setup','Please fill in the name and email');return}
+  if(pass.length<6){renderAuth('setup','Password is too short (min 6 characters)');return}
   settingUp=true;
   try{
     const cred=await auth.createUserWithEmailAndPassword(email,pass);
@@ -304,14 +304,14 @@ function init(){
 }
 async function showEntry(){
   try{const s=await fs.collection('meta').doc('setup').get();renderAuth(s.exists?'login':'setup')}
-  catch(e){renderAuth('login','Hindi ma-check ang setup: '+errMsg(e))}
+  catch(e){renderAuth('login','Could not check setup: '+errMsg(e))}
 }
 async function bootUser(u){
   try{
     const snap=await fs.collection('users').doc(u.uid).get();
     if(!snap.exists||snap.data().active!==true){
       await auth.signOut();
-      renderAuth('login',snap.exists?'Naka-disable ang account na ito. Kausapin ang admin.':'Walang access ang account na ito.');
+      renderAuth('login',snap.exists?'This account is disabled. Please contact the admin.':'This account has no access.');
       return;
     }
     ME=Object.assign({uid:u.uid},snap.data());
@@ -375,20 +375,20 @@ function renderMenu(){
   const list=MENU.filter(m=>(cat==='All'||m.cat===cat)&&String(m.name).toLowerCase().includes(q));
   $('#menuGrid').innerHTML=list.length?list.map(m=>{
     const out=m.track&&m.stock<=0;
-    return `<button class="item ${out?'out':''}" onclick="openItem('${m.id}')"><b>${esc(m.name)}</b><span>${fmt(m.price)}${m.sized?'+':''}</span>${m.track?`<small>${out?'Ubos na':'Stock: '+m.stock}</small>`:`<small>${esc(m.cat)}</small>`}</button>`;
-  }).join(''):'<div class="empty">Walang item.</div>';
+    return `<button class="item ${out?'out':''}" onclick="openItem('${m.id}')"><b>${esc(m.name)}</b><span>${fmt(m.price)}${m.sized?'+':''}</span>${m.track?`<small>${out?'Sold out':'Stock: '+m.stock}</small>`:`<small>${esc(m.cat)}</small>`}</button>`;
+  }).join(''):'<div class="empty">No items.</div>';
 }
 function openItem(id){
   const it=MENU.find(m=>m.id===id);if(!it)return;
-  if(it.track&&it.stock<=0){toast('Ubos na ang '+it.name);return}
+  if(it.track&&it.stock<=0){toast('Sold out: '+it.name);return}
   if(!it.sized){addToCart(it,'',[],1,'');return}
   modal(`<h3>${esc(it.name)}</h3>
   <div class="lbl">Size</div>
   <div class="chips">${S.sizes.map((z,i)=>`<label class="chip"><input type="radio" name="sz" value="${esc(z.n)}" ${i===0?'checked':''} onchange="prev('${id}')"><span>${esc(z.n)}${z.up?' +'+z.up:''}</span></label>`).join('')}</div>
   ${S.addons.length?`<div class="lbl">Add-ons</div><div class="chips">${S.addons.map(a=>`<label class="chip"><input type="checkbox" name="ad" value="${esc(a.n)}" onchange="prev('${id}')"><span>${esc(a.n)} +${a.p}</span></label>`).join('')}</div>`:''}
-  <div class="two"><div><div class="lbl">Dami</div><input id="mq" type="number" min="1" value="1" oninput="prev('${id}')"></div>
-  <div><div class="lbl">Note</div><input id="mn" placeholder="hal. less ice"></div></div>
-  <div class="actions"><button class="ghost" onclick="closeModal()">Kansela</button><button id="mAdd" onclick="confirmItem('${id}')">Idagdag</button></div>`);
+  <div class="two"><div><div class="lbl">Qty</div><input id="mq" type="number" min="1" value="1" oninput="prev('${id}')"></div>
+  <div><div class="lbl">Note</div><input id="mn" placeholder="e.g. less ice"></div></div>
+  <div class="actions"><button class="ghost" onclick="closeModal()">Cancel</button><button id="mAdd" onclick="confirmItem('${id}')">Add</button></div>`);
   prev(id);
 }
 function pickState(){
@@ -406,7 +406,7 @@ function unitPrice(it,size,addons){
 }
 function prev(id){
   const it=MENU.find(m=>m.id===id),p=pickState();
-  $('#mAdd').textContent='Idagdag · '+fmt(unitPrice(it,p.size,p.addons)*p.qty);
+  $('#mAdd').textContent='Add · '+fmt(unitPrice(it,p.size,p.addons)*p.qty);
 }
 function confirmItem(id){
   const it=MENU.find(m=>m.id===id),p=pickState();
@@ -415,7 +415,7 @@ function confirmItem(id){
 function addToCart(it,size,addons,qty,note){
   if(it.track){
     const inCart=cart.filter(c=>c.id===it.id).reduce((a,c)=>a+c.qty,0);
-    if(inCart+qty>it.stock){toast('Stock lang: '+it.stock+' ('+it.name+')');return false}
+    if(inCart+qty>it.stock){toast('Stock left: '+it.stock+' ('+it.name+')');return false}
   }
   const key=[it.id,size,addons.slice().sort().join('+'),note].join('|');
   const ex=cart.find(c=>c.key===key);
@@ -428,7 +428,7 @@ function chg(i,d){
   const it=MENU.find(m=>m.id===c.id);
   if(d>0&&it&&it.track){
     const inCart=cart.filter(x=>x.id===c.id).reduce((a,x)=>a+x.qty,0);
-    if(inCart+1>it.stock){toast('Stock lang: '+it.stock);return}
+    if(inCart+1>it.stock){toast('Stock left: '+it.stock);return}
   }
   c.qty+=d;if(c.qty<=0)cart.splice(i,1);
   renderCart();
@@ -448,7 +448,7 @@ function calc(){
 function renderCart(){
   const el=$('#cartList');
   el.innerHTML=cart.length?cart.map((c,i)=>`<div class="ci"><div><b>${esc(c.name)}</b>${c.size?` <small>(${esc(c.size)})</small>`:''}<div class="sub">${esc(c.addons.join(', '))}${c.note?(c.addons.length?' · ':'')+'“'+esc(c.note)+'”':''}</div></div>
-  <div class="qty"><button onclick="chg(${i},-1)">−</button><span>${c.qty}</span><button onclick="chg(${i},1)">+</button></div><div class="amt">${fmt(c.unit*c.qty)}</div></div>`).join(''):'<div class="empty">Wala pang order. Pumili sa menu.</div>';
+  <div class="qty"><button onclick="chg(${i},-1)">−</button><span>${c.qty}</span><button onclick="chg(${i},1)">+</button></div><div class="amt">${fmt(c.unit*c.qty)}</div></div>`).join(''):'<div class="empty">No items yet. Pick from the menu.</div>';
   renderTotals();
 }
 function renderTotals(){
@@ -458,15 +458,15 @@ function renderTotals(){
   $('#cashBox').style.display=cash?'block':'none';
   const tend=parseFloat($('#tender').value)||0;
   $('#tChange').textContent=fmt(Math.max(0,tend-t.total));
-  const q=[['Eksakto',t.total],[100,100],[200,200],[500,500],[1000,1000]];
+  const q=[['Exact',t.total],[100,100],[200,200],[500,500],[1000,1000]];
   $('#quick').innerHTML=q.map(([l,v])=>`<button onclick="$('#tender').value=${v};renderTotals()">${typeof l==='number'?'₱'+l:l}</button>`).join('');
   $('#placeBtn').disabled=placing||!cart.length||(cash&&tend<t.total);
 }
 async function placeOrder(){
   if(!cart.length||placing)return;
   const t=calc(),cash=$('#pay').value==='Cash',tend=parseFloat($('#tender').value)||0;
-  if(cash&&tend<t.total){toast('Kulang ang bayad');return}
-  if(!navigator.onLine){toast('Walang internet. Kailangan ng koneksyon para ma-save ang order.');return}
+  if(cash&&tend<t.total){toast('Not enough cash received');return}
+  if(!navigator.onLine){toast('No internet. A connection is needed to save the order.');return}
   placing=true;renderTotals();
   const day=todayStr();
   const need={};cart.forEach(c=>{need[c.id]=(need[c.id]||0)+c.qty});
@@ -480,8 +480,8 @@ async function placeOrder(){
       const cs=await tx.get(cref);
       const mdocs=await Promise.all(trackedIds.map(id=>tx.get(fs.collection('menu').doc(id))));
       mdocs.forEach(d=>{
-        if(!d.exists)throw new Error('May item na wala na sa menu. I-refresh ang page.');
-        if((d.data().stock||0)<need[d.id])throw new Error('Kulang na ang stock ng '+d.data().name);
+        if(!d.exists)throw new Error('An item is no longer on the menu. Please refresh the page.');
+        if((d.data().stock||0)<need[d.id])throw new Error('Not enough stock for '+d.data().name);
       });
       const no=(cs.exists?(cs.data().n||0):0)+1;
       tx.set(cref,{n:no});
@@ -506,21 +506,21 @@ function showReceipt(ref){
   const o=typeof ref==='string'?(ORDERS.concat(RORDERS).find(x=>x.id===ref)):ref;
   if(!o)return;
   modal(`<div id="receiptPrint" class="receipt">
-    <div class="c"><b>${esc(S.shop)}</b><br>Resibo</div><hr>
+    <div class="c"><b>${esc(S.shop)}</b><br>Receipt</div><hr>
     <div class="r"><span>Order ${ono(o)}</span><span>${esc(o.type)}</span></div>
     <div>${dstr(o.ts)} ${tstr(o.ts)}</div>
-    <div>Kahera: ${esc(o.cashier||'')}</div><hr>
+    <div>Cashier: ${esc(o.cashier||'')}</div><hr>
     ${o.items.map(i=>`<div class="r"><span>${i.qty} x ${esc(i.name)}${i.size?' ('+esc(i.size)+')':''}</span><span>${fmt(i.unit*i.qty)}</span></div>${i.addons.length?`<div>&nbsp;&nbsp;+ ${esc(i.addons.join(', '))}</div>`:''}${i.note?`<div>&nbsp;&nbsp;“${esc(i.note)}”</div>`:''}`).join('')}
     <hr>
     <div class="r"><span>Subtotal</span><span>${fmt(o.sub)}</span></div>
     ${o.disc?`<div class="r"><span>${esc(o.discLabel||'Discount')}</span><span>− ${fmt(o.disc)}</span></div>`:''}
     <div class="r"><b>TOTAL</b><b>${fmt(o.total)}</b></div>
     <div class="r"><span>${esc(o.pay)}</span><span>${fmt(o.tendered)}</span></div>
-    ${o.pay==='Cash'?`<div class="r"><span>Sukli</span><span>${fmt(o.change)}</span></div>`:''}
+    ${o.pay==='Cash'?`<div class="r"><span>Change</span><span>${fmt(o.change)}</span></div>`:''}
     ${o.status==='void'?'<div class="c"><b>*** VOID ***</b></div>':''}
-    <hr><div class="c">Salamat! Balik ka ulit ☕</div>
+    <hr><div class="c">Thank you! Come again ☕</div>
   </div>
-  <div class="actions"><button class="ghost" onclick="closeModal()">Isara</button><button onclick="window.print()">I-print</button></div>`);
+  <div class="actions"><button class="ghost" onclick="closeModal()">Close</button><button onclick="window.print()">Print</button></div>`);
 }
 
 /* =====================================================================
@@ -530,10 +530,10 @@ function renderQueue(){
   const live=ORDERS.filter(o=>o.status==='preparing'||o.status==='ready').sort((a,b)=>a.ts-b.ts);
   const card=o=>`<div class="ticket ${o.status==='ready'?'ready':''}"><h4><span>${ono(o)}</span><span class="badge">${esc(o.type)} · ${tstr(o.ts)}</span></h4>
     <ul>${o.items.map(i=>`<li><b>${i.qty}×</b> ${esc(i.name)}${i.size?' ('+esc(i.size)+')':''}${i.addons.length?`<br><small>+ ${esc(i.addons.join(', '))}</small>`:''}${i.note?`<br><small>“${esc(i.note)}”</small>`:''}</li>`).join('')}</ul>
-    ${o.status==='preparing'?`<button class="ok" onclick="setStatus('${o.id}','ready')">Handa na</button>`:`<button onclick="setStatus('${o.id}','served')">Naibigay na</button>`}</div>`;
+    ${o.status==='preparing'?`<button class="ok" onclick="setStatus('${o.id}','ready')">Ready</button>`:`<button onclick="setStatus('${o.id}','served')">Served</button>`}</div>`;
   const prep=live.filter(o=>o.status==='preparing'),rdy=live.filter(o=>o.status==='ready');
-  $('#qPrep').innerHTML=prep.map(card).join('')||'<div class="empty">Walang pending.</div>';
-  $('#qReady').innerHTML=rdy.map(card).join('')||'<div class="empty">Wala pa.</div>';
+  $('#qPrep').innerHTML=prep.map(card).join('')||'<div class="empty">Nothing pending.</div>';
+  $('#qReady').innerHTML=rdy.map(card).join('')||'<div class="empty">None yet.</div>';
   $('#cPrep').textContent=prep.length;$('#cReady').textContent=rdy.length;
 }
 async function setStatus(id,s){
@@ -544,33 +544,33 @@ async function setStatus(id,s){
    ADMIN
    ===================================================================== */
 function renderAdmin(){
-  const T={menu:'Menu at Stock',reports:'Sales Report',staff:'Staff',settings:'Settings'};
+  const T={menu:'Menu &amp; Stock',reports:'Sales Report',staff:'Staff',settings:'Settings'};
   $('#adminBody').innerHTML=`<div class="subtabs">${Object.keys(T).map(t=>`<button class="${aTab===t?'on':''}" onclick="aTab='${t}';renderAdmin()">${T[t]}</button>`).join('')}</div><div class="card" id="aContent"></div>`;
   ({menu:aMenu,reports:aReports,staff:aStaff,settings:aSettings})[aTab]();
 }
 
 /* ----- menu ----- */
 function aMenu(){
-  $('#aContent').innerHTML=`<div class="toolbar"><button onclick="editItem(null)">+ Bagong item</button></div>
-  <table><tr><th>Item</th><th>Category</th><th class="n">Presyo</th><th class="n">Stock</th><th></th></tr>
+  $('#aContent').innerHTML=`<div class="toolbar"><button onclick="editItem(null)">+ New item</button></div>
+  <table><tr><th>Item</th><th>Category</th><th class="n">Price</th><th class="n">Stock</th><th></th></tr>
   ${MENU.map(m=>`<tr><td>${esc(m.name)}${m.sized?' <span class="badge">size</span>':''}</td><td>${esc(m.cat)}</td><td class="n">${fmt(m.price)}</td>
   <td class="n">${m.track?`<span class="${m.stock<=3?'low':''}">${m.stock}</span>`:'—'}</td>
-  <td class="n"><button class="ghost" onclick="editItem('${m.id}')">Edit</button> <button class="bad" onclick="delItem('${m.id}')">Burahin</button></td></tr>`).join('')||'<tr><td colspan="5">Wala pang item.</td></tr>'}</table>`;
+  <td class="n"><button class="ghost" onclick="editItem('${m.id}')">Edit</button> <button class="bad" onclick="delItem('${m.id}')">Delete</button></td></tr>`).join('')||'<tr><td colspan="5">No items yet.</td></tr>'}</table>`;
 }
 function editItem(id){
   const m=id?MENU.find(x=>x.id===id):{name:'',cat:'Coffee',price:0,sized:false,track:false,stock:0};
   if(!m)return;
-  modal(`<h3>${id?'I-edit':'Bagong'} item</h3>
-  <div class="lbl">Pangalan</div><input id="fN" value="${esc(m.name)}">
+  modal(`<h3>${id?'Edit':'New'} item</h3>
+  <div class="lbl">Name</div><input id="fN" value="${esc(m.name)}">
   <div class="two"><div><div class="lbl">Category</div><input id="fC" list="catList" value="${esc(m.cat)}"><datalist id="catList">${catList().filter(c=>c!=='All').map(c=>`<option value="${esc(c)}">`).join('')}</datalist></div>
-  <div><div class="lbl">Presyo (base)</div><input id="fP" type="number" min="0" step="0.01" value="${m.price}"></div></div>
-  <label style="display:block;margin-top:10px"><input id="fS" type="checkbox" style="width:auto" ${m.sized?'checked':''}> May size at add-ons (inumin)</label>
-  <label style="display:block;margin-top:6px"><input id="fT" type="checkbox" style="width:auto" ${m.track?'checked':''}> Bilangin ang stock</label>
+  <div><div class="lbl">Price (base)</div><input id="fP" type="number" min="0" step="0.01" value="${m.price}"></div></div>
+  <label style="display:block;margin-top:10px"><input id="fS" type="checkbox" style="width:auto" ${m.sized?'checked':''}> Has sizes &amp; add-ons (drinks)</label>
+  <label style="display:block;margin-top:6px"><input id="fT" type="checkbox" style="width:auto" ${m.track?'checked':''}> Track stock</label>
   <div class="lbl">Stock</div><input id="fK" type="number" min="0" step="1" value="${m.stock}">
-  <div class="actions"><button class="ghost" onclick="closeModal()">Kansela</button><button onclick="saveItem(${id?`'${id}'`:'null'})">I-save</button></div>`);
+  <div class="actions"><button class="ghost" onclick="closeModal()">Cancel</button><button onclick="saveItem(${id?`'${id}'`:'null'})">Save</button></div>`);
 }
 async function saveItem(id){
-  const name=$('#fN').value.trim();if(!name){toast('Lagyan ng pangalan');return}
+  const name=$('#fN').value.trim();if(!name){toast('Enter a name');return}
   const d={name,cat:$('#fC').value.trim()||'Others',price:Math.max(0,r2(parseFloat($('#fP').value)||0)),sized:$('#fS').checked,track:$('#fT').checked,stock:Math.max(0,parseInt($('#fK').value)||0)};
   try{
     if(id)await fs.collection('menu').doc(id).update(d);else await fs.collection('menu').add(d);
@@ -579,13 +579,13 @@ async function saveItem(id){
 }
 async function delItem(id){
   const m=MENU.find(x=>x.id===id);
-  if(!m||!confirm('Burahin ang "'+m.name+'"? (Mananatili ang lumang orders sa report.)'))return;
+  if(!m||!confirm('Delete "'+m.name+'"? (Past orders stay in reports.)'))return;
   try{await fs.collection('menu').doc(id).delete()}catch(e){toast(errMsg(e))}
 }
 
 /* ----- reports ----- */
 async function aReports(){
-  $('#aContent').innerHTML='<div class="empty">Naglo-load…</div>';
+  $('#aContent').innerHTML='<div class="empty">Loading…</div>';
   try{
     const q=await fs.collection('orders').where('day','>=',rf).where('day','<=',rt).get();
     RORDERS=q.docs.map(d=>Object.assign({id:d.id},d.data()));
@@ -598,71 +598,71 @@ async function aReports(){
   const top={};ok.forEach(o=>o.items.forEach(i=>{const t=top[i.name]||(top[i.name]={q:0,s:0});t.q+=i.qty;t.s=r2(t.s+i.unit*i.qty)}));
   const topL=Object.entries(top).sort((a,b)=>b[1].q-a[1].q).slice(0,8);
   $('#aContent').innerHTML=`<div class="toolbar">
-    <div><div class="lbl">Mula</div><input type="date" id="rF" value="${rf}" onchange="rf=this.value;aReports()"></div>
-    <div><div class="lbl">Hanggang</div><input type="date" id="rT" value="${rt}" onchange="rt=this.value;aReports()"></div>
-    <button class="ghost" onclick="aReports()">I-refresh</button>
-    <button class="ghost" onclick="exportCSV()">I-export CSV</button></div>
-  <div class="cards"><div class="stat"><small>Benta</small><div>${fmt(gross)}</div></div>
+    <div><div class="lbl">From</div><input type="date" id="rF" value="${rf}" onchange="rf=this.value;aReports()"></div>
+    <div><div class="lbl">To</div><input type="date" id="rT" value="${rt}" onchange="rt=this.value;aReports()"></div>
+    <button class="ghost" onclick="aReports()">Refresh</button>
+    <button class="ghost" onclick="exportCSV()">Export CSV</button></div>
+  <div class="cards"><div class="stat"><small>Sales</small><div>${fmt(gross)}</div></div>
   <div class="stat"><small>Orders</small><div>${ok.length}</div></div>
   <div class="stat"><small>Average / order</small><div>${fmt(ok.length?gross/ok.length:0)}</div></div>
   <div class="stat"><small>Total discount</small><div>${fmt(disc)}</div></div>
   ${Object.entries(byPay).map(([k,v])=>`<div class="stat"><small>${esc(k)}</small><div>${fmt(v)}</div></div>`).join('')}</div>
   <h4>Best sellers</h4>
-  <table><tr><th>Item</th><th class="n">Nabenta</th><th class="n">Halaga</th></tr>${topL.map(([n,t])=>`<tr><td>${esc(n)}</td><td class="n">${t.q}</td><td class="n">${fmt(t.s)}</td></tr>`).join('')||'<tr><td colspan="3">Walang data.</td></tr>'}</table>
-  <h4>Mga order</h4>
-  <table><tr><th>#</th><th>Oras</th><th>Items</th><th class="n">Total</th><th>Bayad</th><th>Kahera</th><th></th></tr>
+  <table><tr><th>Item</th><th class="n">Sold</th><th class="n">Amount</th></tr>${topL.map(([n,t])=>`<tr><td>${esc(n)}</td><td class="n">${t.q}</td><td class="n">${fmt(t.s)}</td></tr>`).join('')||'<tr><td colspan="3">No data.</td></tr>'}</table>
+  <h4>Orders</h4>
+  <table><tr><th>#</th><th>Time</th><th>Items</th><th class="n">Total</th><th>Payment</th><th>Cashier</th><th></th></tr>
   ${list.map(o=>`<tr class="${o.status==='void'?'void':''}"><td>${ono(o)}</td><td>${dstr(o.ts)} ${tstr(o.ts)}</td><td>${esc(o.items.map(i=>i.qty+'× '+i.name).join(', '))}</td><td class="n">${fmt(o.total)}</td><td>${esc(o.pay)}</td><td>${esc(o.cashier||'')}</td>
-  <td class="n"><button class="ghost" onclick="showReceipt('${o.id}')">Resibo</button> ${o.status!=='void'?`<button class="bad" onclick="voidOrder('${o.id}')">Void</button>`:''}</td></tr>`).join('')||'<tr><td colspan="7">Walang order sa petsang ito.</td></tr>'}</table>`;
+  <td class="n"><button class="ghost" onclick="showReceipt('${o.id}')">Receipt</button> ${o.status!=='void'?`<button class="bad" onclick="voidOrder('${o.id}')">Void</button>`:''}</td></tr>`).join('')||'<tr><td colspan="7">No orders for these dates.</td></tr>'}</table>`;
 }
 async function voidOrder(id){
   const o=RORDERS.find(x=>x.id===id);
-  if(!o||!confirm('I-void ang order '+ono(o)+'? Ibabalik ang stock.'))return;
+  if(!o||!confirm('Void order '+ono(o)+'? Stock will be restored.'))return;
   try{
     await fs.runTransaction(async tx=>{
       const oref=fs.collection('orders').doc(id);
       const od=await tx.get(oref);
-      if(!od.exists||od.data().status==='void')throw new Error('Void na ang order na ito');
+      if(!od.exists||od.data().status==='void')throw new Error('This order is already void');
       const back={};od.data().items.forEach(i=>{back[i.id]=(back[i.id]||0)+i.qty});
       const md=await Promise.all(Object.keys(back).map(k=>tx.get(fs.collection('menu').doc(k))));
       md.forEach(d=>{if(d.exists&&d.data().track)tx.update(d.ref,{stock:(d.data().stock||0)+back[d.id]})});
       tx.update(oref,{status:'void',voidedBy:ME.name,voidedAt:Date.now()});
     });
-    toast('Na-void ang order');aReports();
+    toast('Order voided');aReports();
   }catch(e){toast(errMsg(e))}
 }
 function exportCSV(){
   const q=v=>'"'+String(v).replace(/"/g,'""')+'"';
-  const rows=[['Order','Petsa','Oras','Uri','Items','Subtotal','Discount','Total','Bayad','Kahera','Status']];
+  const rows=[['Order','Date','Time','Type','Items','Subtotal','Discount','Total','Payment','Cashier','Status']];
   RORDERS.slice().sort((a,b)=>a.ts-b.ts).forEach(o=>rows.push([ono(o),dstr(o.ts),tstr(o.ts),o.type,o.items.map(i=>i.qty+'x '+i.name+(i.size?' ('+i.size+')':'')).join('; '),o.sub,o.disc,o.total,o.pay,o.cashier||'',o.status]));
   download('sales_'+rf+'_to_'+rt+'.csv',rows.map(r=>r.map(q).join(',')).join('\n'),'text/csv');
 }
 
 /* ----- staff ----- */
 async function aStaff(){
-  $('#aContent').innerHTML='<div class="empty">Naglo-load…</div>';
+  $('#aContent').innerHTML='<div class="empty">Loading…</div>';
   try{
     const q=await fs.collection('users').get();
     STAFF=q.docs.map(d=>Object.assign({uid:d.id},d.data())).sort((a,b)=>String(a.name).localeCompare(String(b.name)));
   }catch(e){toast(errMsg(e));STAFF=[]}
   if(view!=='admin'||aTab!=='staff')return;
-  $('#aContent').innerHTML=`<h4 style="margin-top:0">Magdagdag ng staff</h4>
-  <div class="two"><input id="stN" placeholder="Pangalan"><select id="stR"><option value="cashier">Cashier</option><option value="barista">Barista</option><option value="admin">Admin</option></select></div>
+  $('#aContent').innerHTML=`<h4 style="margin-top:0">Add staff</h4>
+  <div class="two"><input id="stN" placeholder="Name"><select id="stR"><option value="cashier">Cashier</option><option value="barista">Barista</option><option value="admin">Admin</option></select></div>
   <div class="two" style="margin-top:8px"><input id="stE" type="email" placeholder="Email"><input id="stP" type="text" placeholder="Password (min 6)"></div>
-  <div class="actions" style="justify-content:flex-start"><button id="stBtn" onclick="addStaff()">Idagdag</button></div>
-  <h4>Mga staff</h4>
-  <table><tr><th>Pangalan</th><th>Email</th><th>Role</th><th>Status</th><th></th></tr>
-  ${STAFF.map((u,i)=>{const self=u.uid===ME.uid;return `<tr><td>${esc(u.name)}${self?' <span class="badge">ikaw</span>':''}</td><td>${esc(u.email)}</td>
+  <div class="actions" style="justify-content:flex-start"><button id="stBtn" onclick="addStaff()">Add</button></div>
+  <h4>Staff members</h4>
+  <table><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th></th></tr>
+  ${STAFF.map((u,i)=>{const self=u.uid===ME.uid;return `<tr><td>${esc(u.name)}${self?' <span class="badge">you</span>':''}</td><td>${esc(u.email)}</td>
   <td><select ${self?'disabled':''} onchange="setRole(${i},this.value)">${['admin','cashier','barista'].map(r=>`<option value="${r}" ${u.role===r?'selected':''}>${r}</option>`).join('')}</select></td>
-  <td>${u.active?'Active':'<span class="low">Naka-disable</span>'}</td>
-  <td class="n">${self?'':`<button class="ghost" onclick="setActive(${i},${!u.active})">${u.active?'I-disable':'I-enable'}</button> `}<button class="ghost" onclick="resetPw(${i})">Reset password</button></td></tr>`}).join('')}</table>
-  <p style="color:var(--mut)">Ang bagong staff ay magla-login gamit ang email at password na inilagay mo. Hindi ma-delete ang account; i-disable na lang.</p>`;
+  <td>${u.active?'Active':'<span class="low">Disabled</span>'}</td>
+  <td class="n">${self?'':`<button class="ghost" onclick="setActive(${i},${!u.active})">${u.active?'Disable':'Enable'}</button> `}<button class="ghost" onclick="resetPw(${i})">Reset password</button></td></tr>`}).join('')}</table>
+  <p style="color:var(--mut)">New staff sign in with the email and password you set here. Accounts cannot be deleted; disable them instead.</p>`;
 }
 async function addStaff(){
   const name=$('#stN').value.trim(),email=$('#stE').value.trim(),pass=$('#stP').value,role=$('#stR').value;
-  if(!name||!email){toast('Kumpletuhin ang pangalan at email');return}
-  if(pass.length<6){toast('Masyadong maikli ang password (min 6)');return}
+  if(!name||!email){toast('Please fill in the name and email');return}
+  if(pass.length<6){toast('Password is too short (min 6 characters)');return}
   $('#stBtn').disabled=true;
-  let sec=null;
+  let sec=null,shown=false;
   try{
     // second app instance so the admin stays logged in
     sec=firebase.initializeApp(FIREBASE_CONFIG,'sec'+Date.now());
@@ -670,18 +670,18 @@ async function addStaff(){
     try{
       await fs.collection('users').doc(cred.user.uid).set({name,email,role,active:true,createdAt:Date.now(),createdBy:ME.uid});
     }catch(e){
-      toast('Nagawa ang login pero hindi na-save ang profile: '+errMsg(e));
-      throw e;
+      toast('The login was created but the profile was not saved: '+errMsg(e));
+      shown=true;throw e;
     }
     await sec.auth().signOut();
-    toast('Naidagdag si '+name);
-  }catch(e){if(!/profile/.test(String(e&&e.message)))toast(errMsg(e))}
+    toast('Added '+name);
+  }catch(e){if(!shown)toast(errMsg(e))}
   finally{if(sec){try{await sec.delete()}catch(_){}}}
   aStaff();
 }
 async function setRole(i,role){
   const u=STAFF[i];if(!u)return;
-  try{await fs.collection('users').doc(u.uid).update({role});toast('Na-update ang role');}catch(e){toast(errMsg(e))}
+  try{await fs.collection('users').doc(u.uid).update({role});toast('Role updated');}catch(e){toast(errMsg(e))}
   aStaff();
 }
 async function setActive(i,active){
@@ -691,16 +691,16 @@ async function setActive(i,active){
 }
 async function resetPw(i){
   const u=STAFF[i];if(!u)return;
-  try{await auth.sendPasswordResetEmail(u.email);toast('Naipadala ang reset email kay '+u.name)}catch(e){toast(errMsg(e))}
+  try{await auth.sendPasswordResetEmail(u.email);toast('Password reset email sent to '+u.name)}catch(e){toast(errMsg(e))}
 }
 
 /* ----- settings ----- */
 function aSettings(){
-  $('#aContent').innerHTML=`<div class="lbl" style="margin-top:0">Pangalan ng shop</div><input id="sShop" value="${esc(S.shop)}">
+  $('#aContent').innerHTML=`<div class="lbl" style="margin-top:0">Shop name</div><input id="sShop" value="${esc(S.shop)}">
   <div class="lbl">PWD / Senior discount (%)</div><input id="sPwd" type="number" min="0" max="100" value="${S.pwdRate}">
-  <div class="lbl">Sizes (isang linya bawat size: Pangalan,dagdag na presyo)</div><textarea id="sSizes" rows="4">${esc(S.sizes.map(z=>z.n+','+z.up).join('\n'))}</textarea>
-  <div class="lbl">Add-ons (Pangalan,presyo)</div><textarea id="sAdd" rows="5">${esc(S.addons.map(a=>a.n+','+a.p).join('\n'))}</textarea>
-  <div class="actions" style="justify-content:flex-start"><button onclick="saveSettings()">I-save ang settings</button></div>`;
+  <div class="lbl">Sizes (one per line: Name,extra price)</div><textarea id="sSizes" rows="4">${esc(S.sizes.map(z=>z.n+','+z.up).join('\n'))}</textarea>
+  <div class="lbl">Add-ons (Name,price)</div><textarea id="sAdd" rows="5">${esc(S.addons.map(a=>a.n+','+a.p).join('\n'))}</textarea>
+  <div class="actions" style="justify-content:flex-start"><button onclick="saveSettings()">Save settings</button></div>`;
 }
 function parseLines(t){
   return t.split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{
@@ -711,10 +711,10 @@ function parseLines(t){
 }
 async function saveSettings(){
   const sizes=parseLines($('#sSizes').value).map(x=>({n:x.n,up:x.v}));
-  if(!sizes.length){toast('Kailangan ng kahit isang size');return}
+  if(!sizes.length){toast('At least one size is required');return}
   const d={shop:$('#sShop').value.trim()||'Coffee Shop',pwdRate:Math.min(100,Math.max(0,parseFloat($('#sPwd').value)||0)),
     sizes,addons:parseLines($('#sAdd').value).map(x=>({n:x.n,p:x.v}))};
-  try{await fs.collection('settings').doc('main').set(d,{merge:true});toast('Na-save')}catch(e){toast(errMsg(e))}
+  try{await fs.collection('settings').doc('main').set(d,{merge:true});toast('Saved')}catch(e){toast(errMsg(e))}
 }
 
 function renderAll(){renderMenu();renderCart();renderQueue();netBadge()}
