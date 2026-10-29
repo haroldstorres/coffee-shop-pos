@@ -115,6 +115,7 @@ async function start(){
   try{
     firebase.initializeApp(FIREBASE_CONFIG);
     auth=firebase.auth();fs=firebase.firestore();
+    try{fs.settings({experimentalAutoDetectLongPolling:true,merge:true})}catch(e){} // phones on some networks drop the live connection
     // If a staff member is already signed in on this device, keep that session instead of replacing it
     if(!auth.currentUser)await auth.signInAnonymously();
     await new Promise(ok=>{const u=auth.onAuthStateChanged(x=>{if(x){uid=x.uid;u();ok()}})});
@@ -278,12 +279,20 @@ function qrImg(text){
   const q=qrcode(0,'M');q.addData(text);q.make();
   return q.createDataURL(8,2);
 }
-let unsub=null,curSt='new',lastSt='';
+let unsub=null,curSt='new',lastSt='',pollT=null,curCode=null;
 function watch(code){
   if(unsub){unsub();unsub=null}
+  clearInterval(pollT);curCode=code;
   curSt='new';lastSt='';
-  try{unsub=fs.collection('pending').doc(code).onSnapshot(d=>{if(d.exists)applyStatus(d.data())},()=>{/* no access yet: keep the plain QR page */})}catch(e){}
+  try{unsub=fs.collection('pending').doc(code).onSnapshot(d=>{if(d.exists)applyStatus(d.data())},()=>{/* the check below keeps the page updated */})}catch(e){}
+  pollT=setInterval(()=>refreshStatus(code),8000); // backup: the live connection can stall on phones
 }
+async function refreshStatus(code){
+  if(document.hidden||curCode!==code||!$('#stat'))return;
+  if(curSt==='served'||curSt==='cancelled'){clearInterval(pollT);return}
+  try{const d=await fs.collection('pending').doc(code).get({source:'server'});if(d.exists)applyStatus(d.data())}catch(e){}
+}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&curCode)refreshStatus(curCode)});
 function applyStatus(p){
   const st=p.status||'new',no=p.orderNo?'#'+String(p.orderNo).padStart(3,'0'):'';
   curSt=st;
