@@ -14,13 +14,42 @@ button.bad{background:var(--bad)}
 button.ok{background:var(--ok)}
 button:disabled{opacity:.45;cursor:not-allowed}
 input,select,textarea{font:inherit;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);width:100%}
-header{background:var(--brand);color:#fff;padding:10px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;position:sticky;top:0;z-index:5}
-header h1{font-size:18px;margin:0;flex:1}
-header .badge{background:rgba(255,255,255,.2);color:#fff}
-nav{display:flex;gap:6px}
-nav button{background:rgba(255,255,255,.15)}
-nav button.on{background:#fff;color:var(--brand);font-weight:600}
-main{padding:14px;max-width:1300px;margin:0 auto}
+.shell{display:flex;min-height:100vh}
+.side{width:230px;flex:none;background:#2a1d16;color:#e9ddd0;display:flex;flex-direction:column;padding:22px 14px 16px;position:sticky;top:0;height:100vh;z-index:6}
+.brand{text-align:center;padding:4px 6px 22px}
+.brand svg{width:46px;height:46px;stroke:#f3e9dc;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.brand b{display:block;letter-spacing:.16em;font-size:15px;margin-top:6px;color:#f6efe6;text-transform:uppercase;word-break:break-word}
+.brand small{display:block;letter-spacing:.3em;font-size:9px;color:#b9a898;margin-top:4px}
+.menu{display:flex;flex-direction:column;gap:6px}
+.menu button{display:flex;align-items:center;gap:14px;background:transparent;color:#d8cabb;text-align:left;padding:13px 16px;border-radius:12px;font-size:15px}
+.menu button svg{width:22px;height:22px;flex:none;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.menu button:hover{background:rgba(255,255,255,.07)}
+.menu button.on{background:#6b4a36;color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+.side .me{margin-top:auto;display:flex;align-items:center;gap:10px;padding:10px 6px;border-top:1px solid rgba(255,255,255,.08)}
+.side .av{width:38px;height:38px;border-radius:50%;background:#eee3d6;color:#2a1d16;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none}
+.side .me .t{flex:1;min-width:0;line-height:1.25}
+.side .me .t b{display:block;font-size:13px;color:#f6efe6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.side .me .t small{color:#b9a898;font-size:12px}
+.side .out{background:rgba(255,255,255,.1);color:#f6efe6;padding:6px 10px;font-size:12px;border-radius:8px}
+#net{font-size:11px;color:#b9a898;padding:0 6px 8px}
+.wrap{flex:1;min-width:0}
+.top{display:flex;align-items:center;gap:18px;padding:14px 22px;position:sticky;top:0;z-index:5;background:var(--bg)}
+.top .sbox{flex:1;position:relative}
+.top .sbox svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);width:20px;height:20px;stroke:#5b4a3d;fill:none;stroke-width:1.8;stroke-linecap:round}
+.top .sbox input{padding:12px 14px 12px 44px;border-radius:12px;background:#fffdf9;font-size:15px}
+.top h2{flex:1;margin:0;font-size:20px}
+.top .clk{display:flex;align-items:center;gap:8px;color:#3d2e24;font-size:14px;white-space:nowrap}
+.top .clk svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.top .clk span{display:flex;align-items:center;gap:7px;margin-left:10px}
+main{padding:0 22px 22px}
+@media(max-width:900px){
+  .side{width:68px;padding:14px 8px}
+  .brand b,.brand small,.menu button span,.side .me .t,.side .out{display:none}
+  .menu button{justify-content:center;padding:13px 0}
+  .brand svg{width:34px;height:34px}
+  .top{padding:10px 12px;gap:10px}.top .clk .d{display:none}
+  main{padding:0 12px 16px}
+}
 .view{display:none}.view.on{display:block}
 .pos{display:grid;grid-template-columns:1fr 380px;gap:14px;align-items:start}
 @media(max-width:900px){.pos{grid-template-columns:1fr}}
@@ -116,22 +145,32 @@ code{background:#f1e9df;padding:1px 5px;border-radius:5px}
 <div id="auth"></div>
 
 <div id="app" style="display:none">
-  <header>
-    <h1 id="shopName">Coffee POS</h1>
-    <nav>
-      <button id="nav-pos" onclick="go('pos')">POS</button>
-      <button id="nav-bar" onclick="go('bar')">Barista</button>
-      <button id="nav-admin" onclick="go('admin')">Admin</button>
+  <div class="shell">
+  <aside class="side">
+    <div class="brand">
+      <svg viewBox="0 0 48 48"><path d="M10 20h24v6a12 12 0 0 1-24 0z"/><path d="M34 22h3a4 4 0 0 1 0 8h-4"/><path d="M8 40h28"/><path d="M19 7c-2 2 2 4 0 6M26 7c-2 2 2 4 0 6"/></svg>
+      <b id="shopName">Coffee POS</b><small>COFFEE SHOP</small>
+    </div>
+    <nav class="menu">
+      <button id="nav-pos" onclick="navTo('pos')"><svg viewBox="0 0 24 24"><path d="M3 4h2l2.2 10.5a1 1 0 0 0 1 .8h8.6a1 1 0 0 0 1-.8L19 8H6"/><circle cx="9" cy="19.5" r="1.2"/><circle cx="17" cy="19.5" r="1.2"/></svg><span>POS</span></button>
+      <button id="nav-bar" onclick="navTo('bar')"><svg viewBox="0 0 24 24"><rect x="5" y="3.5" width="14" height="17" rx="2"/><path d="M8.5 9h7M8.5 13h7M8.5 17h4"/></svg><span>Orders</span></button>
+      <button id="nav-inv" onclick="navTo('inv')"><svg viewBox="0 0 24 24"><path d="M12 3 4 7v10l8 4 8-4V7z"/><path d="M4 7l8 4 8-4M12 11v10"/></svg><span>Inventory</span></button>
+      <button id="nav-rep" onclick="navTo('rep')"><svg viewBox="0 0 24 24"><path d="M5 20V11M11 20V5M17 20v-7"/></svg><span>Reports</span></button>
+      <button id="nav-set" onclick="navTo('set')"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span>Settings</span></button>
     </nav>
-    <span class="badge" id="who"></span>
-    <span class="badge" id="net"></span>
-    <button class="ghost" onclick="logout()">Logout</button>
-  </header>
+    <div id="net"></div>
+    <div class="me"><div class="av" id="av">?</div><div class="t"><b id="whoName"></b><small id="whoRole"></small></div><button class="out" onclick="logout()">Logout</button></div>
+  </aside>
+  <div class="wrap">
+  <div class="top">
+    <div class="sbox" id="topSearch"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="q" placeholder="Search menu items..." oninput="renderMenu()"></div>
+    <h2 id="topTitle" style="display:none"></h2>
+    <div class="clk"><span class="d"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg><i id="clkD" style="font-style:normal"></i></span><span><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg><i id="clkT" style="font-style:normal"></i></span></div>
+  </div>
   <main>
     <section id="v-pos" class="view">
       <div class="pos">
         <div class="card">
-          <input class="search" id="q" placeholder="Search items..." oninput="renderMenu()">
           <div class="cats" id="cats"></div>
           <div class="grid" id="menuGrid"></div>
         </div>
@@ -186,6 +225,8 @@ code{background:#f1e9df;padding:1px 5px;border-radius:5px}
 
     <section id="v-admin" class="view"><div id="adminBody"></div></section>
   </main>
+  </div>
+  </div>
 </div>
 
 <div id="overlay"><div id="modal"></div></div>
@@ -407,8 +448,10 @@ function startListeners(){
   },er));
 }
 function applyRole(){
-  ['pos','bar','admin'].forEach(x=>{$('#nav-'+x).style.display=can[x].includes(ME.role)?'':'none'});
-  $('#who').textContent=ME.name+' · '+ME.role;
+  const adm=can.admin.includes(ME.role);
+  $('#nav-pos').style.display=can.pos.includes(ME.role)?'':'none';
+  ['inv','rep','set'].forEach(k=>{$('#nav-'+k).style.display=adm?'':'none'});
+  $('#whoName').textContent=ME.name;$('#whoRole').textContent=ME.role;$('#av').textContent=(ME.name||'?').trim().charAt(0).toUpperCase();
   const nav=loadNav();
   if(['dash','reports','zread','exp','credits','menu','ing','staff','settings'].includes(nav.aTab))aTab=nav.aTab;
   view='';
@@ -425,10 +468,33 @@ function loadNav(){try{return JSON.parse(localStorage.getItem('pos_nav'))||{}}ca
 function go(v){
   if(!ME||!can[v]||!can[v].includes(ME.role))return;
   view=v;saveNav();
-  ['pos','bar','admin'].forEach(x=>{$('#v-'+x).classList.toggle('on',x===v);$('#nav-'+x).classList.toggle('on',x===v)});
+  ['pos','bar','admin'].forEach(x=>{$('#v-'+x).classList.toggle('on',x===v)});
+  markNav();
   if(v==='bar')renderQueue();
   if(v==='admin')renderAdmin();
 }
+const NAVMAP={pos:['pos'],bar:['bar'],inv:['ing','menu'],rep:['dash','reports','zread','exp','credits'],set:['settings','staff']};
+function navTo(k){
+  if(k==='pos'||k==='bar'){go(k);return}
+  const cur=NAVMAP[k];
+  if(view!=='admin'||!cur.includes(aTab))aTab=cur[0];
+  if(view==='admin')renderAdmin();else go('admin');
+  markNav();
+}
+function markNav(){
+  const on=view==='admin'?Object.keys(NAVMAP).find(k=>NAVMAP[k].includes(aTab)&&k!=='pos'&&k!=='bar'):view;
+  Object.keys(NAVMAP).forEach(k=>{const b=$('#nav-'+k);if(b)b.classList.toggle('on',k===on)});
+  const T={bar:'Orders',inv:'Inventory',rep:'Reports',set:'Settings'};
+  $('#topSearch').style.display=view==='pos'?'':'none';
+  $('#topTitle').style.display=view==='pos'?'none':'block';
+  $('#topTitle').textContent=T[on]||'';
+}
+function tick(){
+  const d=new Date();
+  $('#clkD').textContent=d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  $('#clkT').textContent=d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+}
+setInterval(tick,30000);
 
 /* =====================================================================
    POS: menu
@@ -741,7 +807,7 @@ async function setStatus(id,s){
    ADMIN
    ===================================================================== */
 function renderAdmin(){
-  saveNav();
+  saveNav();markNav();
   const T={dash:'Dashboard',reports:'Sales Report',zread:'Z-Reading',exp:'Expenses',credits:'Credits',menu:'Menu &amp; Stock',ing:'Ingredients',staff:'Staff',settings:'Settings'};
   $('#adminBody').innerHTML=`<div class="subtabs">${Object.keys(T).map(t=>`<button data-t="${t}" class="${aTab===t?'on':''}" onclick="aTab='${t}';renderAdmin()">${T[t]}${t==='ing'&&ingAlerts().length?` <span class="badge" style="background:#b3392f;color:#fff">${ingAlerts().length}</span>`:''}</button>`).join('')}</div><div class="card" id="aContent"></div>`;
   ({dash:aDash,reports:aReports,zread:aZ,exp:aExpenses,credits:aCredits,menu:aMenu,ing:aIng,staff:aStaff,settings:aSettings})[aTab]();
@@ -1662,7 +1728,7 @@ async function saveSettings(){
   try{await fs.collection('settings').doc('main').set(d,{merge:true});pendingLogo=undefined;toast('Saved')}catch(e){toast(errMsg(e))}
 }
 
-function renderAll(){renderMenu();renderCart();renderQueue();netBadge()}
+function renderAll(){renderMenu();renderCart();renderQueue();netBadge();tick()}
 {const mEl=document.getElementById('modal');if(mEl&&mEl.addEventListener){mEl.addEventListener('input',saveDraft);mEl.addEventListener('change',saveDraft)}}
 init();
 </script>
