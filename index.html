@@ -113,6 +113,32 @@ main{padding:0 22px 22px}
 .dpanel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px}
 .dpanel h4{margin:0 0 6px;font-size:15px}
 .dpanel .chartbox{border:0;padding:0;margin:0}
+
+.dg1{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:12px;margin:10px 0 12px}
+.dg2{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:12px;margin-bottom:12px;align-items:stretch}
+.dgm{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start}
+.dg2>.dpanel,.dgm>.dpanel,.dg1>.hero2{margin-bottom:0}
+.dpanel.ac,.hero2,.mini{border-left:4px solid var(--ac,var(--brand));background:linear-gradient(135deg,color-mix(in srgb,var(--ac,var(--brand)) 11%,transparent),transparent 65%),var(--card)}
+.hero2{border:1px solid var(--line);border-left:4px solid var(--ac);border-radius:12px;padding:16px 18px}
+.hero2 small,.mini small{display:block;color:var(--mut);font-size:13px}
+.hero2 .bigp{font-size:38px;font-weight:800;line-height:1.15;margin:2px 0}
+.hero2 em,.mini em{display:block;font-style:normal;color:var(--mut);font-size:12px}
+.hero2 em.up,.mini em.up{color:var(--ok);font-weight:600}.hero2 em.dn,.mini em.dn{color:var(--bad);font-weight:600}
+.hero2 .hsep{border-top:1px solid var(--line);margin:12px 0 8px}
+.minis{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.mini{position:relative;border:1px solid var(--line);border-left:4px solid var(--ac);border-radius:12px;padding:12px 14px}
+.mini b{display:block;font-size:22px;line-height:1.3;margin-top:2px}
+.mini .mdot{position:absolute;top:12px;right:12px;width:10px;height:10px;border-radius:50%;background:var(--ac)}
+.at2{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line);font-size:14px}
+.at2:first-of-type{border-top:0;padding-top:2px}
+.at2 .ic{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex:none;font-size:15px;background:color-mix(in srgb,var(--ac) 16%,transparent)}
+.at2 .tx{flex:1;min-width:0}.at2 small{display:block;color:var(--mut);font-size:12px}
+.sltabs{display:inline-flex;gap:3px;background:color-mix(in srgb,var(--ink) 7%,transparent);border-radius:8px;padding:2px;float:right}
+.sltabs button{padding:3px 10px;border-radius:6px;font-size:12px;background:transparent;color:var(--mut)}
+.sltabs button.on{background:var(--card);color:var(--ink);font-weight:600}
+.dmore{margin:18px 0 6px;font-size:16px}
+body.dark .dpanel.ac{background:linear-gradient(135deg,color-mix(in srgb,var(--ac,var(--brand)) 11%,transparent),transparent 65%),var(--card)}
+@media(max-width:1000px){.dg1,.dg2,.dgm{grid-template-columns:1fr}}
 .dmain{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:10px;align-items:start}
 .hb{display:grid;grid-template-columns:minmax(60px,1fr) 1.4fr auto;gap:8px;align-items:center;padding:4px 0;font-size:13px}
 .hb .tr{background:#efe7dc;border-radius:999px;height:8px;overflow:hidden}
@@ -1581,18 +1607,18 @@ const compact=v=>v>=1000?(v/1000).toFixed(v>=10000?0:1)+'k':String(Math.round(v)
 const PAYCOL={Cash:'#2f7d4f',GCash:'#2f6fb3',Credit:'#c47f17'},TYPECOL={'Dine-in':'#6f4e37','Take-out':'#c9744a','Delivery':'#2f6fb3'};
 const TYPEICO={'Dine-in':'🍽️','Take-out':'🛍️','Delivery':'🛵'};
 let PREVC=null,YEARC=null;
-function donut(parts){
+function donut(parts,ctr){
   parts=parts.filter(p=>p.v>0);
   const tot=parts.reduce((a,p)=>a+p.v,0);
   if(!(tot>0))return '<div class="empty" style="padding:10px 0">No sales in this period.</div>';
   const R=42,C=2*Math.PI*R;let off=0;
   const arcs=parts.map(p=>{const len=p.v/tot*C,x=`<circle cx="60" cy="60" r="${R}" fill="none" stroke="${p.c}" stroke-width="18" stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-off}" transform="rotate(-90 60 60)"><title>${esc(p.n)}: ${fmt(p.v)}</title></circle>`;off+=len;return x}).join('');
-  return `<div class="dn2"><svg viewBox="0 0 120 120" width="130" height="130"><circle cx="60" cy="60" r="${R}" fill="none" style="stroke:var(--line)" stroke-width="18"/>${arcs}<text x="60" y="57" font-size="9" text-anchor="middle" style="fill:var(--mut)">Total</text><text x="60" y="71" font-size="10" font-weight="700" text-anchor="middle" style="fill:var(--ink)">${fmt(tot)}</text></svg>
+  return `<div class="dn2"><svg viewBox="0 0 120 120" width="130" height="130"><circle cx="60" cy="60" r="${R}" fill="none" style="stroke:var(--line)" stroke-width="18"/>${arcs}${ctr?`<text x="60" y="62" font-size="15" font-weight="700" text-anchor="middle" style="fill:var(--ink)">${ctr.t}</text><text x="60" y="75" font-size="8" text-anchor="middle" style="fill:var(--mut)">${ctr.s}</text>`:`<text x="60" y="57" font-size="9" text-anchor="middle" style="fill:var(--mut)">Total</text><text x="60" y="71" font-size="10" font-weight="700" text-anchor="middle" style="fill:var(--ink)">${fmt(tot)}</text>`}</svg>
   <ul>${parts.map(p=>`<li><i style="background:${p.c}"></i><span>${esc(p.n)}</span><b>${fmt(p.v)}</b> <small style="color:var(--mut)">${pct(p.v,tot)}</small></li>`).join('')}</ul></div>`;
 }
-function targetPanel(A){
+function targetPanel(A,inner){
   const tg=Number(S.dailyTarget)||0;
-  if(!(tg>0))return `<div class="dpanel"><h4>Daily sales target</h4><div style="color:var(--mut);font-size:13px">No target yet. <a href="#" onclick="subTo('settings');return false">Set one in Settings</a> to see progress and pace here.</div></div>`;
+  if(!(tg>0))return inner?`<div style="color:var(--mut);font-size:13px">No daily sales target yet. <a href="#" onclick="subTo('settings');return false">Set one in Settings</a> to see progress and pace here.</div>`:`<div class="dpanel"><h4>Daily sales target</h4><div style="color:var(--mut);font-size:13px">No target yet. <a href="#" onclick="subTo('settings');return false">Set one in Settings</a> to see progress and pace here.</div></div>`;
   const today=todayStr(),base=new Date(rf+'T12:00:00').getTime(),L=Math.round((new Date(rt+'T12:00:00')-base)/864e5)+1;
   const open=Number(S.openHour)||8,close=Number(S.closeHour)||20,now=new Date(),hrs=now.getHours()+now.getMinutes()/60;
   const frac=clamp((hrs-open)/Math.max(1,close-open),0,1);
@@ -1608,16 +1634,16 @@ function targetPanel(A){
   else if(rt<today)msg=b('Missed the target by '+fmt(full-got)+'.');
   else if(got>=exp)msg=g('On pace.')+' Expected by now: '+fmt(exp)+'.';
   else msg=b('Behind pace by '+fmt(exp-got)+'.')+' Expected by now: '+fmt(exp)+'.';
-  return `<div class="dpanel"><h4>${L===1?'Daily':L+'-day'} sales target</h4>
+  return `${inner?`<small style="color:var(--mut)">${L===1?'Daily':L+'-day'} sales target</small>`:`<div class="dpanel"><h4>${L===1?'Daily':L+'-day'} sales target</h4>`}
   <div class="tgnum"><span><b>${fmt(got)}</b> <span style="color:var(--mut)">of ${fmt(full)}</span></span><b style="font-size:18px">${pctDone.toFixed(0)}%</b></div>
   <div class="tgt"><i style="width:${pctDone}%"></i>${rt>=today&&rf<=today?`<u style="left:calc(${mark}% - 1px)" title="Expected by now"></u>`:''}</div>
-  <div style="font-size:13px">${msg}</div></div>`;
+  <div style="font-size:13px">${msg}</div>${inner?'':'</div>'}`;
 }
 function hourPanel(){
   const ok=RORDERS.filter(o=>o.status!=='void'),h=new Array(24).fill(0),c=new Array(24).fill(0);
   ok.forEach(o=>{const k=new Date(o.ts).getHours();h[k]+=o.total-(o.vat||0)-(o.fee||0);c[k]++});
   const title=rf===rt?(rf===todayStr()?'Sales by hour (today)':'Sales by hour ('+rf+')'):'Sales by hour (all days in the range added together)';
-  if(!ok.length)return `<div class="dpanel"><h4>${title}</h4><div class="empty" style="padding:10px 0">No sales in this period.</div></div>`;
+  if(!ok.length)return `<div class="dpanel ac" style="--ac:#7b5ea7"><h4>${title}</h4><div class="empty" style="padding:10px 0">No sales in this period.</div></div>`;
   const used=c.map((n,i)=>n?i:-1).filter(i=>i>=0);
   const a=Math.min(Number(S.openHour)||8,...used),b=Math.max((Number(S.closeHour)||20)-1,...used);
   const mx=Math.max(...h),pk=h.indexOf(mx);
@@ -1629,7 +1655,7 @@ function hourPanel(){
     if(h[i]>0)g+=`<text x="${cx}" y="${H-B-bh-4}" font-size="11" text-anchor="middle" style="fill:var(--ink)">${compact(h[i])}</text>`;
     g+=`<text x="${cx}" y="${H-8}" font-size="11" text-anchor="middle" style="fill:var(--mut)">${hrLabel(i)}</text>`;
   }
-  return `<div class="dpanel"><h4>${title}</h4><div style="font-size:13px;color:var(--mut)">Peak hour: <b style="color:var(--ink)">${hrFull(pk)}</b> · ${fmt(h[pk])} · ${c[pk]} order(s)</div>
+  return `<div class="dpanel ac" style="--ac:#7b5ea7"><h4>${title}</h4><div style="font-size:13px;color:var(--mut)">Peak hour: <b style="color:var(--ink)">${hrFull(pk)}</b> · ${fmt(h[pk])} · ${c[pk]} order(s)</div>
   <div class="chartbox" style="border:0;padding:0;margin:4px 0 0"><svg viewBox="0 0 ${W} ${H}" width="100%" style="min-width:${Math.max(420,n*34)}px">${g}</svg></div></div>`;
 }
 async function loadYear(){
@@ -1654,6 +1680,7 @@ function yearBars(c){
   return `<div style="font-size:13px;color:var(--mut)">${c.y} total: <b style="color:var(--ink)">${fmt(tot)}</b> (sales without VAT and delivery fees)</div>
   <div class="chartbox" style="border:0;padding:0;margin:4px 0 0"><svg viewBox="0 0 ${W} ${H}" width="100%" style="min-width:520px">${g}</svg></div>`;
 }
+function swSell(n){const t=$('#sellTop'),w=$('#sellSlow');if(!t||!w)return;t.style.display=n===1?'':'none';w.style.display=n===2?'':'none';$('#slT').classList.toggle('on',n===1);$('#slS').classList.toggle('on',n===2)}
 async function aDash(silent){
   if(silent!==true){$('#aContent').innerHTML='<div class="empty">Loading…</div>';YEARC=null;PREVC=null}
   await loadRange();
@@ -1707,32 +1734,53 @@ async function aDash(silent){
   const recent=RORDERS.filter(o=>o.status!=='void').sort((a,b)=>b.ts-a.ts).slice(0,6);
   const lowI=ING.filter(g=>ingStatus(g)!=='ok').sort((a,b)=>(a.stock||0)-(b.stock||0)),lowM=MENU.filter(m=>m.track&&m.stock<=3);
   const yc=YEARC&&YEARC.y===new Date().getFullYear()&&Date.now()-YEARC.ts<120000?YEARC:null;
-  $('#aContent').innerHTML=rangeBar('aDash',exportButtons('dash'))+uncBanner(A)+`
-  <div class="dh">${kp.join('')}</div>
-  ${targetPanel(A)}
-  <div class="dmain">
-    <div>
-      <div class="dpanel"><h4>Where the sales went</h4>
-        <div class="split">${seg(A.cogs,'#c47f17','Cost of goods')}${seg(A.exp,'#b3392f','Expenses')}${seg(prof,'#2f7d4f','Net profit')}</div>
-        <div class="splitlg"><span><i style="background:#c47f17"></i>Cost of goods ${fmt(A.cogs)} · ${pct(A.cogs,A.sales)}</span><span><i style="background:#b3392f"></i>Expenses ${fmt(A.exp)} · ${pct(A.exp,A.sales)}</span><span><i style="background:#2f7d4f"></i>Net profit ${fmt(A.net)} · ${pct(A.net,A.sales)}</span></div>
-        ${A.net<0&&A.orders?`<div class="warnbox" style="margin:6px 0 0;padding:6px 10px;font-size:13px">Costs and expenses are higher than sales by ${fmt(-A.net)} in this period.</div>`:''}
-      </div>
-      ${hourPanel()}
-      <div class="dpanel"><h4>Sales, cost and expenses by day</h4>${chartSVG(A)}
-      ${Math.round((new Date(rt+'T12:00:00')-new Date(rf+'T12:00:00'))/864e5)+1>93?'<div class="warnbox">The chart shows the first 93 days only. The totals above cover the whole range.</div>':''}</div>
-      <div class="dpanel"><h4>Monthly sales this year</h4><div id="yearBox">${yc?yearBars(yc):'<div class="empty" style="padding:10px 0">Loading…</div>'}</div></div>
+  const M=(ac,lab,val,extra)=>`<div class="mini" style="--ac:${ac}"><i class="mdot"></i><small>${lab}</small><b>${val}</b>${extra||''}</div>`;
+  const restKp=kp.filter((x,i)=>![0,1,2,3,6].includes(i));
+  const ringParts=[{n:'Cost of goods',v:A.cogs,c:'#c47f17'},{n:'Expenses',v:A.exp,c:'#b3392f'},{n:'Net profit',v:Math.max(0,A.net),c:'#2f7d4f'}];
+  const sold=n=>(A.items[n]||{q:0,s:0});
+  const slow=MENU.map(m=>({n:m.name,q:sold(m.name).q,s:sold(m.name).s})).sort((x,y)=>x.q-y.q||x.n.localeCompare(y.n)).slice(0,5);
+  const lowAll=lowI.length+lowM.length,lowNames=lowI.map(g=>g.name).concat(lowM.map(m=>m.name)).slice(0,3).map(esc).join(', ');
+  const att=(ac,ic,t,sub,link,fn)=>`<div class="at2" style="--ac:${ac}"><span class="ic">${ic}</span><div class="tx">${t}<small>${sub}</small></div><a href="#" onclick="${fn};return false">${link}</a></div>`;
+  const attRows=[];
+  if(lowAll)attRows.push(att('#b3392f','📦',lowAll+' item(s) low or out',lowNames+(lowAll>3?' and more':''),'Open','subTo(\'ing\')'));
+  if(A.unc)attRows.push(att('#c47f17','🏷️',A.unc+' item(s) have no cost set','Profit looks higher than it is until the cost is set','Set costs','subTo(\'menu\')'));
+  if(A.unpaid>0)attRows.push(att('#c47f17','📒',fmt(A.unpaid)+' unpaid credit','In this period','Open','subTo(\'credits\')'));
+  $('#aContent').innerHTML=rangeBar('aDash',exportButtons('dash'))+`
+  <div class="dg1">
+    <div class="hero2" style="--ac:${A.net<0?'var(--bad)':'#2f7d4f'}"><small>Net profit</small><div class="bigp ${A.net<0?'neg':''}">${fmt(A.net)}</div>
+      <em>${A.orders?pct(A.net,A.sales)+' of sales':'No sales in this period'}</em>${dlt(A.net,P&&P.net)}
+      <div class="hsep"></div>${targetPanel(A,true)}</div>
+    <div class="minis">
+      ${M('#6f4e37','Sales'+(A.vat?' (excl. VAT)':''),fmt(A.sales),dlt(A.sales,P&&P.sales))}
+      ${M('#2f6fb3','Orders',A.orders,dlt(A.orders,P&&P.orders))}
+      ${M('#7b5ea7','Average / order',fmt(avg),dlt(avg,pavg))}
+      ${M('#b3392f','Expenses',fmt(A.exp),dlt(A.exp,P&&P.exp,true))}
     </div>
-    <div>
-      <div class="dpanel"><h4>Top sellers</h4>${top.map(([n,t])=>hbar(n,t.q,topMax,t.q+' sold · '+fmt(t.s))).join('')||none('No sales in this period.')}</div>
-      <div class="dpanel"><h4>Payment mix</h4>${donut(payParts)}</div>
-      <div class="dpanel"><h4>Dine-in, take-out and delivery</h4>${typeTot>0?`<div class="split">${types.map(([k,t])=>`<i style="width:${t.s/typeTot*100}%;background:${TYPECOL[k]||'#8a7a6a'}" title="${esc(k)} ${fmt(t.s)}"></i>`).join('')}</div>
-        <div class="splitlg">${types.map(([k,t])=>`<span><i style="background:${TYPECOL[k]||'#8a7a6a'}"></i>${esc(k)} ${fmt(r2(t.s))} · ${t.n} order(s)</span>`).join('')}</div>`:none('No sales in this period.')}</div>
-      <div class="dpanel"><h4>Sales per cashier</h4>${cash.map(([k,t])=>hbar(k,t.s,cashMax,fmt(r2(t.s))+' · '+t.n+' order(s)')).join('')||none('No sales in this period.')}</div>
-      <div class="dpanel"><h4>Expenses by category</h4>${cats.map(([c,v])=>hbar(c,v,catMax,fmt(v)+' · '+pct(v,A.sales))).join('')||none('No expenses recorded for these dates.')}</div>
-      <div class="dpanel"><h4>Recent orders</h4>${recent.map(o=>`<div class="ro"><span class="av2">${TYPEICO[o.type]||'☕'}</span><div><b>${esc(o.custName||o.type)}</b><small>${ono(o)} · ${dstr(o.ts)===todayStr()?'':dstr(o.ts)+' '}${tstr(o.ts)} · ${esc(o.pay)}</small></div><span class="am">${fmt(o.total)}</span></div>`).join('')||none('No orders in this period.')}</div>
-      <div class="dpanel"><h4>Low stock</h4>${lowI.slice(0,6).map(g=>`<div class="lowrow"><span>${esc(g.name)}</span><span class="low">${g.stock||0} ${esc(g.unit)} · ${ingStatus(g)==='out'?'OUT':'LOW'}</span></div>`).join('')+lowM.slice(0,4).map(m=>`<div class="lowrow"><span>${esc(m.name)}</span><span class="low">${m.stock<=0?'Sold out':m.stock+' left'}</span></div>`).join('')||none('Everything is stocked.')}
-        ${lowI.length?`<div style="margin-top:8px;font-size:13px"><a href="#" onclick="subTo('ing');return false">Open Ingredients</a></div>`:''}</div>
-    </div>
+  </div>
+  <div class="dg2">
+    ${hourPanel()}
+    <div class="dpanel ac" style="--ac:#2f6fb3"><h4>Where the sales went</h4>${donut(ringParts,A.sales>0?{t:pct(A.net,A.sales),s:'net profit'}:null)}
+      ${A.net<0&&A.orders?`<div class="warnbox" style="margin:8px 0 0;padding:6px 10px;font-size:13px">Costs and expenses are higher than sales by ${fmt(-A.net)} in this period.</div>`:''}</div>
+  </div>
+  <div class="dg2">
+    <div class="dpanel ac" style="--ac:#6f4e37"><h4>Sellers <span class="sltabs"><button class="on" id="slT" onclick="swSell(1)">Top</button><button id="slS" onclick="swSell(2)">Slowest</button></span></h4>
+      <div id="sellTop">${top.map(([n,t])=>hbar(n,t.q,topMax,t.q+' sold · '+fmt(t.s))).join('')||none('No sales in this period.')}</div>
+      <div id="sellSlow" style="display:none">${slow.map(x=>`<div class="lowrow"><span>${esc(x.n)}</span><span style="color:var(--mut)">${x.q} sold${x.s?' · '+fmt(x.s):''}</span></div>`).join('')||none('No menu items yet.')}</div></div>
+    <div class="dpanel ac" style="--ac:#c47f17"><h4>Needs attention${attRows.length?' <small style="color:var(--mut);font-weight:400">'+attRows.length+'</small>':''}</h4>${attRows.join('')||'<div style="color:var(--ok);padding:6px 0">Nothing needs attention right now.</div>'}</div>
+  </div>
+  <div class="dpanel ac" style="--ac:#2f7d4f"><h4>Recent orders</h4>${recent.map(o=>`<div class="ro"><span class="av2">${TYPEICO[o.type]||'☕'}</span><div><b>${esc(o.custName||o.type)}</b><small>${ono(o)} · ${dstr(o.ts)===todayStr()?'':dstr(o.ts)+' '}${tstr(o.ts)} · ${esc(o.pay)}</small></div><span class="am">${fmt(o.total)}</span></div>`).join('')||none('No orders in this period.')}</div>
+
+  <h3 class="dmore">More details</h3>
+  <div class="dh">${restKp.join('')}</div>
+  <div class="dpanel"><h4>Sales, cost and expenses by day</h4>${chartSVG(A)}
+    ${Math.round((new Date(rt+'T12:00:00')-new Date(rf+'T12:00:00'))/864e5)+1>93?'<div class="warnbox">The chart shows the first 93 days only. The totals above cover the whole range.</div>':''}</div>
+  <div class="dpanel"><h4>Monthly sales this year</h4><div id="yearBox">${yc?yearBars(yc):'<div class="empty" style="padding:10px 0">Loading…</div>'}</div></div>
+  <div class="dgm">
+    <div class="dpanel"><h4>Payment mix</h4>${donut(payParts)}</div>
+    <div class="dpanel"><h4>Dine-in, take-out and delivery</h4>${typeTot>0?`<div class="split">${types.map(([k,t])=>`<i style="width:${t.s/typeTot*100}%;background:${TYPECOL[k]||'#8a7a6a'}" title="${esc(k)} ${fmt(t.s)}"></i>`).join('')}</div>
+      <div class="splitlg">${types.map(([k,t])=>`<span><i style="background:${TYPECOL[k]||'#8a7a6a'}"></i>${esc(k)} ${fmt(r2(t.s))} · ${t.n} order(s)</span>`).join('')}</div>`:none('No sales in this period.')}</div>
+    <div class="dpanel"><h4>Sales per cashier</h4>${cash.map(([k,t])=>hbar(k,t.s,cashMax,fmt(r2(t.s))+' · '+t.n+' order(s)')).join('')||none('No sales in this period.')}</div>
+    <div class="dpanel"><h4>Expenses by category</h4>${cats.map(([c,v])=>hbar(c,v,catMax,fmt(v)+' · '+pct(v,A.sales))).join('')||none('No expenses recorded for these dates.')}</div>
   </div>
   <div style="color:var(--mut);font-size:12px;margin-top:10px">Net profit = Sales − Cost of goods − Expenses. Voided orders are excluded. Monthly and yearly expenses are spread evenly across the days of their month or year.${A.credit?' Credit sales count as sales when they are made, even if not paid yet.':''}${A.fees?' Delivery fees are not counted as sales or profit.':''}</div>`;
   if(!yc)loadYear().then(c=>{const el=$('#yearBox');if(el&&view==='admin'&&aTab==='dash')el.innerHTML=yearBars(c)}).catch(e=>{const el=$('#yearBox');if(el)el.innerHTML='<div class="empty" style="padding:10px 0">Could not load the yearly numbers.</div>'});
