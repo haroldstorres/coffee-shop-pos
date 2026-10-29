@@ -201,9 +201,9 @@ const pad=n=>String(n).padStart(2,'0');
 const dstr=ts=>{const d=new Date(ts);return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())};
 const todayStr=()=>dstr(Date.now());
 const tstr=ts=>{const d=new Date(ts);return pad(d.getHours())+':'+pad(d.getMinutes())};
-function toast(t){const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',3000)}
+function toast(t,ms){const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',ms||3000)}
 function modal(h){$('#modal').innerHTML=h;$('#overlay').classList.add('on')}
-function closeModal(){$('#overlay').classList.remove('on');if(view==='admin'&&aTab==='menu')aMenu()}
+function closeModal(){$('#overlay').classList.remove('on');if(view==='admin'){if(aTab==='menu')aMenu();else if(aTab==='ing')aIng()}}
 function modalOpen(){return $('#overlay').classList.contains('on')}
 function errMsg(e){
   const c=(e&&e.code)||'';
@@ -220,7 +220,7 @@ function download(name,text,type){
 /* ---------- defaults ---------- */
 function defaultSettings(){
   return {shop:'Kape Corner',pwdRate:20,vatOn:false,vatRate:12,vatMode:'incl',pwdVatExempt:true,address:'',phone:'',tin:'',footer:'',logo:'',
-    sizes:[{n:'Small',up:0},{n:'Medium',up:10},{n:'Large',up:20}],
+    sizes:[{n:'Small',up:0,mult:1},{n:'Medium',up:10,mult:1.25},{n:'Large',up:20,mult:1.5}],addonUse:[],
     addons:[{n:'Extra shot',p:20},{n:'Oat milk',p:30},{n:'Whipped cream',p:15},{n:'Caramel syrup',p:15}]};
 }
 function seedMenu(){
@@ -232,7 +232,7 @@ function seedMenu(){
 }
 
 /* ---------- state ---------- */
-let fs,auth,ME=null,S=defaultSettings(),MENU=[],ORDERS=[],RORDERS=[],REXP=[],STAFF=[],unsubs=[];
+let fs,auth,ME=null,S=defaultSettings(),MENU=[],ORDERS=[],RORDERS=[],REXP=[],STAFF=[],ING=[],unsubs=[];
 let settingUp=false,placing=false;
 let cart=[],cat='All',view='pos',aTab='dash',rf=todayStr(),rt=todayStr();
 const can={pos:['admin','cashier'],bar:['admin','cashier','barista'],admin:['admin']};
@@ -338,7 +338,7 @@ async function bootUser(u){
     renderAuth('login',errMsg(e));
   }
 }
-function stopListeners(){unsubs.forEach(f=>{try{f()}catch(e){}});unsubs=[];MENU=[];ORDERS=[];cart=[]}
+function stopListeners(){unsubs.forEach(f=>{try{f()}catch(e){}});unsubs=[];MENU=[];ORDERS=[];ING=[];cart=[]}
 function startListeners(){
   const er=e=>toast(errMsg(e));
   unsubs.push(fs.collection('settings').doc('main').onSnapshot(s=>{
@@ -350,6 +350,12 @@ function startListeners(){
     MENU=q.docs.map(d=>Object.assign({id:d.id},d.data())).sort((a,b)=>String(a.cat).localeCompare(b.cat)||String(a.name).localeCompare(b.name));
     renderMenu();renderCart();
     if(view==='admin'&&aTab==='menu'&&!modalOpen())aMenu();
+  },er));
+  unsubs.push(fs.collection('ingredients').onSnapshot(q=>{
+    ING=q.docs.map(d=>Object.assign({id:d.id},d.data()));
+    ingBadge();
+    const typing=/INPUT|SELECT|TEXTAREA/.test((document.activeElement||{}).tagName||'');
+    if(view==='admin'&&!modalOpen()&&!typing){if(aTab==='ing')aIng();else if(aTab==='menu')aMenu()}
   },er));
   const y=dstr(Date.now()-864e5);
   unsubs.push(fs.collection('orders').where('day','>=',y).onSnapshot(q=>{
@@ -368,7 +374,7 @@ function applyRole(){
   ['pos','bar','admin'].forEach(x=>{$('#nav-'+x).style.display=can[x].includes(ME.role)?'':'none'});
   $('#who').textContent=ME.name+' · '+ME.role;
   const nav=loadNav();
-  if(['dash','reports','zread','exp','menu','staff','settings'].includes(nav.aTab))aTab=nav.aTab;
+  if(['dash','reports','zread','exp','menu','ing','staff','settings'].includes(nav.aTab))aTab=nav.aTab;
   view='';
   go(nav.view&&can[nav.view]&&can[nav.view].includes(ME.role)?nav.view:(ME.role==='barista'?'bar':'pos'));
   renderAll();
@@ -430,11 +436,42 @@ function unitPrice(it,size,addons){
   const ap=addons.reduce((a,n)=>a+((S.addons.find(x=>x.n===n)||{}).p||0),0);
   return it.price+up+ap;
 }
+/* ----- ingredients & recipes ----- */
+const ingById=id=>ING.find(x=>x.id===id);
+function sizeMult(it,size){
+  if(!size||!it.sized)return 1;
+  const z=S.sizes.find(x=>x.n===size);return z&&z.mult>0?z.mult:1;
+}
+function ingStatus(g){const st=g.stock||0,lo=g.low||0;return st<=0?'out':(lo>0&&st<=lo?'low':'ok')}
+function ingAlerts(){return ING.filter(g=>ingStatus(g)!=='ok')}
+function recipeCost(it){ // cost of the base recipe, or null if anything is missing a price
+  const r=it.recipe||[];if(!r.length)return null;
+  let t=0;
+  for(const x of r){const g=ingById(x.ing);if(!g||g.ucost==null)return null;t+=g.ucost*x.qty}
+  return t;
+}
+function baseCost(it,size){
+  if(it.cost!=null)return it.cost; // a typed-in cost always wins
+  const rc=recipeCost(it);return rc==null?null:r2(rc*sizeMult(it,size));
+}
+function ingNeed(lines){ // total ingredient amounts needed for these cart lines
+  const need={};
+  const add=(id,q)=>{if(id&&q>0)need[id]=(need[id]||0)+q};
+  lines.forEach(c=>{
+    const it=MENU.find(m=>m.id===c.id);if(!it)return;
+    const mult=sizeMult(it,c.size);
+    (it.recipe||[]).forEach(r=>add(r.ing,r.qty*mult*c.qty));
+    (c.addons||[]).forEach(n=>(S.addonUse||[]).filter(u=>u.n===n).forEach(u=>add(u.ing,u.qty*c.qty)));
+  });
+  Object.keys(need).forEach(k=>need[k]=r2(need[k]));
+  return need;
+}
 function unitCost(it,size,addons){
-  if(it.cost==null)return null; // cost not set yet
+  const base=baseCost(it,size);
+  if(base==null)return null; // cost not set yet
   const sc=size?((S.sizes.find(s=>s.n===size)||{}).cost||0):0;
   const ac=addons.reduce((a,n)=>a+((S.addons.find(x=>x.n===n)||{}).cost||0),0);
-  return r2(it.cost+sc+ac);
+  return r2(base+sc+ac);
 }
 function prev(id){
   const it=MENU.find(m=>m.id===id),p=pickState();
@@ -520,6 +557,7 @@ async function placeOrder(){
   const day=todayStr();
   const need={};cart.forEach(c=>{need[c.id]=(need[c.id]||0)+c.qty});
   const trackedIds=Object.keys(need).filter(id=>{const m=MENU.find(x=>x.id===id);return m&&m.track});
+  const ineed=ingNeed(cart),ingIds=Object.keys(ineed);let alerts=[];
   const orderRef=fs.collection('orders').doc();
   const cref=fs.collection('counters').doc(day);
   const items=cart.map(c=>({id:c.id,name:c.name,size:c.size,addons:c.addons,note:c.note,unit:c.unit,cost:c.cost==null?null:c.cost,qty:c.qty}));
@@ -528,6 +566,7 @@ async function placeOrder(){
     const order=await fs.runTransaction(async tx=>{
       const cs=await tx.get(cref);
       const mdocs=await Promise.all(trackedIds.map(id=>tx.get(fs.collection('menu').doc(id))));
+      const idocs=await Promise.all(ingIds.map(id=>tx.get(fs.collection('ingredients').doc(id))));
       mdocs.forEach(d=>{
         if(!d.exists)throw new Error('An item is no longer on the menu. Please refresh the page.');
         if((d.data().stock||0)<need[d.id])throw new Error('Not enough stock for '+d.data().name);
@@ -535,14 +574,24 @@ async function placeOrder(){
       const no=(cs.exists?(cs.data().n||0):0)+1;
       tx.set(cref,{n:no});
       mdocs.forEach(d=>tx.update(d.ref,{stock:(d.data().stock||0)-need[d.id]}));
+      // ingredients: never go below zero; remember exactly what was taken so a void can put it back
+      const used={};alerts=[];
+      idocs.forEach(d=>{
+        if(!d.exists)return;
+        const g=d.data(),st=g.stock||0,take=Math.min(st,ineed[d.id]),left=r2(st-take);
+        if(take>0){used[d.id]=r2(take);tx.update(d.ref,{stock:left})}
+        if(left<=0)alerts.push(g.name+' (OUT)');
+        else if((g.low||0)>0&&left<=g.low)alerts.push(g.name+' ('+left+' '+g.unit+' left)');
+      });
       const o={no,day,ts:Date.now(),type,items,sub:t.sub,discLabel:t.label,disc:t.disc,adj:t.adj,vatOn:t.vOn,vatRate:t.vr,vatMode:t.incl?'incl':'excl',vatable:t.vatable,vat:t.vat,vatExempt:t.exempt,total:t.total,pay,
-        tendered:cash?tend:t.total,change:cash?r2(tend-t.total):0,status:'preparing',cashier:ME.name,cashierUid:ME.uid};
+        tendered:cash?tend:t.total,change:cash?r2(tend-t.total):0,status:'preparing',ingUse:used,cashier:ME.name,cashierUid:ME.uid};
       tx.set(orderRef,o);
       return Object.assign({id:orderRef.id},o);
     });
     cart=[];$('#tender').value='';$('#disc').value='none';$('#customPct').value='';
     placing=false;renderCart();
     showReceipt(order);
+    if(alerts.length)toast('Low stock: '+alerts.join(', '),6000);
   }catch(e){
     placing=false;renderTotals();
     toast(errMsg(e));
@@ -608,18 +657,28 @@ async function setStatus(id,s){
    ===================================================================== */
 function renderAdmin(){
   saveNav();
-  const T={dash:'Dashboard',reports:'Sales Report',zread:'Z-Reading',exp:'Expenses',menu:'Menu &amp; Stock',staff:'Staff',settings:'Settings'};
-  $('#adminBody').innerHTML=`<div class="subtabs">${Object.keys(T).map(t=>`<button class="${aTab===t?'on':''}" onclick="aTab='${t}';renderAdmin()">${T[t]}</button>`).join('')}</div><div class="card" id="aContent"></div>`;
-  ({dash:aDash,reports:aReports,zread:aZ,exp:aExpenses,menu:aMenu,staff:aStaff,settings:aSettings})[aTab]();
+  const T={dash:'Dashboard',reports:'Sales Report',zread:'Z-Reading',exp:'Expenses',menu:'Menu &amp; Stock',ing:'Ingredients',staff:'Staff',settings:'Settings'};
+  $('#adminBody').innerHTML=`<div class="subtabs">${Object.keys(T).map(t=>`<button data-t="${t}" class="${aTab===t?'on':''}" onclick="aTab='${t}';renderAdmin()">${T[t]}${t==='ing'&&ingAlerts().length?` <span class="badge" style="background:#b3392f;color:#fff">${ingAlerts().length}</span>`:''}</button>`).join('')}</div><div class="card" id="aContent"></div>`;
+  ({dash:aDash,reports:aReports,zread:aZ,exp:aExpenses,menu:aMenu,ing:aIng,staff:aStaff,settings:aSettings})[aTab]();
 }
 
 /* ----- menu ----- */
+function ingBadge(){
+  const b=document.querySelector('#adminBody .subtabs button[data-t="ing"]');if(!b)return;
+  const n=ingAlerts().length;
+  b.innerHTML='Ingredients'+(n?` <span class="badge" style="background:#b3392f;color:#fff">${n}</span>`:'');
+}
+function ingBanner(){
+  const a=ingAlerts();if(!a.length)return '';
+  return `<div class="warnbox">⚠ Low stock: ${a.map(g=>esc(g.name)+(ingStatus(g)==='out'?' (OUT)':' ('+g.stock+' '+esc(g.unit)+' left)')).join(', ')}
+  ${aTab==='ing'?'':'· <a href="#" onclick="aTab=\'ing\';renderAdmin();return false">Open Ingredients</a>'}</div>`;
+}
 function aMenu(){
   $('#aContent').innerHTML=`<div class="toolbar"><button onclick="editItem(null)">+ New item</button></div>
   <table><tr><th>Item</th><th>Category</th><th class="n">Price</th><th class="n">Cost</th><th class="n">Margin</th><th class="n">Stock</th><th></th></tr>
   ${MENU.map(m=>`<tr><td>${esc(m.name)}${m.sized?' <span class="badge">size</span>':''}</td><td>${esc(m.cat)}</td><td class="n">${fmt(m.price)}</td>
-  <td class="n">${m.cost==null?'<span class="low">not set</span>':fmt(m.cost)}</td>
-  <td class="n">${m.cost==null||!(m.price>0)?'—':((m.price-m.cost)/m.price*100).toFixed(1)+'%'}</td>
+  <td class="n">${(()=>{const c=baseCost(m,null);return c==null?'<span class="low">not set</span>':fmt(c)+(m.cost==null?' <small>(auto)</small>':'')})()}</td>
+  <td class="n">${(()=>{const c=baseCost(m,null);return c==null||!(m.price>0)?'—':((m.price-c)/m.price*100).toFixed(1)+'%'})()}</td>
   <td class="n">${m.track?`<span class="${m.stock<=3?'low':''}">${m.stock}</span>`:'—'}</td>
   <td class="n"><button class="ghost" onclick="editItem('${m.id}')">Edit</button> <button class="bad" onclick="delItem('${m.id}')">Delete</button></td></tr>`).join('')||'<tr><td colspan="7">No items yet.</td></tr>'}</table>`;
 }
@@ -630,16 +689,34 @@ function editItem(id){
   <div class="lbl">Name</div><input id="fN" value="${esc(m.name)}">
   <div class="two"><div><div class="lbl">Category</div><input id="fC" list="catList" value="${esc(m.cat)}"><datalist id="catList">${catList().filter(c=>c!=='All').map(c=>`<option value="${esc(c)}">`).join('')}</datalist></div>
   <div><div class="lbl">Price (base)</div><input id="fP" type="number" min="0" step="0.01" value="${m.price}"></div></div>
-  <div class="lbl">Cost per item (base, your cost to make it)</div><input id="fCo" type="number" min="0" step="0.01" placeholder="e.g. 28.50" value="${m.cost==null?'':m.cost}">
+  <div class="lbl">Cost per item (leave blank to work it out from the recipe)</div><input id="fCo" type="number" min="0" step="0.01" placeholder="e.g. 28.50" value="${m.cost==null?'':m.cost}">
   <small style="color:var(--mut)">Sizes and add-on costs are set in Settings.</small>
+  <div class="lbl">Recipe: ingredients used per serving (base size)</div>
+  <div id="rList">${(m.recipe||[]).filter(r=>ingById(r.ing)).map(recipeRowHTML).join('')}</div>
+  <button class="ghost" style="margin-top:6px" onclick="addRecipeRow()">+ Add ingredient</button>
+  <small style="display:block;color:var(--mut)">Other sizes use the size multiplier from Settings. Stock is deducted when the order is placed.</small>
   <label style="display:block;margin-top:10px"><input id="fS" type="checkbox" style="width:auto" ${m.sized?'checked':''}> Has sizes &amp; add-ons (drinks)</label>
   <label style="display:block;margin-top:6px"><input id="fT" type="checkbox" style="width:auto" ${m.track?'checked':''}> Track stock</label>
   <div class="lbl">Stock</div><input id="fK" type="number" min="0" step="1" value="${m.stock}">
   <div class="actions"><button class="ghost" onclick="closeModal()">Cancel</button><button onclick="saveItem(${id?`'${id}'`:'null'})">Save</button></div>`);
 }
+function recipeRowHTML(r){
+  return `<div class="two rrow" style="margin-top:6px;align-items:center"><select class="rIng">${ING.map(g=>`<option value="${g.id}" ${g.id===r.ing?'selected':''}>${esc(g.name)} (${esc(g.unit)})</option>`).join('')}</select>
+  <div style="display:flex;gap:6px"><input class="rQty" type="number" min="0" step="0.01" placeholder="Qty" value="${r.qty||''}"><button class="bad" onclick="this.closest('.rrow').remove()">✕</button></div></div>`;
+}
+function addRecipeRow(){
+  if(!ING.length){toast('Add ingredients first (Ingredients tab)');return}
+  $('#rList').insertAdjacentHTML('beforeend',recipeRowHTML({ing:ING[0].id,qty:''}));
+}
 async function saveItem(id){
   const name=$('#fN').value.trim();if(!name){toast('Enter a name');return}
   const d={name,cat:$('#fC').value.trim()||'Others',price:Math.max(0,r2(parseFloat($('#fP').value)||0)),cost:$('#fCo').value.trim()===''?null:Math.max(0,r2(parseFloat($('#fCo').value)||0)),sized:$('#fS').checked,track:$('#fT').checked,stock:Math.max(0,parseInt($('#fK').value)||0)};
+  const rec={};
+  document.querySelectorAll('#rList .rrow').forEach(r=>{
+    const k=r.querySelector('.rIng').value,q=r2(parseFloat(r.querySelector('.rQty').value)||0);
+    if(k&&q>0)rec[k]=r2((rec[k]||0)+q);
+  });
+  d.recipe=Object.entries(rec).map(([ing,qty])=>({ing,qty}));
   try{
     if(id)await fs.collection('menu').doc(id).update(d);else await fs.collection('menu').add(d);
     closeModal();
@@ -649,6 +726,83 @@ async function delItem(id){
   const m=MENU.find(x=>x.id===id);
   if(!m||!confirm('Delete "'+m.name+'"? (Past orders stay in reports.)'))return;
   try{await fs.collection('menu').doc(id).delete()}catch(e){toast(errMsg(e))}
+}
+
+/* ----- ingredients ----- */
+function aIng(){
+  const rows=ING.slice().sort((a,b)=>String(a.name).localeCompare(b.name));
+  const au=S.addonUse||[];
+  $('#aContent').innerHTML=ingBanner()+`<div class="toolbar"><button onclick="editIng(null)">+ New ingredient</button></div>
+  <table><tr><th>Ingredient</th><th class="n">In stock</th><th class="n">Alert at</th><th class="n">Cost / unit</th><th></th></tr>
+  ${rows.map(g=>{const st=ingStatus(g);return `<tr><td>${esc(g.name)}</td>
+  <td class="n"><span class="${st==='ok'?'':'low'}">${g.stock||0} ${esc(g.unit)}${st==='out'?' · OUT':st==='low'?' · LOW':''}</span></td>
+  <td class="n">${g.low||0}</td><td class="n">${g.ucost==null?'—':'₱'+(+Number(g.ucost).toFixed(4))}</td>
+  <td class="n"><button onclick="restockIng('${g.id}')">Restock</button> <button class="ghost" onclick="editIng('${g.id}')">Edit</button> <button class="bad" onclick="delIng('${g.id}')">Delete</button></td></tr>`}).join('')||'<tr><td colspan="5">No ingredients yet. Add beans, milk, syrups, cups and so on.</td></tr>'}</table>
+  <h4>Add-on usage</h4>
+  <div style="color:var(--mut);font-size:13px;margin-bottom:6px">What each add-on uses up every time it is sold (for example Extra shot uses 9 g of beans).</div>
+  <table><tr><th>Add-on</th><th>Ingredient</th><th class="n">Qty each</th></tr>
+  ${S.addons.map((a,i)=>{const u=au.find(x=>x.n===a.n)||{};return `<tr><td>${esc(a.n)}</td>
+  <td><select id="auI${i}"><option value="">— none —</option>${ING.map(g=>`<option value="${g.id}" ${g.id===u.ing?'selected':''}>${esc(g.name)} (${esc(g.unit)})</option>`).join('')}</select></td>
+  <td class="n"><input id="auQ${i}" type="number" min="0" step="0.01" style="width:90px" value="${u.qty||''}"></td></tr>`}).join('')||'<tr><td colspan="3">No add-ons set in Settings.</td></tr>'}</table>
+  <div class="actions" style="justify-content:flex-start"><button onclick="saveAddonUse()">Save add-on usage</button></div>`;
+}
+function editIng(id){
+  const g=id?ingById(id):{name:'',unit:'g',stock:0,low:0,packPrice:null,packSize:null};
+  if(!g)return;
+  modal(`<h3>${id?'Edit':'New'} ingredient</h3>
+  <div class="lbl">Name</div><input id="iN" value="${esc(g.name)}" placeholder="e.g. Espresso beans">
+  <div class="two"><div><div class="lbl">Unit</div><select id="iU">${['g','ml','pcs'].map(u=>`<option ${g.unit===u?'selected':''}>${u}</option>`).join('')}</select></div>
+  <div><div class="lbl">${id?'Current stock':'Starting stock'}</div><input id="iS" type="number" min="0" step="0.01" value="${g.stock||0}"></div></div>
+  <div class="lbl">Alert when stock is at or below</div><input id="iL" type="number" min="0" step="0.01" value="${g.low||0}">
+  <div class="two"><div><div class="lbl">Pack price (₱), optional</div><input id="iPP" type="number" min="0" step="0.01" value="${g.packPrice==null?'':g.packPrice}" placeholder="e.g. 800"></div>
+  <div><div class="lbl">Pack size (in the unit above)</div><input id="iPS" type="number" min="0" step="0.01" value="${g.packSize==null?'':g.packSize}" placeholder="e.g. 1000"></div></div>
+  <small style="color:var(--mut)">Used to work out recipe cost. Example: ₱800 for a 1000 g bag.</small>
+  <div class="actions"><button class="ghost" onclick="closeModal()">Cancel</button><button onclick="saveIng(${id?`'${id}'`:'null'})">Save</button></div>`);
+}
+async function saveIng(id){
+  const name=$('#iN').value.trim();if(!name){toast('Enter a name');return}
+  if(ING.some(g=>g.id!==id&&String(g.name).toLowerCase()===name.toLowerCase())){toast('That ingredient already exists');return}
+  const pp=parseFloat($('#iPP').value),ps=parseFloat($('#iPS').value),pack=pp>=0&&ps>0;
+  const d={name,unit:$('#iU').value,stock:Math.max(0,r2(parseFloat($('#iS').value)||0)),low:Math.max(0,r2(parseFloat($('#iL').value)||0)),
+    packPrice:pack?r2(pp):null,packSize:pack?ps:null,ucost:pack?Math.round(pp/ps*1e6)/1e6:null};
+  try{
+    if(id)await fs.collection('ingredients').doc(id).update(d);else await fs.collection('ingredients').add(d);
+    closeModal();
+  }catch(e){toast(errMsg(e))}
+}
+function restockIng(id){
+  const g=ingById(id);if(!g)return;
+  modal(`<h3>Restock ${esc(g.name)}</h3>
+  <div style="color:var(--mut);margin-bottom:6px">Now: ${g.stock||0} ${esc(g.unit)}</div>
+  <div class="lbl">Quantity to add (${esc(g.unit)}). Use a minus sign to remove.</div><input id="rQ" type="number" step="0.01" placeholder="e.g. 1000">
+  <div class="actions"><button class="ghost" onclick="closeModal()">Cancel</button><button onclick="doRestock('${id}')">Save</button></div>`);
+}
+async function doRestock(id){
+  const q=r2(parseFloat($('#rQ').value));
+  if(!q){toast('Enter a quantity');return}
+  try{
+    await fs.runTransaction(async tx=>{
+      const ref=fs.collection('ingredients').doc(id),d=await tx.get(ref);
+      if(!d.exists)throw new Error('This ingredient no longer exists');
+      tx.update(ref,{stock:Math.max(0,r2((d.data().stock||0)+q))});
+    });
+    closeModal();toast('Stock updated');
+  }catch(e){toast(errMsg(e))}
+}
+async function delIng(id){
+  const g=ingById(id);if(!g)return;
+  const used=MENU.filter(m=>(m.recipe||[]).some(r=>r.ing===id)).map(m=>m.name).concat((S.addonUse||[]).filter(u=>u.ing===id).map(u=>u.n));
+  if(used.length){toast('Still used by: '+used.join(', ')+'. Remove it from there first.',5000);return}
+  if(!confirm('Delete "'+g.name+'"?'))return;
+  try{await fs.collection('ingredients').doc(id).delete()}catch(e){toast(errMsg(e))}
+}
+async function saveAddonUse(){
+  const out=[];
+  S.addons.forEach((a,i)=>{
+    const ing=$('#auI'+i).value,qty=r2(parseFloat($('#auQ'+i).value)||0);
+    if(ing&&qty>0)out.push({n:a.n,ing,qty});
+  });
+  try{await fs.collection('settings').doc('main').set({addonUse:out},{merge:true});toast('Saved')}catch(e){toast(errMsg(e))}
 }
 
 /* ----- reports ----- */
@@ -748,7 +902,7 @@ async function aDash(silent){
   if(view!=='admin'||aTab!=='dash')return;
   const A=analyze();
   const cats=Object.entries(A.byCat).sort((a,b)=>b[1]-a[1]);
-  $('#aContent').innerHTML=rangeBar('aDash')+uncBanner(A)+`
+  $('#aContent').innerHTML=rangeBar('aDash')+ingBanner()+uncBanner(A)+`
   <div class="cards">
     <div class="stat"><small>Sales (after discounts${A.vat?', excl. VAT':''})</small><div>${fmt(A.sales)}</div></div>
     <div class="stat"><small>Cost of goods</small><div>${fmt(A.cogs)}</div></div>
@@ -907,7 +1061,7 @@ async function aReports(silent){
 }
 async function voidOrder(id){
   const o=RORDERS.find(x=>x.id===id);
-  if(!o||!confirm('Void order '+ono(o)+'? Stock will be restored.'))return;
+  if(!o||!confirm('Void order '+ono(o)+'? Stock and ingredients will be restored.'))return;
   try{
     await fs.runTransaction(async tx=>{
       const oref=fs.collection('orders').doc(id);
@@ -915,7 +1069,10 @@ async function voidOrder(id){
       if(!od.exists||od.data().status==='void')throw new Error('This order is already void');
       const back={};od.data().items.forEach(i=>{back[i.id]=(back[i.id]||0)+i.qty});
       const md=await Promise.all(Object.keys(back).map(k=>tx.get(fs.collection('menu').doc(k))));
+      const iu=od.data().ingUse||{};
+      const idocs=await Promise.all(Object.keys(iu).map(k=>tx.get(fs.collection('ingredients').doc(k))));
       md.forEach(d=>{if(d.exists&&d.data().track)tx.update(d.ref,{stock:(d.data().stock||0)+back[d.id]})});
+      idocs.forEach(d=>{if(d.exists)tx.update(d.ref,{stock:r2((d.data().stock||0)+iu[d.id])})});
       tx.update(oref,{status:'void',voidedBy:ME.name,voidedAt:Date.now()});
     });
     toast('Order voided');aReports();
@@ -1007,11 +1164,22 @@ function aSettings(){
   <div><div class="lbl">Menu prices</div><select id="sVatMode"><option value="incl" ${S.vatMode!=='excl'?'selected':''}>Already include VAT</option><option value="excl" ${S.vatMode==='excl'?'selected':''}>Exclude VAT (add on top)</option></select></div></div>
   <label style="display:flex;gap:8px;align-items:center;margin-top:10px"><input id="sPwdEx" type="checkbox" style="width:auto" ${S.pwdVatExempt!==false?'checked':''}> PWD/Senior sales are VAT-exempt (discount is taken on the price without VAT)</label>
   <h4>Menu options</h4>
-  <div class="lbl">Sizes (one per line: Name, extra price, extra cost)</div><textarea id="sSizes" rows="4">${esc(S.sizes.map(z=>z.n+','+z.up+','+(z.cost||0)).join('\n'))}</textarea>
+  <div class="lbl">Sizes (one per line: Name, extra price, extra cost, recipe multiplier)</div><textarea id="sSizes" rows="4">${esc(S.sizes.map(z=>z.n+','+z.up+','+(z.cost||0)+','+(z.mult||1)).join('\n'))}</textarea>
+  <small style="color:var(--mut)">Example: Large,20,6,1.5 means +₱20 price, +₱6 cost, and 1.5× the recipe amounts.</small>
   <div class="lbl">Add-ons (one per line: Name, price, cost)</div><textarea id="sAdd" rows="5">${esc(S.addons.map(a=>a.n+','+a.p+','+(a.cost||0)).join('\n'))}</textarea>
-  <small style="color:var(--mut)">Example: Large,20,6 means +₱20 price and +₱6 cost. The third number is optional.</small>
+  <small style="color:var(--mut)">Add-on example: Extra shot,20,6 means ₱20 price and ₱6 cost. What it uses up is set in the Ingredients tab.</small>
   <div class="actions" style="justify-content:flex-start"><button onclick="saveSettings()">Save settings</button></div>`;
   pendingLogo=undefined;logoPrev();
+}
+function parseSizes(t){
+  const num=(x,d)=>{const v=parseFloat(x);return isNaN(v)?d:Math.max(0,v)};
+  return t.split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{
+    const p=l.split(',').map(x=>x.trim());
+    if(p.length>=4)return {n:p.slice(0,-3).join(','),up:num(p[p.length-3],0),cost:num(p[p.length-2],0),mult:num(p[p.length-1],1)||1};
+    if(p.length===3)return {n:p[0],up:num(p[1],0),cost:num(p[2],0),mult:1};
+    if(p.length===2)return {n:p[0],up:num(p[1],0),cost:0,mult:1};
+    return {n:p[0],up:0,cost:0,mult:1};
+  }).filter(x=>x.n);
 }
 function parseLines(t){
   const num=x=>{const v=parseFloat(x);return isNaN(v)?0:Math.max(0,v)};
@@ -1058,7 +1226,7 @@ function pickLogo(inp){
 }
 function clearLogo(){pendingLogo='';const f=$('#sLogoFile');if(f)f.value='';logoPrev()}
 async function saveSettings(){
-  const sizes=parseLines($('#sSizes').value).map(x=>({n:x.n,up:x.v,cost:x.c}));
+  const sizes=parseSizes($('#sSizes').value);
   if(!sizes.length){toast('At least one size is required');return}
   const d={shop:$('#sShop').value.trim()||'Coffee Shop',pwdRate:Math.min(100,Math.max(0,parseFloat($('#sPwd').value)||0)),
     sizes,addons:parseLines($('#sAdd').value).map(x=>({n:x.n,p:x.v,cost:x.c}))};
