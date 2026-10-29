@@ -18,6 +18,7 @@ input,select,textarea{font:inherit;padding:9px 10px;border:1px solid var(--line)
 .side{width:230px;flex:none;background:#2a1d16;color:#e9ddd0;display:flex;flex-direction:column;padding:22px 14px 16px;position:sticky;top:0;height:100vh;z-index:6}
 .brand{text-align:center;padding:4px 6px 22px}
 .brand svg{width:46px;height:46px;stroke:#f3e9dc;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.brand img{display:block;max-width:150px;max-height:72px;margin:0 auto;object-fit:contain}
 .brand b{display:block;letter-spacing:.16em;font-size:15px;margin-top:6px;color:#f6efe6;text-transform:uppercase;word-break:break-word}
 .brand small{display:block;letter-spacing:.3em;font-size:9px;color:#b9a898;margin-top:4px}
 .menu{display:flex;flex-direction:column;gap:6px}
@@ -157,7 +158,8 @@ code{background:#f1e9df;padding:1px 5px;border-radius:5px}
   <div class="shell">
   <aside class="side">
     <div class="brand">
-      <svg viewBox="0 0 48 48"><path d="M10 20h24v6a12 12 0 0 1-24 0z"/><path d="M34 22h3a4 4 0 0 1 0 8h-4"/><path d="M8 40h28"/><path d="M19 7c-2 2 2 4 0 6M26 7c-2 2 2 4 0 6"/></svg>
+      <img id="brandImg" alt="" style="display:none">
+      <svg id="brandSvg" viewBox="0 0 48 48"><path d="M10 20h24v6a12 12 0 0 1-24 0z"/><path d="M34 22h3a4 4 0 0 1 0 8h-4"/><path d="M8 40h28"/><path d="M19 7c-2 2 2 4 0 6M26 7c-2 2 2 4 0 6"/></svg>
       <b id="shopName">Coffee POS</b><small>COFFEE SHOP</small>
     </div>
     <nav class="menu">
@@ -305,7 +307,7 @@ function download(name,text,type){
 
 /* ---------- defaults ---------- */
 function defaultSettings(){
-  return {shop:'Kape Corner',pwdRate:20,vatOn:false,vatRate:12,vatMode:'incl',pwdVatExempt:true,blockOnOut:true,address:'',phone:'',tin:'',footer:'',logo:'',
+  return {shop:'Kape Corner',pwdRate:20,vatOn:false,vatRate:12,vatMode:'incl',pwdVatExempt:true,blockOnOut:true,address:'',phone:'',tin:'',footer:'',logo:'',sideLogo:'',
     sizes:[{n:'Small',up:0,mult:1},{n:'Medium',up:10,mult:1.25},{n:'Large',up:20,mult:1.5}],addonUse:[],
     addons:[{n:'Extra shot',p:20},{n:'Oat milk',p:30},{n:'Whipped cream',p:15},{n:'Caramel syrup',p:15}]};
 }
@@ -512,6 +514,7 @@ function catList(){return ['All',...new Set(MENU.map(m=>m.cat))]}
 function setCat(i){cat=catList()[i]||'All';renderMenu()}
 function renderMenu(){
   $('#shopName').textContent=S.shop+' POS';
+  $('#brandImg').style.display=S.sideLogo?'block':'none';if(S.sideLogo)$('#brandImg').src=S.sideLogo;$('#brandSvg').style.display=S.sideLogo?'none':'';
   document.title=S.shop+' POS';
   const cl=catList();if(!cl.includes(cat))cat='All';
   $('#cats').innerHTML=cl.map((c,i)=>`<button class="${c===cat?'on':''}" onclick="setCat(${i})">${esc(c)}</button>`).join('');
@@ -1678,6 +1681,11 @@ async function resetPw(i){
 function aSettings(){
   $('#aContent').innerHTML=`<div class="lbl" style="margin-top:0">Shop name</div><input id="sShop" value="${esc(S.shop)}">
   <div class="lbl">PWD / Senior discount (%)</div><input id="sPwd" type="number" min="0" max="100" value="${S.pwdRate}">
+  <h4>Sidebar logo</h4>
+  <div class="lbl" style="margin-top:0">Logo shown at the top of the sidebar (PNG with transparent background works best)</div>
+  <div id="sideLogoPrev" style="margin:6px 0"></div>
+  <input id="sSideFile" type="file" accept="image/*" onchange="pickSideLogo(this)">
+  <button class="ghost" style="margin-top:8px" onclick="clearSideLogo()">Use default icon</button>
   <h4>Receipt details &amp; VAT</h4>
   <div class="lbl" style="margin-top:0">Receipt logo (printed at the top)</div>
   <div id="logoPrev" style="margin:6px 0"></div>
@@ -1700,7 +1708,7 @@ function aSettings(){
   <div class="lbl">Add-ons (one per line: Name, price, cost)</div><textarea id="sAdd" rows="5">${esc(S.addons.map(a=>a.n+','+a.p+','+(a.cost||0)).join('\n'))}</textarea>
   <small style="color:var(--mut)">Add-on example: Extra shot,20,6 means ₱20 price and ₱6 cost. What it uses up is set in the Ingredients tab.</small>
   <div class="actions" style="justify-content:flex-start"><button onclick="saveSettings()">Save settings</button></div>`;
-  pendingLogo=undefined;logoPrev();
+  pendingLogo=undefined;logoPrev();pendingSide=undefined;sideLogoPrev();
 }
 function parseSizes(t){
   const num=(x,d)=>{const v=parseFloat(x);return isNaN(v)?d:Math.max(0,v)};
@@ -1721,6 +1729,35 @@ function parseLines(t){
     return {n:p[0],v:0,c:0};
   }).filter(x=>x.n);
 }
+let pendingSide; // undefined = unchanged, '' = default icon, data URL = new sidebar logo
+function sideLogoPrev(){
+  const v=pendingSide!==undefined?pendingSide:S.sideLogo,el=$('#sideLogoPrev');
+  if(el)el.innerHTML=v?`<img src="${v}" alt="" style="max-width:200px;max-height:90px;background:#2a1d16;padding:8px;border-radius:8px"><div style="color:var(--mut);font-size:12px">${pendingSide!==undefined?'Not saved yet. Press Save settings.':'Current sidebar logo'}</div>`:'<small style="color:var(--mut)">Using the default cup icon</small>';
+}
+function pickSideLogo(inp){
+  const f=inp.files&&inp.files[0];if(!f)return;
+  if(!f.type.startsWith('image/')){toast('Please choose an image file');return}
+  if(f.size>5*1024*1024){toast('Image is too large (max 5 MB)');return}
+  const rd=new FileReader();
+  rd.onerror=()=>toast('Could not read that file');
+  rd.onload=()=>{
+    const img=new Image();
+    img.onerror=()=>toast('That image could not be opened');
+    img.onload=()=>{
+      try{
+        const k=Math.min(1,320/img.width,160/img.height),w=Math.max(1,Math.round(img.width*k)),h=Math.max(1,Math.round(img.height*k));
+        const c=document.createElement('canvas');c.width=w;c.height=h;
+        c.getContext('2d').drawImage(img,0,0,w,h); // keeps transparency
+        const url=c.toDataURL('image/png');
+        if(url.length>250000){toast('That image is too detailed. Try a simpler logo.');return}
+        pendingSide=url;sideLogoPrev();toast('Logo ready. Press Save settings.');
+      }catch(e){toast('Could not process the image')}
+    };
+    img.src=rd.result;
+  };
+  rd.readAsDataURL(f);
+}
+function clearSideLogo(){pendingSide='';const f=$('#sSideFile');if(f)f.value='';sideLogoPrev()}
 let pendingLogo; // undefined = unchanged, '' = remove, data URL = new logo
 function logoPrev(){
   const v=pendingLogo!==undefined?pendingLogo:S.logo,el=$('#logoPrev');
@@ -1765,7 +1802,8 @@ async function saveSettings(){
     vatOn:$('#sVatOn').checked,vatRate:Math.min(100,Math.max(0,parseFloat($('#sVatRate').value)||0)),vatMode:$('#sVatMode').value,pwdVatExempt:$('#sPwdEx').checked,blockOnOut:$('#sBlock').checked});
   if(d.vatOn&&!(d.vatRate>0)){toast('Enter a VAT rate above 0');return}
   if(pendingLogo!==undefined)d.logo=pendingLogo;
-  try{await fs.collection('settings').doc('main').set(d,{merge:true});pendingLogo=undefined;toast('Saved')}catch(e){toast(errMsg(e))}
+  if(pendingSide!==undefined)d.sideLogo=pendingSide;
+  try{await fs.collection('settings').doc('main').set(d,{merge:true});pendingLogo=undefined;pendingSide=undefined;toast('Saved')}catch(e){toast(errMsg(e))}
 }
 
 function renderAll(){renderMenu();renderCart();renderQueue();netBadge();tick()}
