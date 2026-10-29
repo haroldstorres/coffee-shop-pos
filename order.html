@@ -91,6 +91,40 @@ main{padding:14px;max-width:760px;margin:0 auto}
 .stat.new{background:#fff4e0}.stat.prep{background:#e6eff7}.stat.ready{background:#dff2e5}.stat.done{background:#f1ece6}.stat.bad{background:#fbe5e1}
 .bigno{font-size:40px;font-weight:800;margin:6px 0}
 .note{background:#fff4e0;border:1px solid #f0cf94;color:#7a4b00;border-radius:10px;padding:9px 12px;margin:12px 0;font-size:14px}
+
+#sheet.itemsheet{padding:0}
+#sheet.itemsheet .sx{background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.18);z-index:3}
+@media(max-width:699px){#sheet.itemsheet{height:100%;max-height:100%;border-radius:0}}
+.ihero{height:150px;background:linear-gradient(135deg,#e8d8c4,#c9a583);display:flex;align-items:center;justify-content:center;font-size:56px;overflow:hidden}
+.ihero img{width:100%;height:100%;object-fit:cover;display:block}
+.itop{padding:14px 18px 12px}
+.itop .r{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:19px}
+.itop small{display:block;color:var(--mut);font-size:13px;margin-top:3px}
+.ig{padding:14px 18px 6px;border-top:1px solid var(--line)}
+.ig.err{background:#fbe5e1}
+.igh{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:2px}
+.igh b{font-size:16px}
+.bd{font-size:12px;padding:3px 10px;border-radius:999px;white-space:nowrap;background:#efe7dc;color:#4a3a2e}
+.bd.req{background:#dff2e5;color:#1f4a37}
+.io{display:flex;align-items:center;gap:12px;padding:10px 0;min-height:46px;cursor:pointer}
+.io input{display:none}
+.io .il{flex:1}
+.io .ip{color:var(--mut);font-size:14px}
+.io .mk{width:22px;height:22px;border:1.5px solid #b9a898;background:#fff;flex:none}
+.io .mk.rd{border-radius:50%}.io .mk.cb{border-radius:6px}
+.io input:checked+.mk{background:var(--dark);border-color:var(--dark)}
+.io input:checked+.mk.rd{box-shadow:inset 0 0 0 4px #fff}
+.io input:checked+.mk.cb{background:var(--dark) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center/16px no-repeat}
+.io.dis{opacity:.4;cursor:not-allowed}
+.ig textarea{min-height:64px;resize:none}
+.iqty{display:flex;align-items:center;justify-content:center;gap:22px;padding:16px 0 8px;border-top:1px solid var(--line)}
+.iqty button{width:40px;height:40px;border-radius:50%;padding:0;font-size:22px;line-height:1}
+.iqty .mn{background:#dff2e5;color:#1f4a37}.iqty .pl{background:var(--ok);color:#fff}
+.iqty b{font-size:18px;min-width:24px;text-align:center}
+.ibar{position:sticky;bottom:0;background:#fff;border-top:1px solid var(--line);padding:10px 18px 96px;box-shadow:0 -6px 14px rgba(42,29,22,.08)}
+.ibar .actions{margin-top:0}
+.ibar #mAdd{display:flex;justify-content:space-between;font-weight:600;font-size:16px;padding:14px 16px;background:var(--ok)}
+.imsg{color:var(--bad);font-size:13px;text-align:center;margin-top:6px;min-height:16px}
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -176,27 +210,66 @@ function unitPrice(it,size,addons){
   const ap=addons.reduce((a,n)=>a+((S.addons.find(x=>x.n===n)||{}).p||0),0);
   return r2(it.price+up+ap);
 }
+let iQty=1,curG=[],curId='';
+function groupsFor(it){ // size first, then the option groups attached to this drink
+  const gs=[{n:'Choose your size',req:true,max:1,opts:S.sizes.map(z=>({n:z.n,p:z.up||0}))}];
+  const names=Array.isArray(it.groups)?it.groups:[];
+  const def=(S.groups||[]).filter(g=>names.includes(g.n));
+  if(def.length)def.forEach(g=>{
+    const opts=(g.opts||[]).map(n=>S.addons.find(a=>a.n===n)).filter(Boolean).map(a=>({n:a.n,p:a.p||0}));
+    if(opts.length)gs.push({n:g.n,req:!!g.req,max:Math.max(1,parseInt(g.max)||1),opts});
+  });
+  else if(S.addons.length)gs.push({n:'Add-ons',req:false,max:S.addons.length,opts:S.addons.map(a=>({n:a.n,p:a.p||0}))});
+  return gs;
+}
+function applyMax(gi){
+  const g=curG[gi],ins=[...document.querySelectorAll('input[name="g'+gi+'"]')],n=ins.filter(i=>i.checked).length;
+  ins.forEach(i=>{const full=g.max>1&&n>=g.max&&!i.checked;i.disabled=full;i.parentElement.classList.toggle('dis',full)});
+}
+function onOpt(el){
+  const gi=+el.dataset.gi,g=curG[gi];
+  if(el.checked&&g.max===1&&!g.req)document.querySelectorAll('input[name="g'+gi+'"]').forEach(i=>{if(i!==el)i.checked=false});
+  applyMax(gi);
+  $('#ig'+gi).classList.remove('err');$('#imsg').textContent='';prev(curId);
+}
+function iq(d){iQty=Math.min(20,Math.max(1,iQty+d));$('#iqv').textContent=iQty;prev(curId)}
 function openItem(id,idx){ // idx given = editing a line that is already in the cart
   const it=MENU.find(m=>m.id===id);if(!it)return;
   editIdx=idx==null?null:idx;const ed=editIdx==null?null:cart[editIdx];
   if(!it.sized){addToCart(it,'',[],1,'');toast('Added: '+it.name);return}
-  sheet(`<h3>${esc(it.name)}</h3>
-  <div class="lbl">Size</div>
-  <div class="chips">${S.sizes.map((z,i)=>`<label class="chip"><input type="radio" name="sz" value="${esc(z.n)}" ${(ed?z.n===ed.size:i===0)?'checked':''} onchange="prev('${id}')"><span>${esc(z.n)}${z.up?' +'+z.up:''}</span></label>`).join('')}</div>
-  ${S.addons.length?`<div class="lbl">Add-ons</div><div class="chips">${S.addons.map(a=>`<label class="chip"><input type="checkbox" name="ad" value="${esc(a.n)}" ${ed&&ed.addons.includes(a.n)?'checked':''} onchange="prev('${id}')"><span>${esc(a.n)} +${a.p}</span></label>`).join('')}</div>`:''}
-  <div class="two"><div><div class="lbl">Qty</div><input id="mq" type="number" min="1" max="20" value="${ed?ed.qty:1}" oninput="prev('${id}')"></div>
-  <div><div class="lbl">Note</div><input id="mn" maxlength="60" placeholder="e.g. less ice" value="${ed?esc(ed.note):''}"></div></div>
-  <div class="actions"><button class="ghost" onclick="${ed?'editIdx=null;openCart()':'closeSheet()'}">Cancel</button><button id="mAdd" onclick="confirmItem('${id}')">${ed?'Save':'Add'}</button></div>`);
+  const gs=groupsFor(it);curG=gs;curId=id;iQty=ed?ed.qty:1;
+  const badge=g=>g.req?(g.max===1?'Pick 1':'Pick up to '+g.max):(g.max>=g.opts.length?'Optional':'Optional, max '+g.max);
+  sheet(`<div class="ihero">${it.photo?`<img src="${it.photo}" alt="">`:'☕'}</div>
+  <div class="itop"><div class="r"><b>${esc(it.name)}</b><b>${fmt(it.price)}</b></div><small>${esc([it.cat,it.temp].filter(Boolean).join(' · '))}${it.cat||it.temp?' · ':''}base price</small></div>
+  ${gs.map((g,gi)=>{const rd=g.req&&g.max===1;return `<div class="ig" id="ig${gi}"><div class="igh"><b>${esc(g.n)}</b><span class="bd ${g.req?'req':''}">${badge(g)}</span></div>
+  ${g.opts.map(o=>{const on=ed&&(gi===0?ed.size===o.n:ed.addons.includes(o.n));
+    return `<label class="io"><input type="${rd?'radio':'checkbox'}" name="g${gi}" data-gi="${gi}" value="${esc(o.n)}" ${on?'checked':''} onchange="onOpt(this)"><span class="mk ${rd?'rd':'cb'}"></span><span class="il">${esc(o.n)}</span><span class="ip">${o.p?'+'+o.p:''}</span></label>`}).join('')}</div>`}).join('')}
+  <div class="ig"><div class="igh"><b>Note to barista</b><span class="bd">Optional</span></div><textarea id="mn" maxlength="60" placeholder="e.g. less ice (subject to the shop's discretion)">${ed?esc(ed.note):''}</textarea></div>
+  <div class="iqty"><button class="mn" aria-label="Less" onclick="iq(-1)">−</button><b id="iqv">${iQty}</b><button class="pl" aria-label="More" onclick="iq(1)">+</button></div>
+  <div class="ibar"><div class="actions">${ed?`<button class="ghost" style="flex:0 0 auto" onclick="editIdx=null;openCart()">Cancel</button>`:''}<button id="mAdd" onclick="confirmItem('${id}')"></button></div><div class="imsg" id="imsg"></div></div>`);
+  $('#sheet').classList.add('itemsheet');$('#sheet').scrollTop=0;
+  gs.forEach((g,gi)=>applyMax(gi));
   prev(id);
 }
 function pick(){
-  return {size:(document.querySelector('input[name=sz]:checked')||{}).value||'',
-    addons:[...document.querySelectorAll('input[name=ad]:checked')].map(x=>x.value),
-    qty:Math.min(20,Math.max(1,parseInt($('#mq').value)||1)),note:($('#mn').value||'').trim().slice(0,60)};
+  const sz=document.querySelector('input[name="g0"]:checked');
+  return {size:sz?sz.value:'',
+    addons:[...document.querySelectorAll('#sheet input[data-gi]:checked')].filter(x=>x.dataset.gi!=='0').map(x=>x.value),
+    qty:iQty,note:($('#mn').value||'').trim().slice(0,60)};
 }
-function prev(id){const it=MENU.find(m=>m.id===id),p=pick();$('#mAdd').textContent=(editIdx==null?'Add':'Save')+' · '+fmt(unitPrice(it,p.size,p.addons)*p.qty)}
-function confirmItem(id){
+function prev(id){
   const it=MENU.find(m=>m.id===id),p=pick();
+  $('#mAdd').innerHTML='<span>'+(editIdx==null?'Add to cart':'Save changes')+'</span><span>'+fmt(unitPrice(it,p.size,p.addons)*p.qty)+'</span>';
+}
+function confirmItem(id){
+  const it=MENU.find(m=>m.id===id);
+  const miss=curG.map((g,gi)=>({g,gi})).filter(x=>x.g.req&&!document.querySelector('input[name="g'+x.gi+'"]:checked'));
+  curG.forEach((g,gi)=>$('#ig'+gi).classList.toggle('err',miss.some(m=>m.gi===gi)));
+  if(miss.length){
+    $('#imsg').textContent='Please choose: '+miss.map(m=>m.g.n.replace(/^Choose your /i,'').replace(/\?$/,'').toLowerCase()).join(', ');
+    $('#ig'+miss[0].gi).scrollIntoView({block:'center',behavior:'smooth'});return;
+  }
+  const p=pick();
   if(editIdx!=null){ // changing a drink that is already in the cart
     const at=editIdx,old=cart.splice(at,1)[0];
     if(addToCart(it,p.size,p.addons,p.qty,p.note)){editIdx=null;openCart();toast('Updated: '+it.name);return}
