@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Order</title>
+<style>
+:root{--bg:#f6f1ea;--card:#fffdf9;--ink:#2b2018;--mut:#7a6a5c;--brand:#6f4e37;--dark:#2a1d16;--ok:#2f5d4a;--bad:#b3392f;--line:#e6dccf}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink);font-size:15px;padding-bottom:90px}
+button{font:inherit;cursor:pointer;border:0;border-radius:12px;padding:11px 16px;background:var(--dark);color:#fff}
+button:disabled{opacity:.45;cursor:not-allowed}
+button.ghost{background:#fff;color:var(--dark);border:1px solid var(--line)}
+input,select,textarea{font:inherit;padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--ink);width:100%}
+header{background:var(--dark);color:#f6efe6;padding:14px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:5}
+header img{max-height:38px;max-width:110px;object-fit:contain}
+header b{font-size:17px;letter-spacing:.04em}
+header small{display:block;color:#b9a898;font-size:12px}
+main{padding:14px;max-width:760px;margin:0 auto}
+.search{margin-bottom:12px}
+.cats{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:12px}
+.cats button{background:#efe7dc;color:#4a3a2e;border-radius:999px;padding:8px 18px;white-space:nowrap;flex:none}
+.cats button.on{background:var(--dark);color:#fff}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+@media(min-width:640px){.grid{grid-template-columns:repeat(3,1fr)}}
+.item{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:0;text-align:left;color:var(--ink);overflow:hidden;position:relative;display:flex;flex-direction:column}
+.item .ph{width:100%;aspect-ratio:1.3/1;background:linear-gradient(135deg,#e8d8c4,#c9a583);display:flex;align-items:center;justify-content:center;font-size:40px;overflow:hidden}
+.item .ph img{width:100%;height:100%;object-fit:cover;display:block}
+.item .tag{position:absolute;top:8px;right:8px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:8px;color:#fff}
+.item .tag.hot{background:#c98a3a}.item .tag.iced{background:#5b7d99}
+.item .nm{padding:9px 11px 0;font-weight:500}
+.item .pr{padding:3px 11px 11px;font-weight:700}
+.item.out{opacity:.45}
+.bar{position:fixed;left:0;right:0;bottom:0;padding:12px 14px;background:var(--bg);border-top:1px solid var(--line);z-index:6}
+.bar button{width:100%;padding:15px;font-size:16px;font-weight:600;background:var(--ok);display:flex;justify-content:space-between}
+#ov{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:flex-end;justify-content:center;z-index:20}
+#ov.on{display:flex}
+#sheet{background:#fff;border-radius:18px 18px 0 0;padding:18px;width:100%;max-width:560px;max-height:92vh;overflow:auto}
+#sheet h3{margin:0 0 8px}
+.lbl{font-size:12px;color:var(--mut);margin:12px 0 5px;text-transform:uppercase;letter-spacing:.04em}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip input{display:none}
+.chip span{display:inline-block;padding:8px 14px;border:1px solid var(--line);border-radius:999px;cursor:pointer;background:#fff}
+.chip input:checked+span{background:var(--dark);color:#fff;border-color:var(--dark)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.actions{display:flex;gap:10px;margin-top:16px}
+.actions button{flex:1}
+.ci{display:grid;grid-template-columns:1fr auto;gap:8px;padding:12px 0;border-bottom:1px solid var(--line)}
+.ci .sub{color:var(--mut);font-size:12px}
+.qty{display:flex;align-items:center;gap:6px;margin-top:6px}
+.qty button{width:30px;height:30px;padding:0;background:#fff;color:var(--dark);border:1px solid var(--line);border-radius:8px}
+.qty span{min-width:34px;text-align:center}
+.row{display:flex;justify-content:space-between;margin:8px 0}
+.row.total{font-size:22px;font-weight:700;border-top:1px solid var(--line);padding-top:12px}
+.empty{color:var(--mut);text-align:center;padding:24px 0}
+#toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:10px;display:none;z-index:30;max-width:90vw;text-align:center}
+.done{text-align:center;padding:10px 0}
+.done canvas,.done img{width:230px;height:230px;image-rendering:pixelated;background:#fff;padding:10px;border-radius:12px;border:1px solid var(--line)}
+.code{font-size:34px;font-weight:800;letter-spacing:.18em;margin:10px 0 2px}
+.note{background:#fff4e0;border:1px solid #f0cf94;color:#7a4b00;border-radius:10px;padding:9px 12px;margin:12px 0;font-size:14px}
+</style>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+</head>
+<body>
+<header><div id="logo"></div><div><b id="shop">Order</b><small>Order here, then show your QR at the counter</small></div></header>
+<main id="main"><div class="empty">Loading menu…</div></main>
+<div class="bar" id="bar" style="display:none"><button id="barBtn" onclick="openCart()"></button></div>
+<div id="ov"><div id="sheet"></div></div>
+<div id="toast"></div>
+
+<script>
+/* Same Firebase project as the POS (index.html) */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBrI7fMdXpnhX8sCYOvhYjQFrUi1DsF6Z4",
+  authDomain: "coffee-shop-pos-1a64c.firebaseapp.com",
+  projectId: "coffee-shop-pos-1a64c",
+  storageBucket: "coffee-shop-pos-1a64c.firebasestorage.app",
+  messagingSenderId: "289026657293",
+  appId: "1:289026657293:web:048d5da3dcc0ded55d5944"
+};
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const r2=n=>Math.round(n*100)/100;
+const fmt=n=>'₱'+(Number(n)||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});
+function toast(t,ms){const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',ms||3000)}
+
+let fs,auth,uid=null,S={shop:'Coffee Shop',sizes:[],addons:[]},MENU=[],cart=[],cat='All',sending=false;
+const HOURS=4; // how long an unscanned order stays valid
+const LAST='cust_last_order';
+
+async function start(){
+  try{
+    firebase.initializeApp(FIREBASE_CONFIG);
+    auth=firebase.auth();fs=firebase.firestore();
+    // If a staff member is already signed in on this device, keep that session instead of replacing it
+    if(!auth.currentUser)await auth.signInAnonymously();
+    await new Promise(ok=>{const u=auth.onAuthStateChanged(x=>{if(x){uid=x.uid;u();ok()}})});
+    const [st,mq]=await Promise.all([fs.collection('settings').doc('main').get(),fs.collection('menu').get()]);
+    if(st.exists)S=Object.assign(S,st.data());
+    MENU=mq.docs.map(d=>Object.assign({id:d.id},d.data())).sort((a,b)=>String(a.cat).localeCompare(b.cat)||String(a.name).localeCompare(b.name));
+    $('#shop').textContent=S.shop;document.title=S.shop+' - Order';
+    if(S.sideLogo)$('#logo').innerHTML=`<img src="${S.sideLogo}" alt="">`;
+    const last=loadLast();
+    if(last)showDone(last);else render();
+  }catch(e){
+    $('#main').innerHTML='<div class="empty">Cannot load the menu right now.<br><small>'+esc(e.message||e.code||'')+'</small></div>';
+  }
+}
+
+/* ---------- menu ---------- */
+function catList(){return ['All',...new Set(MENU.map(m=>m.cat))]}
+function render(){
+  $('#main').innerHTML=`<input class="search" id="q" placeholder="Search menu..." oninput="renderGrid()">
+  <div class="cats" id="cats"></div><div class="grid" id="grid"></div>`;
+  renderGrid();renderBar();
+}
+function renderGrid(){
+  const cl=catList();if(!cl.includes(cat))cat='All';
+  $('#cats').innerHTML=cl.map((c,i)=>`<button class="${c===cat?'on':''}" onclick="cat=catList()[${i}];renderGrid()">${esc(c)}</button>`).join('');
+  const q=($('#q').value||'').toLowerCase();
+  const list=MENU.filter(m=>(cat==='All'||m.cat===cat)&&String(m.name).toLowerCase().includes(q));
+  $('#grid').innerHTML=list.map(m=>{
+    const out=m.track&&m.stock<=0,tg=m.temp==='Hot'?'hot':m.temp==='Iced'?'iced':'';
+    return `<button class="item ${out?'out':''}" ${out?'disabled':''} onclick="openItem('${m.id}')"><div class="ph">${m.photo?`<img src="${m.photo}" alt="" loading="lazy">`:(m.sized?'☕':'🍰')}</div>${tg?`<span class="tag ${tg}">${m.temp}</span>`:''}<span class="nm">${esc(m.name)}</span><span class="pr">${out?'Sold out':fmt(m.price)+(m.sized?'+':'')}</span></button>`;
+  }).join('')||'<div class="empty">No items.</div>';
+}
+function sheet(h){$('#sheet').innerHTML=h;$('#ov').classList.add('on')}
+function closeSheet(){$('#ov').classList.remove('on')}
+$('#ov').addEventListener('click',e=>{if(e.target.id==='ov'&&!sending)closeSheet()});
+
+function unitPrice(it,size,addons){
+  const up=size?((S.sizes.find(s=>s.n===size)||{}).up||0):0;
+  const ap=addons.reduce((a,n)=>a+((S.addons.find(x=>x.n===n)||{}).p||0),0);
+  return r2(it.price+up+ap);
+}
+function openItem(id){
+  const it=MENU.find(m=>m.id===id);if(!it)return;
+  if(!it.sized){addToCart(it,'',[],1,'');toast('Added: '+it.name);return}
+  sheet(`<h3>${esc(it.name)}</h3>
+  <div class="lbl">Size</div>
+  <div class="chips">${S.sizes.map((z,i)=>`<label class="chip"><input type="radio" name="sz" value="${esc(z.n)}" ${i===0?'checked':''} onchange="prev('${id}')"><span>${esc(z.n)}${z.up?' +'+z.up:''}</span></label>`).join('')}</div>
+  ${S.addons.length?`<div class="lbl">Add-ons</div><div class="chips">${S.addons.map(a=>`<label class="chip"><input type="checkbox" name="ad" value="${esc(a.n)}" onchange="prev('${id}')"><span>${esc(a.n)} +${a.p}</span></label>`).join('')}</div>`:''}
+  <div class="two"><div><div class="lbl">Qty</div><input id="mq" type="number" min="1" max="20" value="1" oninput="prev('${id}')"></div>
+  <div><div class="lbl">Note</div><input id="mn" maxlength="60" placeholder="e.g. less ice"></div></div>
+  <div class="actions"><button class="ghost" onclick="closeSheet()">Cancel</button><button id="mAdd" onclick="confirmItem('${id}')">Add</button></div>`);
+  prev(id);
+}
+function pick(){
+  return {size:(document.querySelector('input[name=sz]:checked')||{}).value||'',
+    addons:[...document.querySelectorAll('input[name=ad]:checked')].map(x=>x.value),
+    qty:Math.min(20,Math.max(1,parseInt($('#mq').value)||1)),note:($('#mn').value||'').trim().slice(0,60)};
+}
+function prev(id){const it=MENU.find(m=>m.id===id),p=pick();$('#mAdd').textContent='Add · '+fmt(unitPrice(it,p.size,p.addons)*p.qty)}
+function confirmItem(id){const it=MENU.find(m=>m.id===id),p=pick();if(addToCart(it,p.size,p.addons,p.qty,p.note)){closeSheet();toast('Added: '+it.name)}}
+function addToCart(it,size,addons,qty,note){
+  if(it.track){
+    const have=cart.filter(c=>c.id===it.id).reduce((a,c)=>a+c.qty,0);
+    if(have+qty>it.stock){toast('Only '+it.stock+' left: '+it.name);return false}
+  }
+  const key=[it.id,size,addons.slice().sort().join('+'),note].join('|'),ex=cart.find(c=>c.key===key);
+  if(ex)ex.qty=Math.min(20,ex.qty+qty);
+  else cart.push({key,id:it.id,name:it.name,size,addons,note,unit:unitPrice(it,size,addons),qty});
+  renderBar();return true;
+}
+const subtotal=()=>r2(cart.reduce((a,c)=>a+c.unit*c.qty,0));
+const count=()=>cart.reduce((a,c)=>a+c.qty,0);
+function renderBar(){
+  $('#bar').style.display=cart.length?'block':'none';
+  $('#barBtn').innerHTML=`<span>View order (${count()})</span><span>${fmt(subtotal())}</span>`;
+}
+
+/* ---------- cart ---------- */
+function openCart(){
+  if(!cart.length)return;
+  sheet(`<h3>Your order</h3>
+  ${cart.map((c,i)=>`<div class="ci"><div><b>${esc(c.name)}</b>${c.size?` <small>(${esc(c.size)})</small>`:''}
+    <div class="sub">${esc(c.addons.join(', '))}${c.note?(c.addons.length?' · ':'')+'“'+esc(c.note)+'”':''}</div>
+    <div class="qty"><button onclick="chg(${i},-1)">−</button><span>${c.qty}</span><button onclick="chg(${i},1)">+</button></div></div>
+    <div style="text-align:right"><b>${fmt(c.unit*c.qty)}</b></div></div>`).join('')}
+  <div class="row total"><span>Total</span><span>${fmt(subtotal())}</span></div>
+  <div class="note">Pay at the counter. Prices may change slightly when the cashier confirms your order.</div>
+  <div class="two"><div><div class="lbl">Order type</div><select id="oType"><option>Dine-in</option><option>Take-out</option></select></div>
+  <div><div class="lbl">Your name (optional)</div><input id="oName" maxlength="30" placeholder="e.g. Ana"></div></div>
+  <div class="actions"><button class="ghost" onclick="closeSheet()">Add more</button><button id="sendBtn" style="background:var(--ok)" onclick="submitOrder()">Place order</button></div>`);
+}
+function chg(i,d){
+  const c=cart[i];if(!c)return;
+  const it=MENU.find(m=>m.id===c.id);
+  if(d>0){
+    if(c.qty>=20)return;
+    if(it&&it.track&&cart.filter(x=>x.id===c.id).reduce((a,x)=>a+x.qty,0)+1>it.stock){toast('Only '+it.stock+' left');return}
+  }
+  c.qty+=d;if(c.qty<=0)cart.splice(i,1);
+  renderBar();
+  if(cart.length){const t=($('#oType')||{}).value,n=($('#oName')||{}).value;openCart();if(t)$('#oType').value=t;if(n)$('#oName').value=n}else closeSheet();
+}
+
+/* ---------- submit ---------- */
+const ALPHA='ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+function newCode(){let s='';const a=new Uint32Array(6);crypto.getRandomValues(a);a.forEach(n=>s+=ALPHA[n%ALPHA.length]);return s}
+async function submitOrder(){
+  if(sending||!cart.length)return;
+  if(!navigator.onLine){toast('No internet connection');return}
+  sending=true;$('#sendBtn').disabled=true;$('#sendBtn').textContent='Sending…';
+  const now=Date.now();
+  const data={ts:now,exp:now+HOURS*3600*1000,uid,status:'new',type:$('#oType').value,name:($('#oName').value||'').trim().slice(0,30),
+    items:cart.map(c=>({id:c.id,name:c.name,size:c.size,addons:c.addons,note:c.note,qty:c.qty,unit:c.unit})),sub:subtotal()};
+  try{
+    let code=null,err=null;
+    for(let i=0;i<5&&!code;i++){
+      const c=newCode();
+      try{await fs.collection('pending').doc(c).set(Object.assign({code:c},data));code=c}
+      catch(e){err=e;if(e.code!=='permission-denied')break} // permission-denied can also mean the code already exists, so try another
+    }
+    if(!code)throw err||new Error('Could not place the order');
+    const rec={code,ts:now,exp:data.exp,count:count(),total:data.sub};
+    try{localStorage.setItem(LAST,JSON.stringify(rec))}catch(e){}
+    cart=[];sending=false;closeSheet();showDone(rec);
+  }catch(e){
+    sending=false;const b=$('#sendBtn');if(b){b.disabled=false;b.textContent='Place order'}
+    toast('Could not send your order. Please try again.',4000);
+  }
+}
+function loadLast(){
+  try{const r=JSON.parse(localStorage.getItem(LAST));if(r&&r.code&&r.exp>Date.now())return r}catch(e){}
+  try{localStorage.removeItem(LAST)}catch(e){}
+  return null;
+}
+function qrImg(text){
+  const q=qrcode(0,'M');q.addData(text);q.make();
+  return q.createDataURL(8,2);
+}
+function showDone(rec){
+  $('#bar').style.display='none';
+  let img='';try{img=`<img src="${qrImg('POS:'+rec.code)}" alt="Order QR">`}catch(e){}
+  $('#main').innerHTML=`<div class="done"><h2 style="margin:6px 0">Order ready!</h2>
+  <div style="color:var(--mut)">Show this QR to the cashier when it is your turn.</div>
+  <div style="margin:16px 0">${img}</div>
+  <div class="code">${esc(rec.code)}</div><div style="color:var(--mut)">${rec.count} item(s) · about ${fmt(rec.total)}</div>
+  <div class="note">Keep this page open. If the QR does not scan, tell the cashier your code.</div>
+  <button class="ghost" onclick="newOrder()">Start a new order</button></div>`;
+}
+function newOrder(){
+  if(!confirm('Start a new order? Your current QR will be removed from this phone.'))return;
+  try{localStorage.removeItem(LAST)}catch(e){}
+  cart=[];render();
+}
+start();
+</script>
+</body>
+</html>
