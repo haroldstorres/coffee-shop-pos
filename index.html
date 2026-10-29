@@ -98,30 +98,27 @@ main{padding:0 22px 22px}
 .scanbox video{display:none;width:100%;max-height:320px;background:#000;border-radius:12px;object-fit:cover}
 .scanmsg{color:var(--mut);font-size:13px;margin:8px 0}
 .onlbadge{background:#c9744a;color:#fff;border-radius:999px;padding:1px 8px;font-size:12px;font-style:normal}
-.dh{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:12px;margin:10px 0 14px}
-.dh .k{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px}
-.dh .k small{display:block;color:#5b4a3d;font-size:13px;font-weight:600}
-.dh .k b{display:block;font-size:26px;line-height:1.25;margin-top:4px}
-.dh .k em{display:block;font-style:normal;color:var(--mut);font-size:13px;margin-top:2px}
-.dh .hero{border-left:6px solid var(--ok)}.dh .hero.neg{border-left-color:var(--bad)}
-.dh .hero b{font-size:34px}
-.dpanel{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px}
-.dpanel h4{margin:0 0 10px;font-size:16px}
+.dh{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:8px;margin:8px 0 10px}
+.dh .k{background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+.dh .k small{display:block;color:#5b4a3d;font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dh .k b{display:block;font-size:19px;line-height:1.3}
+.dh .k em{display:block;font-style:normal;color:var(--mut);font-size:12px}
+.dh .hero{border-left:5px solid var(--ok);grid-column:span 2}
+.dh .hero.neg{border-left-color:var(--bad)}
+.dh .hero b{font-size:26px}
+.dpanel{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-bottom:10px}
+.dpanel h4{margin:0 0 6px;font-size:15px}
 .dpanel .chartbox{border:0;padding:0;margin:0}
-.dsec{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:0 0 14px}
-.dsec>div{background:#faf6f0;border-radius:10px;padding:10px 12px}
-.dsec small{display:block;color:var(--mut);font-size:12px}
-.dsec b{font-size:17px}
-.dgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.hb{display:grid;grid-template-columns:minmax(70px,1fr) 1.6fr auto;gap:10px;align-items:center;padding:7px 0;font-size:14px}
-.hb .tr{background:#efe7dc;border-radius:999px;height:10px;overflow:hidden}
+.dmain{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:10px;align-items:start}
+.hb{display:grid;grid-template-columns:minmax(60px,1fr) 1.4fr auto;gap:8px;align-items:center;padding:4px 0;font-size:13px}
+.hb .tr{background:#efe7dc;border-radius:999px;height:8px;overflow:hidden}
 .hb .tr i{display:block;height:100%;border-radius:999px;background:var(--brand)}
 .hb .v{font-weight:600;white-space:nowrap}
-.split{display:flex;height:22px;border-radius:999px;overflow:hidden;background:#efe7dc;margin:6px 0 10px}
+.split{display:flex;height:16px;border-radius:999px;overflow:hidden;background:#efe7dc;margin:4px 0 6px}
 .split i{display:block;height:100%}
-.splitlg{display:flex;gap:6px 18px;flex-wrap:wrap;font-size:13px;color:#5b4a3d}
-.splitlg i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
-@media(max-width:900px){.dh{grid-template-columns:1fr 1fr}.dh .hero{grid-column:1/-1}.dgrid{grid-template-columns:1fr}}
+.splitlg{display:flex;gap:4px 16px;flex-wrap:wrap;font-size:12px;color:#5b4a3d}
+.splitlg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+@media(max-width:1000px){.dmain{grid-template-columns:1fr}.dh .hero{grid-column:1/-1}}
 .kds{display:grid;grid-template-columns:1fr 1fr 260px;gap:14px;align-items:stretch;min-height:calc(100vh - 110px)}
 .kcol{background:#fffdf9;border:1px solid var(--line);border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
 .kcol.serve{border:3px solid #2d6b3f}
@@ -1401,7 +1398,7 @@ function money(n){return `<span class="${n<0?'neg':''}">${fmt(n)}</span>`}
 function chartSVG(A){
   const keys=dateRange(rf,rt);
   const rows=keys.map(k=>{const d=A.days[k]||{sales:0,cogs:0,exp:0};return {k,s:d.sales,c:d.cogs,e:d.exp,n:d.sales-d.cogs-d.exp}});
-  const W=760,H=270,L=56,R=12,T=14,B=32;
+  const W=900,H=200,L=56,R=12,T=10,B=28;
   let mx=Math.max(1,...rows.flatMap(r=>[r.s,r.c,r.e,r.n])),mn=Math.min(0,...rows.map(r=>r.n));
   const raw=(mx-mn)/4,mag=Math.pow(10,Math.floor(Math.log10(raw))),step=[1,2,2.5,5,10].map(m=>m*mag).find(v=>v>=raw)||raw;
   mx=Math.ceil(mx/step)*step;mn=Math.floor(mn/step)*step;
@@ -1436,32 +1433,33 @@ async function aDash(silent){
   const seg=(v,col,lab)=>v>0?`<i style="width:${v/tot*100}%;background:${col}" title="${lab} ${fmt(v)}"></i>`:'';
   const hbar=(name,v,max,text)=>`<div class="hb"><span>${esc(name)}</span><span class="tr"><i style="width:${Math.max(2,v/max*100)}%"></i></span><span class="v">${text}</span></div>`;
   $('#aContent').innerHTML=rangeBar('aDash',exportButtons('dash'))+ingBanner()+uncBanner(A)+`
-  <div style="color:var(--mut);font-size:14px">Showing ${rangeText()}</div>
   <div class="dh">
     <div class="k hero ${A.net<0?'neg':''}"><small>Net profit</small><b>${money(A.net)}</b><em>${A.orders?pct(A.net,A.sales)+' of sales':'No sales in this period'}</em></div>
-    <div class="k"><small>Sales${A.vat?' (excl. VAT)':''}</small><b>${fmt(A.sales)}</b><em>after discounts</em></div>
-    <div class="k"><small>Orders</small><b>${A.orders}</b><em>voids not counted</em></div>
-    <div class="k"><small>Average per order</small><b>${fmt(A.orders?A.sales/A.orders:0)}</b><em>sales ÷ orders</em></div>
+    <div class="k"><small>Sales${A.vat?' (excl. VAT)':''}</small><b>${fmt(A.sales)}</b></div>
+    <div class="k"><small>Orders</small><b>${A.orders}</b></div>
+    <div class="k"><small>Average / order</small><b>${fmt(A.orders?A.sales/A.orders:0)}</b></div>
+    <div class="k"><small>Cost of goods</small><b>${fmt(A.cogs)}</b></div>
+    <div class="k"><small>Gross profit · ${pct(A.gross,A.sales)}</small><b>${money(A.gross)}</b></div>
+    <div class="k"><small>Expenses</small><b>${fmt(A.exp)}</b></div>
+    ${A.vat?`<div class="k"><small>VAT collected (not income)</small><b>${fmt(A.vat)}</b></div>`:''}
+    ${A.fees?`<div class="k"><small>Delivery fees (not sales)</small><b>${fmt(A.fees)}</b></div>`:''}
+    ${A.credit?`<div class="k"><small>Unpaid credit (of ${fmt(A.credit)})</small><b>${fmt(A.unpaid)}</b></div>`:''}
+    ${Object.entries(A.byPay).map(([k,v])=>`<div class="k"><small>${esc(k)} payments</small><b>${fmt(r2(v))}</b></div>`).join('')}
   </div>
-  <div class="dpanel"><h4>Where the sales went</h4>
-    <div class="split">${seg(A.cogs,'#c47f17','Cost of goods')}${seg(A.exp,'#b3392f','Expenses')}${seg(prof,'#2f7d4f','Net profit')}</div>
-    <div class="splitlg"><span><i style="background:#c47f17"></i>Cost of goods ${fmt(A.cogs)} · ${pct(A.cogs,A.sales)}</span><span><i style="background:#b3392f"></i>Expenses ${fmt(A.exp)} · ${pct(A.exp,A.sales)}</span><span><i style="background:#2f7d4f"></i>Net profit ${fmt(A.net)} · ${pct(A.net,A.sales)}</span></div>
-    ${A.net<0&&A.orders?`<div class="warnbox" style="margin-bottom:0">Costs and expenses are higher than sales by ${fmt(-A.net)} in this period.</div>`:''}
-  </div>
-  <div class="dsec">
-    <div><small>Cost of goods</small><b>${fmt(A.cogs)}</b></div>
-    <div><small>Gross profit · ${pct(A.gross,A.sales)}</small><b>${money(A.gross)}</b></div>
-    <div><small>Expenses</small><b>${fmt(A.exp)}</b></div>
-    ${A.vat?`<div><small>VAT collected (not income)</small><b>${fmt(A.vat)}</b></div>`:''}
-    ${A.fees?`<div><small>Delivery fees (not sales)</small><b>${fmt(A.fees)}</b></div>`:''}
-    ${A.credit?`<div><small>Unpaid credit (of ${fmt(A.credit)})</small><b>${fmt(A.unpaid)}</b></div>`:''}
-    ${Object.entries(A.byPay).map(([k,v])=>`<div><small>${esc(k)} payments</small><b>${fmt(r2(v))}</b></div>`).join('')}
-  </div>
-  <div class="dpanel"><h4>Sales, cost and expenses by day</h4>${chartSVG(A)}
-  ${Math.round((new Date(rt+'T12:00:00')-new Date(rf+'T12:00:00'))/864e5)+1>93?'<div class="warnbox">The chart shows the first 93 days only. The totals above cover the whole range.</div>':''}</div>
-  <div class="dgrid">
-    <div class="dpanel"><h4>Top sellers</h4>${top.map(([n,t])=>hbar(n,t.q,topMax,t.q+' sold · '+fmt(t.s))).join('')||'<div class="empty">No sales in this period.</div>'}</div>
-    <div class="dpanel"><h4>Expenses by category</h4>${cats.map(([c,v])=>hbar(c,v,catMax,fmt(v)+' · '+pct(v,A.sales))).join('')||'<div class="empty">No expenses recorded for these dates.</div>'}</div>
+  <div class="dmain">
+    <div>
+      <div class="dpanel"><h4>Where the sales went</h4>
+        <div class="split">${seg(A.cogs,'#c47f17','Cost of goods')}${seg(A.exp,'#b3392f','Expenses')}${seg(prof,'#2f7d4f','Net profit')}</div>
+        <div class="splitlg"><span><i style="background:#c47f17"></i>Cost of goods ${fmt(A.cogs)} · ${pct(A.cogs,A.sales)}</span><span><i style="background:#b3392f"></i>Expenses ${fmt(A.exp)} · ${pct(A.exp,A.sales)}</span><span><i style="background:#2f7d4f"></i>Net profit ${fmt(A.net)} · ${pct(A.net,A.sales)}</span></div>
+        ${A.net<0&&A.orders?`<div class="warnbox" style="margin:6px 0 0;padding:6px 10px;font-size:13px">Costs and expenses are higher than sales by ${fmt(-A.net)} in this period.</div>`:''}
+      </div>
+      <div class="dpanel"><h4>Sales, cost and expenses by day</h4>${chartSVG(A)}
+      ${Math.round((new Date(rt+'T12:00:00')-new Date(rf+'T12:00:00'))/864e5)+1>93?'<div class="warnbox">The chart shows the first 93 days only. The totals above cover the whole range.</div>':''}</div>
+    </div>
+    <div>
+      <div class="dpanel"><h4>Top sellers</h4>${top.map(([n,t])=>hbar(n,t.q,topMax,t.q+' sold · '+fmt(t.s))).join('')||'<div class="empty" style="padding:10px 0">No sales in this period.</div>'}</div>
+      <div class="dpanel"><h4>Expenses by category</h4>${cats.map(([c,v])=>hbar(c,v,catMax,fmt(v)+' · '+pct(v,A.sales))).join('')||'<div class="empty" style="padding:10px 0">No expenses recorded for these dates.</div>'}</div>
+    </div>
   </div>
   <div style="color:var(--mut);font-size:12px;margin-top:10px">Net profit = Sales − Cost of goods − Expenses. Voided orders are excluded.${A.credit?' Credit sales count as sales when they are made, even if not paid yet.':''}${A.fees?' Delivery fees are not counted as sales or profit.':''}</div>`;
 }
