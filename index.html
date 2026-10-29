@@ -97,6 +97,12 @@ main{padding:0 22px 22px}
 .scanbox video{display:none;width:100%;max-height:320px;background:#000;border-radius:12px;object-fit:cover}
 .scanmsg{color:var(--mut);font-size:13px;margin:8px 0}
 .onlbadge{background:#c9744a;color:#fff;border-radius:999px;padding:1px 8px;font-size:12px;font-style:normal}
+.side{overflow-y:auto}
+.menu .subnav{display:flex;flex-direction:column;gap:2px;margin:-2px 0 6px}
+.menu button.sub{display:block;padding:8px 16px 8px 52px;font-size:14px;color:#b9a898;border-radius:10px}
+.menu button.sub.on{background:rgba(255,255,255,.1);color:#fff}
+@media(max-width:900px){.menu .subnav{display:none}}
+@media(min-width:901px){.subtabs{display:none}}
 .actbar{display:grid;grid-template-columns:1fr 1.5fr;gap:10px;margin-top:16px}
 .actbar button{display:flex;align-items:center;justify-content:center;gap:8px;padding:15px 10px;font-size:16px;font-weight:600;border-radius:12px}
 .actbar svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
@@ -201,8 +207,11 @@ code{background:#f1e9df;padding:1px 5px;border-radius:5px}
       <button id="nav-pos" onclick="navTo('pos')"><svg viewBox="0 0 24 24"><path d="M3 4h2l2.2 10.5a1 1 0 0 0 1 .8h8.6a1 1 0 0 0 1-.8L19 8H6"/><circle cx="9" cy="19.5" r="1.2"/><circle cx="17" cy="19.5" r="1.2"/></svg><span>POS</span></button>
       <button id="nav-bar" onclick="navTo('bar')"><svg viewBox="0 0 24 24"><rect x="5" y="3.5" width="14" height="17" rx="2"/><path d="M8.5 9h7M8.5 13h7M8.5 17h4"/></svg><span>Orders</span></button>
       <button id="nav-inv" onclick="navTo('inv')"><svg viewBox="0 0 24 24"><path d="M12 3 4 7v10l8 4 8-4V7z"/><path d="M4 7l8 4 8-4M12 11v10"/></svg><span>Inventory</span></button>
+      <div class="subnav" id="sn-inv"><button class="sub" data-t="menu" onclick="subTo('menu')">Menu &amp; Stock</button><button class="sub" data-t="ing" onclick="subTo('ing')">Ingredients</button></div>
       <button id="nav-rep" onclick="navTo('rep')"><svg viewBox="0 0 24 24"><path d="M5 20V11M11 20V5M17 20v-7"/></svg><span>Reports</span></button>
+      <div class="subnav" id="sn-rep"><button class="sub" data-t="dash" onclick="subTo('dash')">Dashboard</button><button class="sub" data-t="reports" onclick="subTo('reports')">Sales Report</button><button class="sub" data-t="zread" onclick="subTo('zread')">Z-Reading</button><button class="sub" data-t="exp" onclick="subTo('exp')">Expenses</button><button class="sub" data-t="credits" onclick="subTo('credits')">Credits</button></div>
       <button id="nav-set" onclick="navTo('set')"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span>Settings</span></button>
+      <div class="subnav" id="sn-set"><button class="sub" data-t="settings" onclick="subTo('settings')">Settings</button><button class="sub" data-t="staff" onclick="subTo('staff')">Staff</button></div>
     </nav>
     <div id="net"></div>
     <div class="me"><div class="av" id="av">?</div><div class="t"><b id="whoName"></b><small id="whoRole"></small></div><button class="out" onclick="logout()">Logout</button></div>
@@ -499,7 +508,7 @@ function applyRole(){
   startPending();
   const adm=can.admin.includes(ME.role);
   $('#nav-pos').style.display=can.pos.includes(ME.role)?'':'none';
-  ['inv','rep','set'].forEach(k=>{$('#nav-'+k).style.display=adm?'':'none'});
+  ['inv','rep','set'].forEach(k=>{$('#nav-'+k).style.display=adm?'':'none';$('#sn-'+k).style.display=adm?'':'none'});
   $('#whoName').textContent=ME.name;$('#whoRole').textContent=ME.role;$('#av').textContent=(ME.name||'?').trim().charAt(0).toUpperCase();
   const nav=loadNav();
   if(['dash','reports','zread','exp','credits','menu','ing','staff','settings'].includes(nav.aTab))aTab=nav.aTab;
@@ -539,7 +548,10 @@ function markNav(){
   $('#onlBtn').style.display=view==='pos'?'':'none';
   $('#topTitle').style.display=view==='pos'?'none':'block';
   $('#topTitle').textContent=T[on]||'';
+  document.querySelectorAll('.menu .sub').forEach(b=>b.classList.toggle('on',view==='admin'&&b.dataset.t===aTab));
+  subBadge();
 }
+function subTo(t){aTab=t;if(view==='admin')renderAdmin();else go('admin')}
 function tick(){
   const d=new Date();
   $('#clkD').textContent=d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
@@ -1052,7 +1064,13 @@ function renderAdmin(){
 }
 
 /* ----- menu ----- */
+function subBadge(){ // low-stock count on the sidebar Ingredients item
+  const s=document.querySelector('.menu .sub[data-t="ing"]');if(!s)return;
+  const n=ingAlerts().length;
+  s.innerHTML='Ingredients'+(n?` <span class="badge" style="background:#b3392f;color:#fff">${n}</span>`:'');
+}
 function ingBadge(){
+  subBadge();
   const b=document.querySelector('#adminBody .subtabs button[data-t="ing"]');if(!b)return;
   const n=ingAlerts().length;
   b.innerHTML='Ingredients'+(n?` <span class="badge" style="background:#b3392f;color:#fff">${n}</span>`:'');
