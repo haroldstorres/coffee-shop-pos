@@ -43,6 +43,20 @@ main{padding:14px;max-width:760px;margin:0 auto}
 #sheet{background:#fff;border-radius:18px 18px 0 0;padding:18px 18px 96px;position:relative;width:100%;max-width:560px;max-height:92vh;overflow:auto}
 #sheet h3{margin:0 0 8px;padding-right:44px}
 #sheet.cartsheet{padding-bottom:0}
+#sheet.cartsheet .sx{display:none}
+.sumhead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
+.sumhead h3{margin:0;padding:0;font-size:26px}
+.lnk{background:none;border:0;padding:0;color:#1a6fd6;font-weight:700;font-size:16px;border-radius:0}
+.ci2{display:grid;grid-template-columns:64px 1fr auto;gap:12px;padding:16px 0;border-bottom:1px solid var(--line)}
+.ci2 .th{width:64px;height:64px;border-radius:14px;background:linear-gradient(135deg,#e8d8c4,#c9a583);display:flex;align-items:center;justify-content:center;font-size:26px;overflow:hidden}
+.ci2 .th img{width:100%;height:100%;object-fit:cover;display:block}
+.ci2 .mid{display:flex;flex-direction:column;align-items:flex-start;gap:3px;min-width:0}
+.ci2 .mid b{font-size:16px}
+.ci2 .sub{color:var(--mut);font-size:13px}
+.ci2 .mid .lnk{margin-top:4px}
+.ci2 .rt{display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between}
+.ci2 .pr{color:#4a3a2e;font-size:15px}
+.qsel{width:44px;height:44px;padding:0;border-radius:50%;border:2px solid var(--ok);background:#fff;font-weight:700;font-size:16px;text-align:center;text-align-last:center;-webkit-appearance:none;appearance:none;box-shadow:0 4px 10px rgba(42,29,22,.12)}
 .stickyfoot{position:sticky;bottom:0;margin:12px -18px 0;padding:10px 18px 96px;background:#fff;border-top:1px solid var(--line);box-shadow:0 -6px 14px rgba(42,29,22,.08)}
 .stickyfoot .row.total{border-top:0;padding-top:0;margin:0 0 4px}
 .sx{position:absolute;top:12px;right:14px;width:34px;height:34px;padding:0;border-radius:50%;background:#efe7dc;color:var(--dark);font-size:16px;line-height:1}
@@ -238,11 +252,13 @@ function goOrder(){
 /* ---------- cart ---------- */
 function openCart(){
   if(!cart.length){toast('Your cart is empty. Pick something from the menu.');return}
-  sheet(`<h3>Your order</h3>
-  ${cart.map((c,i)=>`<div class="ci"><div><b>${esc(c.name)}</b>${c.size?` <small>(${esc(c.size)})</small>`:''}
-    <div class="sub">${esc(c.addons.join(', '))}${c.note?(c.addons.length?' · ':'')+'“'+esc(c.note)+'”':''}</div>
-    <div class="qty"><button onclick="chg(${i},-1)">−</button><span>${c.qty}</span><button onclick="chg(${i},1)">+</button>${(MENU.find(x=>x.id===c.id)||{}).sized?`<button class="ghost" style="width:auto;padding:0 12px;margin-left:6px" onclick="editLine(${i})">Edit</button>`:''}</div></div>
-    <div style="text-align:right"><b>${fmt(c.unit*c.qty)}</b></div></div>`).join('')}
+  sheet(`<div class="sumhead"><h3>Order Summary</h3><button class="lnk" onclick="closeSheet()">Add Items</button></div>
+  ${cart.map((c,i)=>{
+    const m=MENU.find(x=>x.id===c.id)||{},sub=[c.size].concat(c.addons).filter(Boolean).join(' · ');
+    return `<div class="ci2"><div class="th">${m.photo?`<img src="${m.photo}" alt="">`:(m.sized?'☕':'🍰')}</div>
+    <div class="mid"><b>${esc(c.name)}</b>${sub?`<div class="sub">${esc(sub)}</div>`:''}${c.note?`<div class="sub">“${esc(c.note)}”</div>`:''}${m.sized?`<button class="lnk" onclick="editLine(${i})">Edit</button>`:''}</div>
+    <div class="rt"><div class="pr">${fmt(c.unit*c.qty)}</div>
+    <select class="qsel" aria-label="Quantity" onchange="setQty(${i},this.value)">${Array.from({length:20},(_,k)=>`<option value="${k+1}" ${c.qty===k+1?'selected':''}>${k+1}</option>`).join('')}<option value="0">Remove</option></select></div></div>`}).join('')}
   <div class="note">Pay at the counter. Prices may change slightly when the cashier confirms your order.</div>
   <div class="two"><div><div class="lbl">Order type</div><select id="oType"><option>Dine-in</option><option>Take-out</option></select></div>
   <div><div class="lbl">Your name (optional)</div><input id="oName" maxlength="30" placeholder="e.g. Ana"></div></div>
@@ -250,6 +266,19 @@ function openCart(){
   <div class="actions" style="margin-top:8px"><button class="ghost" onclick="closeSheet()">Add more</button><button id="sendBtn" style="background:var(--ok)" onclick="submitOrder()">Place order</button></div></div>`);
   $('#sheet').classList.add('cartsheet');
   if(keepForm){if(keepForm.t)$('#oType').value=keepForm.t;if(keepForm.n)$('#oName').value=keepForm.n;keepForm=null}
+}
+function setQty(i,v){
+  const c=cart[i];if(!c)return;
+  const q=parseInt(v)||0,it=MENU.find(m=>m.id===c.id);
+  if(q<=0)cart.splice(i,1);
+  else if(it&&it.track&&cart.filter((x,k)=>x.id===c.id&&k!==i).reduce((a,x)=>a+x.qty,0)+q>it.stock)toast('Only '+it.stock+' left');
+  else c.qty=Math.min(20,q);
+  renderBar();
+  if(cart.length){
+    const top=$('#sheet').scrollTop;
+    keepForm={t:($('#oType')||{}).value,n:($('#oName')||{}).value};
+    openCart();$('#sheet').scrollTop=top;
+  }else closeSheet();
 }
 function chg(i,d){
   const c=cart[i];if(!c)return;
