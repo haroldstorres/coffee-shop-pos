@@ -7,7 +7,7 @@
 <style>
 :root{--bg:#f6f1ea;--card:#fffdf9;--ink:#2b2018;--mut:#7a6a5c;--brand:#6f4e37;--dark:#2a1d16;--ok:#2f5d4a;--bad:#b3392f;--line:#e6dccf}
 *{box-sizing:border-box}
-body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink);font-size:15px;padding-bottom:90px}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink);font-size:15px;padding-bottom:110px}
 button{font:inherit;cursor:pointer;border:0;border-radius:12px;padding:11px 16px;background:var(--dark);color:#fff}
 button:disabled{opacity:.45;cursor:not-allowed}
 button.ghost{background:#fff;color:var(--dark);border:1px solid var(--line)}
@@ -31,6 +31,11 @@ main{padding:14px;max-width:760px;margin:0 auto}
 .item .nm{padding:9px 11px 0;font-weight:500}
 .item .pr{padding:3px 11px 11px;font-weight:700}
 .item.out{opacity:.45}
+.tabs{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);width:min(440px,calc(100% - 28px));display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:6px;border-radius:34px;background:rgba(255,253,249,.55);-webkit-backdrop-filter:blur(18px) saturate(170%);backdrop-filter:blur(18px) saturate(170%);border:1px solid rgba(255,255,255,.7);box-shadow:0 10px 30px rgba(42,29,22,.22),inset 0 1px 0 rgba(255,255,255,.6);z-index:6}
+.tabs button{position:relative;background:transparent;color:#4a3a2e;border-radius:28px;padding:8px 4px 7px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:12px;font-weight:600}
+.tabs button svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.tabs button.on{background:rgba(42,29,22,.16);color:var(--dark)}
+.tabs .cnt{position:absolute;top:3px;left:50%;margin-left:5px;background:#c9744a;color:#fff;border-radius:999px;font-style:normal;font-size:11px;min-width:18px;height:18px;line-height:18px;text-align:center;padding:0 5px}
 .bar{position:fixed;left:0;right:0;bottom:0;padding:12px 14px;background:var(--bg);border-top:1px solid var(--line);z-index:6}
 .bar button{width:100%;padding:15px;font-size:16px;font-weight:600;background:var(--ok);display:flex;justify-content:space-between}
 #ov{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:flex-end;justify-content:center;z-index:20}
@@ -59,7 +64,7 @@ main{padding:14px;max-width:760px;margin:0 auto}
   .bar{left:50%;right:auto;transform:translateX(-50%);width:100%;max-width:760px;background:transparent;border-top:0;padding:12px 14px 16px}
   .bar button{box-shadow:0 6px 18px rgba(0,0,0,.22)}
 }
-#toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:10px;display:none;z-index:30;max-width:90vw;text-align:center}
+#toast{position:fixed;bottom:104px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:10px;display:none;z-index:30;max-width:90vw;text-align:center}
 .done{text-align:center;padding:10px 0}
 .done canvas,.done img{width:230px;height:230px;image-rendering:pixelated;background:#fff;padding:10px;border-radius:12px;border:1px solid var(--line)}
 .code{font-size:34px;font-weight:800;letter-spacing:.18em;margin:10px 0 2px}
@@ -77,7 +82,11 @@ main{padding:14px;max-width:760px;margin:0 auto}
 <body>
 <header><div id="logo"></div><div><b id="shop">Order</b><small>Order here, then show your QR at the counter</small></div></header>
 <main id="main"><div class="empty">Loading menu…</div></main>
-<div class="bar" id="bar" style="display:none"><button id="barBtn" onclick="openCart()"></button></div>
+<nav class="tabs" id="tabs">
+  <button id="tab-menu" class="on" onclick="goMenu()"><svg viewBox="0 0 24 24"><path d="M5 8h12v5a6 6 0 0 1-12 0z"/><path d="M17 9h1.5a2.5 2.5 0 0 1 0 5H17"/><path d="M9 3c-1 1 1 2 0 3M13 3c-1 1 1 2 0 3"/></svg><span>Menu</span></button>
+  <button id="tab-cart" onclick="openCart()"><svg viewBox="0 0 24 24"><path d="M6 8h12l-1 11a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg><i class="cnt" id="cartCnt" style="display:none">0</i><span id="cartLbl">Cart</span></button>
+  <button id="tab-order" onclick="goOrder()"><svg viewBox="0 0 24 24"><rect x="5" y="3.5" width="14" height="17" rx="2"/><path d="M8.5 9h7M8.5 13h7M8.5 17h4"/></svg><span>My order</span></button>
+</nav>
 <div id="ov"><div id="sheet"></div></div>
 <div id="toast"></div>
 
@@ -125,7 +134,7 @@ function catList(){return ['All',...new Set(MENU.map(m=>m.cat))]}
 function render(){
   $('#main').innerHTML=`<input class="search" id="q" placeholder="Search menu..." oninput="renderGrid()">
   <div class="cats" id="cats"></div><div class="grid" id="grid"></div>`;
-  renderGrid();renderBar();
+  renderGrid();renderBar();setTab('menu');
 }
 function renderGrid(){
   const cl=catList();if(!cl.includes(cat))cat='All';
@@ -177,14 +186,22 @@ function addToCart(it,size,addons,qty,note){
 }
 const subtotal=()=>r2(cart.reduce((a,c)=>a+c.unit*c.qty,0));
 const count=()=>cart.reduce((a,c)=>a+c.qty,0);
-function renderBar(){
-  $('#bar').style.display=cart.length?'block':'none';
-  $('#barBtn').innerHTML=`<span>View order (${count()})</span><span>${fmt(subtotal())}</span>`;
+function renderBar(){ // the Cart tab shows the item count and subtotal
+  const n=count(),b=$('#cartCnt');
+  b.textContent=n;b.style.display=n?'':'none';
+  $('#cartLbl').textContent=n?fmt(subtotal()):'Cart';
+}
+function setTab(t){$('#tab-menu').classList.toggle('on',t==='menu');$('#tab-order').classList.toggle('on',t==='order')}
+function goMenu(){setTab('menu');if(!$('#grid'))render();else window.scrollTo({top:0,behavior:'smooth'})}
+function goOrder(){
+  const last=loadLast();
+  if(!last){toast('You have no active order yet');return}
+  setTab('order');showDone(last);
 }
 
 /* ---------- cart ---------- */
 function openCart(){
-  if(!cart.length)return;
+  if(!cart.length){toast('Your cart is empty. Pick something from the menu.');return}
   sheet(`<h3>Your order</h3>
   ${cart.map((c,i)=>`<div class="ci"><div><b>${esc(c.name)}</b>${c.size?` <small>(${esc(c.size)})</small>`:''}
     <div class="sub">${esc(c.addons.join(', '))}${c.note?(c.addons.length?' · ':'')+'“'+esc(c.note)+'”':''}</div>
@@ -272,7 +289,7 @@ function applyStatus(p){
   if(st==='served'||st==='cancelled'){try{localStorage.removeItem(LAST)}catch(e){}}
 }
 function showDone(rec){
-  $('#bar').style.display='none';
+  setTab('order');
   let img='';try{img=`<img src="${qrImg('POS:'+rec.code)}" alt="Order QR">`}catch(e){}
   $('#main').innerHTML=`<div class="done"><h2 style="margin:6px 0">Order sent!</h2>
   <div id="stat" class="stat new"><div class="ic">⏳</div><div><b>Waiting for the cashier</b><small>Show your QR when it is your turn.</small></div></div>
