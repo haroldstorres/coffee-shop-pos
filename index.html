@@ -1103,7 +1103,7 @@ async function setStatus(id,s){
   try{
     await fs.collection('orders').doc(id).update({status:s});
     const o=ORDERS.find(x=>x.id===id); // let the customer's phone know (best effort)
-    if(o&&o.pendCode)fs.collection('pending').doc(o.pendCode).update({status:s}).catch(()=>{});
+    if(o&&o.pendCode)fs.collection('pending').doc(o.pendCode).update({status:s}).catch(e=>{if(e.code!=='not-found')toast('The customer page was not updated: '+errMsg(e),5000)});
   }catch(e){toast(errMsg(e))}
 }
 
