@@ -123,6 +123,7 @@ async function start(){
     MENU=mq.docs.map(d=>Object.assign({id:d.id},d.data())).sort((a,b)=>String(a.cat).localeCompare(b.cat)||String(a.name).localeCompare(b.name));
     $('#shop').textContent=S.shop;document.title=S.shop+' - Order';
     if(S.sideLogo)$('#logo').innerHTML=`<img src="${S.sideLogo}" alt="">`;
+    loadCart();
     const last=loadLast();
     if(last)showDone(last);else render();
   }catch(e){
@@ -187,7 +188,22 @@ function addToCart(it,size,addons,qty,note){
 }
 const subtotal=()=>r2(cart.reduce((a,c)=>a+c.unit*c.qty,0));
 const count=()=>cart.reduce((a,c)=>a+c.qty,0);
+const CART_KEY='cust_cart';
+function saveCart(){try{localStorage.setItem(CART_KEY,JSON.stringify({ts:Date.now(),cart}))}catch(e){}}
+function loadCart(){ // bring back the cart after a refresh; prices are worked out again from the current menu
+  try{
+    const r=JSON.parse(localStorage.getItem(CART_KEY));
+    if(!r||!Array.isArray(r.cart)||Date.now()-(r.ts||0)>12*3600*1000)return;
+    r.cart.forEach(c=>{
+      const it=MENU.find(m=>m.id===c.id);if(!it||(it.track&&it.stock<=0))return;
+      const size=it.sized?((S.sizes.find(z=>z.n===c.size)||S.sizes[0]||{}).n||''):'';
+      const addons=it.sized?(c.addons||[]).filter(n=>S.addons.some(a=>a.n===n)):[];
+      addToCart(it,size,addons,Math.min(20,Math.max(1,parseInt(c.qty)||1)),String(c.note||'').slice(0,60));
+    });
+  }catch(e){}
+}
 function renderBar(){ // the Cart tab shows the item count and subtotal
+  saveCart();
   const n=count(),b=$('#cartCnt');
   b.textContent=n;b.style.display=n?'':'none';
   $('#cartLbl').textContent=n?fmt(subtotal()):'Cart';
@@ -246,7 +262,7 @@ async function submitOrder(){
     if(!code)throw err||new Error('Could not place the order');
     const rec={code,ts:now,exp:data.exp,count:count(),total:data.sub};
     try{localStorage.setItem(LAST,JSON.stringify(rec))}catch(e){}
-    cart=[];sending=false;closeSheet();showDone(rec);
+    cart=[];renderBar();sending=false;closeSheet();showDone(rec);
   }catch(e){
     sending=false;const b=$('#sendBtn');if(b){b.disabled=false;b.textContent='Place order'}
     console.error(e);
