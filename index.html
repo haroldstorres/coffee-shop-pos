@@ -202,8 +202,30 @@ const dstr=ts=>{const d=new Date(ts);return d.getFullYear()+'-'+pad(d.getMonth()
 const todayStr=()=>dstr(Date.now());
 const tstr=ts=>{const d=new Date(ts);return pad(d.getHours())+':'+pad(d.getMinutes())};
 function toast(t,ms){const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',ms||3000)}
-function modal(h){$('#modal').innerHTML=h;$('#overlay').classList.add('on')}
-function closeModal(){$('#overlay').classList.remove('on');if(view==='admin'){if(aTab==='menu')aMenu();else if(aTab==='ing')aIng()}}
+let draftKind=null,draftId=null,INGLOADED=false,MENULOADED=false;
+function modal(h){draftKind=null;try{localStorage.removeItem('pos_draft')}catch(e){}$('#modal').innerHTML=h;$('#overlay').classList.add('on')}
+/* unsaved item / ingredient forms survive a page refresh */
+function setDraft(kind,id){draftKind=kind;draftId=id;saveDraft()}
+function saveDraft(){
+  if(!draftKind)return;
+  const vals={};
+  document.querySelectorAll('#modal input[id],#modal select[id],#modal textarea[id]').forEach(el=>{vals[el.id]=el.type==='checkbox'?el.checked:el.value});
+  const rows=[...document.querySelectorAll('#modal .rrow')].map(r=>({ing:r.querySelector('.rIng').value,qty:r.querySelector('.rQty').value}));
+  try{localStorage.setItem('pos_draft',JSON.stringify({kind:draftKind,id:draftId,vals,rows,ts:Date.now()}))}catch(e){}
+}
+function restoreDraft(n){
+  let d=null;try{d=JSON.parse(localStorage.getItem('pos_draft'))}catch(e){}
+  if(!d||!ME||ME.role!=='admin'||Date.now()-(d.ts||0)>12*3600*1000)return;
+  n=n||0;
+  const ready=INGLOADED&&MENULOADED&&(d.kind==='ing'?(!d.id||ingById(d.id)):(!d.id||MENU.find(m=>m.id===d.id)));
+  if(!ready){if(n<25)setTimeout(()=>restoreDraft(n+1),300);return}
+  if(modalOpen())return;
+  if(d.kind==='ing')editIng(d.id);else editItem(d.id);
+  Object.entries(d.vals||{}).forEach(([k,v])=>{const el=document.getElementById(k);if(!el)return;if(el.type==='checkbox')el.checked=!!v;else el.value=v});
+  if(d.kind==='item'&&d.rows&&$('#rList'))$('#rList').innerHTML=d.rows.filter(r=>ingById(r.ing)).map(recipeRowHTML).join('');
+  saveDraft();
+}
+function closeModal(){draftKind=null;try{localStorage.removeItem('pos_draft')}catch(e){}$('#overlay').classList.remove('on');if(view==='admin'){if(aTab==='menu')aMenu();else if(aTab==='ing')aIng()}}
 function modalOpen(){return $('#overlay').classList.contains('on')}
 function errMsg(e){
   const c=(e&&e.code)||'';
@@ -299,7 +321,7 @@ async function doSetup(){
     renderAuth('setup',errMsg(e));
   }
 }
-async function logout(){try{localStorage.removeItem('pos_nav')}catch(e){}try{await auth.signOut()}catch(e){toast(errMsg(e))}}
+async function logout(){try{localStorage.removeItem('pos_nav');localStorage.removeItem('pos_draft')}catch(e){}try{await auth.signOut()}catch(e){toast(errMsg(e))}}
 
 /* =====================================================================
    BOOT
@@ -338,7 +360,7 @@ async function bootUser(u){
     renderAuth('login',errMsg(e));
   }
 }
-function stopListeners(){unsubs.forEach(f=>{try{f()}catch(e){}});unsubs=[];MENU=[];ORDERS=[];ING=[];cart=[]}
+function stopListeners(){unsubs.forEach(f=>{try{f()}catch(e){}});unsubs=[];MENU=[];ORDERS=[];ING=[];INGLOADED=false;MENULOADED=false;cart=[]}
 function startListeners(){
   const er=e=>toast(errMsg(e));
   unsubs.push(fs.collection('settings').doc('main').onSnapshot(s=>{
@@ -348,11 +370,11 @@ function startListeners(){
   },er));
   unsubs.push(fs.collection('menu').onSnapshot(q=>{
     MENU=q.docs.map(d=>Object.assign({id:d.id},d.data())).sort((a,b)=>String(a.cat).localeCompare(b.cat)||String(a.name).localeCompare(b.name));
-    renderMenu();renderCart();
+    MENULOADED=true;renderMenu();renderCart();
     if(view==='admin'&&aTab==='menu'&&!modalOpen())aMenu();
   },er));
   unsubs.push(fs.collection('ingredients').onSnapshot(q=>{
-    ING=q.docs.map(d=>Object.assign({id:d.id},d.data()));
+    ING=q.docs.map(d=>Object.assign({id:d.id},d.data()));INGLOADED=true;
     ingBadge();
     const typing=/INPUT|SELECT|TEXTAREA/.test((document.activeElement||{}).tagName||'');
     if(view==='admin'&&!modalOpen()&&!typing){if(aTab==='ing')aIng();else if(aTab==='menu')aMenu()}
@@ -377,6 +399,7 @@ function applyRole(){
   if(['dash','reports','zread','exp','menu','ing','staff','settings'].includes(nav.aTab))aTab=nav.aTab;
   view='';
   go(nav.view&&can[nav.view]&&can[nav.view].includes(ME.role)?nav.view:(ME.role==='barista'?'bar':'pos'));
+  restoreDraft();
   renderAll();
 }
 function netBadge(){$('#net').textContent=navigator.onLine?'● online':'○ offline'}
@@ -699,6 +722,7 @@ function editItem(id){
   <label style="display:block;margin-top:6px"><input id="fT" type="checkbox" style="width:auto" ${m.track?'checked':''}> Track stock</label>
   <div class="lbl">Stock</div><input id="fK" type="number" min="0" step="1" value="${m.stock}">
   <div class="actions"><button class="ghost" onclick="closeModal()">Cancel</button><button onclick="saveItem(${id?`'${id}'`:'null'})">Save</button></div>`);
+  setDraft('item',id);
 }
 function recipeRowHTML(r){
   return `<div class="two rrow" style="margin-top:6px;align-items:center"><select class="rIng">${ING.map(g=>`<option value="${g.id}" ${g.id===r.ing?'selected':''}>${esc(g.name)} (${esc(g.unit)})</option>`).join('')}</select>
@@ -758,6 +782,7 @@ function editIng(id){
   <div><div class="lbl">Pack size (in the unit above)</div><input id="iPS" type="number" min="0" step="0.01" value="${g.packSize==null?'':g.packSize}" placeholder="e.g. 1000"></div></div>
   <small style="color:var(--mut)">Used to work out recipe cost. Example: ₱800 for a 1000 g bag.</small>
   <div class="actions"><button class="ghost" onclick="closeModal()">Cancel</button><button onclick="saveIng(${id?`'${id}'`:'null'})">Save</button></div>`);
+  setDraft('ing',id);
 }
 async function saveIng(id){
   const name=$('#iN').value.trim();if(!name){toast('Enter a name');return}
@@ -1238,6 +1263,7 @@ async function saveSettings(){
 }
 
 function renderAll(){renderMenu();renderCart();renderQueue();netBadge()}
+{const mEl=document.getElementById('modal');if(mEl&&mEl.addEventListener){mEl.addEventListener('input',saveDraft);mEl.addEventListener('change',saveDraft)}}
 init();
 </script>
 </body>
