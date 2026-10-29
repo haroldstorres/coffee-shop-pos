@@ -42,6 +42,9 @@ main{padding:14px;max-width:760px;margin:0 auto}
 #ov.on{display:flex}
 #sheet{background:#fff;border-radius:18px 18px 0 0;padding:18px 18px 96px;position:relative;width:100%;max-width:560px;max-height:92vh;overflow:auto}
 #sheet h3{margin:0 0 8px;padding-right:44px}
+#sheet.cartsheet{padding-bottom:0}
+.stickyfoot{position:sticky;bottom:0;margin:12px -18px 0;padding:10px 18px 96px;background:#fff;border-top:1px solid var(--line);box-shadow:0 -6px 14px rgba(42,29,22,.08)}
+.stickyfoot .row.total{border-top:0;padding-top:0;margin:0 0 4px}
 .sx{position:absolute;top:12px;right:14px;width:34px;height:34px;padding:0;border-radius:50%;background:#efe7dc;color:var(--dark);font-size:16px;line-height:1}
 .lbl{font-size:12px;color:var(--mut);margin:12px 0 5px;text-transform:uppercase;letter-spacing:.04em}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
@@ -149,7 +152,7 @@ function renderGrid(){
     return `<button class="item ${out?'out':''}" ${out?'disabled':''} onclick="openItem('${m.id}')"><div class="ph">${m.photo?`<img src="${m.photo}" alt="" loading="lazy">`:(m.sized?'☕':'🍰')}</div>${tg?`<span class="tag ${tg}">${m.temp}</span>`:''}<span class="nm">${esc(m.name)}</span><span class="pr">${out?'Sold out':fmt(m.price)+(m.sized?'+':'')}</span></button>`;
   }).join('')||'<div class="empty">No items.</div>';
 }
-function sheet(h){$('#sheet').innerHTML='<button class="sx" aria-label="Close" onclick="if(!sending)closeSheet()">✕</button>'+h;$('#ov').classList.add('on')}
+function sheet(h){$('#sheet').className='';$('#sheet').innerHTML='<button class="sx" aria-label="Close" onclick="if(!sending)closeSheet()">✕</button>'+h;$('#ov').classList.add('on')}
 function closeSheet(){$('#ov').classList.remove('on')}
 $('#ov').addEventListener('click',e=>{if(e.target.id==='ov'&&!sending)closeSheet()});
 
@@ -225,11 +228,12 @@ function openCart(){
     <div class="sub">${esc(c.addons.join(', '))}${c.note?(c.addons.length?' · ':'')+'“'+esc(c.note)+'”':''}</div>
     <div class="qty"><button onclick="chg(${i},-1)">−</button><span>${c.qty}</span><button onclick="chg(${i},1)">+</button></div></div>
     <div style="text-align:right"><b>${fmt(c.unit*c.qty)}</b></div></div>`).join('')}
-  <div class="row total"><span>Total</span><span>${fmt(subtotal())}</span></div>
   <div class="note">Pay at the counter. Prices may change slightly when the cashier confirms your order.</div>
   <div class="two"><div><div class="lbl">Order type</div><select id="oType"><option>Dine-in</option><option>Take-out</option></select></div>
   <div><div class="lbl">Your name (optional)</div><input id="oName" maxlength="30" placeholder="e.g. Ana"></div></div>
-  <div class="actions"><button class="ghost" onclick="closeSheet()">Add more</button><button id="sendBtn" style="background:var(--ok)" onclick="submitOrder()">Place order</button></div>`);
+  <div class="stickyfoot"><div class="row total"><span>Total</span><span>${fmt(subtotal())}</span></div>
+  <div class="actions" style="margin-top:8px"><button class="ghost" onclick="closeSheet()">Add more</button><button id="sendBtn" style="background:var(--ok)" onclick="submitOrder()">Place order</button></div></div>`);
+  $('#sheet').classList.add('cartsheet');
 }
 function chg(i,d){
   const c=cart[i];if(!c)return;
