@@ -31,7 +31,7 @@ main{padding:14px;max-width:760px;margin:0 auto}
 .item .nm{padding:9px 11px 0;font-weight:500}
 .item .pr{padding:3px 11px 11px;font-weight:700}
 .item.out{opacity:.45}
-.tabs{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);width:min(440px,calc(100% - 28px));display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:6px;border-radius:34px;background:rgba(255,253,249,.55);-webkit-backdrop-filter:blur(18px) saturate(170%);backdrop-filter:blur(18px) saturate(170%);border:1px solid rgba(255,255,255,.7);box-shadow:0 10px 30px rgba(42,29,22,.22),inset 0 1px 0 rgba(255,255,255,.6);z-index:6}
+.tabs{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);width:min(440px,calc(100% - 28px));display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:6px;border-radius:34px;background:rgba(255,253,249,.55);-webkit-backdrop-filter:blur(18px) saturate(170%);backdrop-filter:blur(18px) saturate(170%);border:1px solid rgba(255,255,255,.7);box-shadow:0 10px 30px rgba(42,29,22,.22),inset 0 1px 0 rgba(255,255,255,.6);z-index:25}
 .tabs button{position:relative;background:transparent;color:#4a3a2e;border-radius:28px;padding:8px 4px 7px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:12px;font-weight:600}
 .tabs button svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .tabs button.on{background:rgba(42,29,22,.16);color:var(--dark)}
@@ -40,8 +40,9 @@ main{padding:14px;max-width:760px;margin:0 auto}
 .bar button{width:100%;padding:15px;font-size:16px;font-weight:600;background:var(--ok);display:flex;justify-content:space-between}
 #ov{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:flex-end;justify-content:center;z-index:20}
 #ov.on{display:flex}
-#sheet{background:#fff;border-radius:18px 18px 0 0;padding:18px;width:100%;max-width:560px;max-height:92vh;overflow:auto}
-#sheet h3{margin:0 0 8px}
+#sheet{background:#fff;border-radius:18px 18px 0 0;padding:18px 18px 96px;position:relative;width:100%;max-width:560px;max-height:92vh;overflow:auto}
+#sheet h3{margin:0 0 8px;padding-right:44px}
+.sx{position:absolute;top:12px;right:14px;width:34px;height:34px;padding:0;border-radius:50%;background:#efe7dc;color:var(--dark);font-size:16px;line-height:1}
 .lbl{font-size:12px;color:var(--mut);margin:12px 0 5px;text-transform:uppercase;letter-spacing:.04em}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
 .chip input{display:none}
@@ -146,7 +147,7 @@ function renderGrid(){
     return `<button class="item ${out?'out':''}" ${out?'disabled':''} onclick="openItem('${m.id}')"><div class="ph">${m.photo?`<img src="${m.photo}" alt="" loading="lazy">`:(m.sized?'☕':'🍰')}</div>${tg?`<span class="tag ${tg}">${m.temp}</span>`:''}<span class="nm">${esc(m.name)}</span><span class="pr">${out?'Sold out':fmt(m.price)+(m.sized?'+':'')}</span></button>`;
   }).join('')||'<div class="empty">No items.</div>';
 }
-function sheet(h){$('#sheet').innerHTML=h;$('#ov').classList.add('on')}
+function sheet(h){$('#sheet').innerHTML='<button class="sx" aria-label="Close" onclick="if(!sending)closeSheet()">✕</button>'+h;$('#ov').classList.add('on')}
 function closeSheet(){$('#ov').classList.remove('on')}
 $('#ov').addEventListener('click',e=>{if(e.target.id==='ov'&&!sending)closeSheet()});
 
@@ -192,11 +193,11 @@ function renderBar(){ // the Cart tab shows the item count and subtotal
   $('#cartLbl').textContent=n?fmt(subtotal()):'Cart';
 }
 function setTab(t){$('#tab-menu').classList.toggle('on',t==='menu');$('#tab-order').classList.toggle('on',t==='order')}
-function goMenu(){setTab('menu');if(!$('#grid'))render();else window.scrollTo({top:0,behavior:'smooth'})}
+function goMenu(){closeSheet();setTab('menu');if(!$('#grid'))render();else window.scrollTo({top:0,behavior:'smooth'})}
 function goOrder(){
   const last=loadLast();
   if(!last){toast('You have no active order yet');return}
-  setTab('order');showDone(last);
+  closeSheet();setTab('order');showDone(last);
 }
 
 /* ---------- cart ---------- */
