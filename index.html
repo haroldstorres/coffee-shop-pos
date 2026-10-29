@@ -250,6 +250,11 @@ td.n,th.n{text-align:right}
 .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--mut);margin-top:4px}
 .legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
 .void{text-decoration:line-through;color:var(--mut)}
+.limbar{display:inline-flex;align-items:center;gap:10px;font-size:14px;color:var(--mut)}
+.limbar b{color:var(--ink);font-weight:600}
+.limtrk{height:6px;width:110px;border-radius:999px;background:var(--line);overflow:hidden;display:inline-block}
+.limtrk i{display:block;height:100%;background:var(--ok);border-radius:999px}
+.limtrk.full i{background:var(--warn)}
 #overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:20;padding:14px}
 #overlay.on{display:flex}
 #modal{background:#fff;border-radius:16px;padding:18px;width:100%;max-width:440px;max-height:92vh;overflow:auto}
@@ -556,6 +561,44 @@ function seedMenu(){
 /* ---------- state ---------- */
 let fs,auth,ME=null,S=defaultSettings(),MENU=[],ORDERS=[],RORDERS=[],REXP=[],STAFF=[],ING=[],CREDITS=[],CGROUPS=[],unsubs=[];
 let settingUp=false,placing=false,paying=false,payTarget=null,custNamesAt=0;
+/* ---------- plan limits: set by the provider in Firestore (meta/license), counted in meta/usage ---------- */
+let LIC=null,USAGE=null,LICLOADED=false,USAGELOADED=false,usageInit=false;
+const limOf=k=>{const v=LIC&&LIC[k==='items'?'maxItems':'maxStaff'];return v==null||isNaN(Number(v))?Infinity:Math.max(0,Number(v))};
+const hasLimit=k=>limOf(k)!==Infinity;
+function usedOf(k){
+  if(USAGE&&USAGE[k]!=null)return Math.max(0,Number(USAGE[k])||0);
+  return k==='items'?MENU.length:STAFF.filter(u=>u.active).length;
+}
+const limBroken=()=>!!LIC&&!USAGE; // a limit is set but the counters are missing
+const limBlocked=k=>hasLimit(k)&&(limBroken()||usedOf(k)>=limOf(k));
+function limMsg(k){
+  if(limBroken())return 'Plan limits are not set up yet. Contact your provider.';
+  return k==='items'?'Item limit reached. Contact your provider to upgrade your plan.':'User limit reached. Disable an account or contact your provider to upgrade.';
+}
+function limCounter(k){
+  if(!hasLimit(k))return '';
+  const u=usedOf(k),m=limOf(k),full=limBlocked(k),w=m>0?Math.min(100,u/m*100):100;
+  return `<span class="limbar"><span><b>${u}</b> / ${m} ${k==='items'?'items':'active users'}</span><span class="limtrk${full?' full':''}"><i style="width:${w}%"></i></span></span>`;
+}
+const limNote=k=>limBlocked(k)?`<div class="warnbox">${limMsg(k)}</div>`:'';
+function bump(b,k,d){ // keeps the counter in the same batch as the add, delete, enable or disable
+  if(!USAGE)return;
+  if(d<0&&!((Number(USAGE[k])||0)>0))return;
+  b.update(fs.collection('meta').doc('usage'),{[k]:firebase.firestore.FieldValue.increment(d)});
+}
+function limRefresh(){
+  if(view!=='admin'||modalOpen())return;
+  if(/INPUT|SELECT|TEXTAREA/.test((document.activeElement||{}).tagName||''))return;
+  if(aTab==='menu')aMenu();else if(aTab==='staff')aStaff();
+}
+async function initUsage(){ // shops without a plan get their counters created once, so a limit can be switched on later
+  if(usageInit||!ME||ME.role!=='admin'||!LICLOADED||!USAGELOADED||!MENULOADED||LIC||USAGE)return;
+  usageInit=true;
+  try{
+    const q=await fs.collection('users').get();
+    await fs.collection('meta').doc('usage').set({items:MENU.length,staff:q.docs.filter(d=>d.data().active===true).length});
+  }catch(e){}
+}
 let cart=[],cat='All',view='pos',aTab='dash',rf=todayStr(),rt=todayStr();
 const can={pos:['admin','cashier'],bar:['admin','cashier','barista'],admin:['admin']};
 
@@ -611,7 +654,9 @@ async function doSetup(){
     // 2) starter settings + sample menu (now allowed because we are admin)
     const b2=fs.batch();
     b2.set(fs.collection('settings').doc('main'),Object.assign(defaultSettings(),{shop}));
-    seedMenu().forEach(m=>b2.set(fs.collection('menu').doc(),m));
+    const seed=seedMenu();
+    seed.forEach(m=>b2.set(fs.collection('menu').doc(),m));
+    b2.set(fs.collection('meta').doc('usage'),{items:seed.length,staff:1});
     await b2.commit();
     settingUp=false;
     await bootUser(cred.user);
@@ -660,9 +705,13 @@ async function bootUser(u){
     renderAuth('login',errMsg(e));
   }
 }
-function stopListeners(){unsubs.forEach(f=>{try{f()}catch(e){}});unsubs=[];MENU=[];ORDERS=[];PENDING=[];ING=[];CREDITS=[];custNamesAt=0;INGLOADED=false;MENULOADED=false;cart=[]}
+function stopListeners(){unsubs.forEach(f=>{try{f()}catch(e){}});unsubs=[];MENU=[];ORDERS=[];PENDING=[];ING=[];CREDITS=[];custNamesAt=0;INGLOADED=false;MENULOADED=false;cart=[];LIC=null;USAGE=null;LICLOADED=false;USAGELOADED=false;usageInit=false}
 function startListeners(){
   const er=e=>toast(errMsg(e));
+  if(ME&&ME.role==='admin'){
+    unsubs.push(fs.collection('meta').doc('license').onSnapshot(d=>{LIC=d.exists?d.data():null;LICLOADED=true;limRefresh();initUsage()},er));
+    unsubs.push(fs.collection('meta').doc('usage').onSnapshot(d=>{USAGE=d.exists?d.data():null;USAGELOADED=true;limRefresh();initUsage()},er));
+  }
   unsubs.push(fs.collection('settings').doc('main').onSnapshot(s=>{
     S=Object.assign(defaultSettings(),s.exists?s.data():{});
     renderMenu();renderCart();
@@ -670,7 +719,7 @@ function startListeners(){
   },er));
   unsubs.push(fs.collection('menu').onSnapshot(q=>{
     MENU=q.docs.map(d=>Object.assign({id:d.id},d.data())).sort((a,b)=>String(a.cat).localeCompare(b.cat)||String(a.name).localeCompare(b.name));
-    MENULOADED=true;renderMenu();renderCart();
+    MENULOADED=true;initUsage();renderMenu();renderCart();
     if(view==='admin'&&aTab==='menu'&&!modalOpen())aMenu();
   },er));
   unsubs.push(fs.collection('ingredients').onSnapshot(q=>{
@@ -1306,7 +1355,7 @@ function ingBanner(){
   ${aTab==='ing'?'':'· <a href="#" onclick="aTab=\'ing\';renderAdmin();return false">Open Ingredients</a>'}</div>`;
 }
 function aMenu(){
-  $('#aContent').innerHTML=`<div class="toolbar"><button onclick="editItem(null)">+ New item</button></div>
+  $('#aContent').innerHTML=`<div class="toolbar" style="align-items:center"><button ${limBlocked('items')?'disabled':''} onclick="editItem(null)">+ New item</button>${limCounter('items')}</div>${limNote('items')}
   <table><tr><th>Item</th><th>Category</th><th class="n">Price</th><th class="n">Cost</th><th class="n">Margin</th><th class="n">Stock</th><th></th></tr>
   ${MENU.map(m=>`<tr><td>${esc(m.name)}${m.sized?' <span class="badge">size</span>':''}</td><td>${esc(m.cat)}</td><td class="n">${fmt(m.price)}</td>
   <td class="n">${(()=>{const c=baseCost(m,null);return c==null?'<span class="low">not set</span>':fmt(c)+(m.cost==null?' <small>(auto)</small>':'')})()}</td>
@@ -1315,6 +1364,7 @@ function aMenu(){
   <td class="n"><button class="ghost" onclick="editItem('${m.id}')">Edit</button> <button class="bad" onclick="delItem('${m.id}')">Delete</button></td></tr>`).join('')||'<tr><td colspan="7">No items yet.</td></tr>'}</table>`;
 }
 function editItem(id){
+  if(!id&&limBlocked('items')){toast(limMsg('items'),5000);return}
   const m=id?MENU.find(x=>x.id===id):{name:'',cat:'Coffee',price:0,sized:false,track:false,stock:0};
   if(!m)return;
   modal(`<h3>${id?'Edit':'New'} item</h3>
@@ -1384,14 +1434,18 @@ async function saveItem(id){
   });
   d.recipe=Object.entries(rec).map(([ing,qty])=>({ing,qty}));
   try{
-    if(id)await fs.collection('menu').doc(id).update(d);else await fs.collection('menu').add(d);
+    if(id)await fs.collection('menu').doc(id).update(d);
+    else{
+      if(limBlocked('items')){toast(limMsg('items'),5000);return}
+      const b=fs.batch();b.set(fs.collection('menu').doc(),d);bump(b,'items',1);await b.commit();
+    }
     closeModal();
   }catch(e){toast(errMsg(e))}
 }
 async function delItem(id){
   const m=MENU.find(x=>x.id===id);
   if(!m||!confirm('Delete "'+m.name+'"? (Past orders stay in reports.)'))return;
-  try{await fs.collection('menu').doc(id).delete()}catch(e){toast(errMsg(e))}
+  try{const b=fs.batch();b.delete(fs.collection('menu').doc(id));bump(b,'items',-1);await b.commit()}catch(e){toast(errMsg(e))}
 }
 
 /* ----- ingredients ----- */
@@ -2312,22 +2366,24 @@ async function aStaff(){
     STAFF=q.docs.map(d=>Object.assign({uid:d.id},d.data())).sort((a,b)=>String(a.name).localeCompare(String(b.name)));
   }catch(e){toast(errMsg(e));STAFF=[]}
   if(view!=='admin'||aTab!=='staff')return;
-  $('#aContent').innerHTML=`<h4 style="margin-top:0">Add staff</h4>
+  $('#aContent').innerHTML=`<div class="toolbar" style="align-items:center">${limCounter('staff')}</div>${limNote('staff')}
+  <h4 style="margin-top:0">Add staff</h4>
   <div class="two"><input id="stN" placeholder="Name"><select id="stR"><option value="cashier">Cashier</option><option value="barista">Barista</option><option value="admin">Admin</option></select></div>
   <div class="two" style="margin-top:8px"><input id="stE" type="email" placeholder="Email"><input id="stP" type="text" placeholder="Password (min 6)"></div>
-  <div class="actions" style="justify-content:flex-start"><button id="stBtn" onclick="addStaff()">Add</button></div>
+  <div class="actions" style="justify-content:flex-start"><button id="stBtn" ${limBlocked('staff')?'disabled':''} onclick="addStaff()">Add</button></div>
   <h4>Staff members</h4>
   <table><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th></th></tr>
   ${STAFF.map((u,i)=>{const self=u.uid===ME.uid;return `<tr><td>${esc(u.name)}${self?' <span class="badge">you</span>':''}</td><td>${esc(u.email)}</td>
   <td><select ${self?'disabled':''} onchange="setRole(${i},this.value)">${['admin','cashier','barista'].map(r=>`<option value="${r}" ${u.role===r?'selected':''}>${r}</option>`).join('')}</select></td>
   <td>${u.active?'Active':'<span class="low">Disabled</span>'}</td>
-  <td class="n">${self?'':`<button class="ghost" onclick="setActive(${i},${!u.active})">${u.active?'Disable':'Enable'}</button> `}<button class="ghost" onclick="resetPw(${i})">Reset password</button></td></tr>`}).join('')}</table>
+  <td class="n">${self?'':`<button class="ghost" ${!u.active&&limBlocked('staff')?'disabled title="User limit reached"':''} onclick="setActive(${i},${!u.active})">${u.active?'Disable':'Enable'}</button> `}<button class="ghost" onclick="resetPw(${i})">Reset password</button></td></tr>`}).join('')}</table>
   <p style="color:var(--mut)">New staff sign in with the email and password you set here. Accounts cannot be deleted; disable them instead.</p>`;
 }
 async function addStaff(){
   const name=$('#stN').value.trim(),email=$('#stE').value.trim(),pass=$('#stP').value,role=$('#stR').value;
   if(!name||!email){toast('Please fill in the name and email');return}
   if(pass.length<6){toast('Password is too short (min 6 characters)');return}
+  if(limBlocked('staff')){toast(limMsg('staff'),5000);return}
   $('#stBtn').disabled=true;
   let sec=null,shown=false;
   try{
@@ -2335,7 +2391,10 @@ async function addStaff(){
     sec=firebase.initializeApp(FIREBASE_CONFIG,'sec'+Date.now());
     const cred=await sec.auth().createUserWithEmailAndPassword(email,pass);
     try{
-      await fs.collection('users').doc(cred.user.uid).set({name,email,role,active:true,createdAt:Date.now(),createdBy:ME.uid});
+      const b=fs.batch();
+      b.set(fs.collection('users').doc(cred.user.uid),{name,email,role,active:true,createdAt:Date.now(),createdBy:ME.uid});
+      bump(b,'staff',1);
+      await b.commit();
     }catch(e){
       toast('The login was created but the profile was not saved: '+errMsg(e));
       shown=true;throw e;
@@ -2353,7 +2412,12 @@ async function setRole(i,role){
 }
 async function setActive(i,active){
   const u=STAFF[i];if(!u)return;
-  try{await fs.collection('users').doc(u.uid).update({active})}catch(e){toast(errMsg(e))}
+  if(active&&!u.active&&limBlocked('staff')){toast(limMsg('staff'),5000);return}
+  try{
+    const b=fs.batch();b.update(fs.collection('users').doc(u.uid),{active});
+    if(!!u.active!==!!active)bump(b,'staff',active?1:-1);
+    await b.commit();
+  }catch(e){toast(errMsg(e))}
   aStaff();
 }
 async function resetPw(i){
