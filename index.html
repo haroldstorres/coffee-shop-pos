@@ -122,6 +122,31 @@ main{padding:0 22px 22px}
 .splitlg{display:flex;gap:6px 18px;flex-wrap:wrap;font-size:13px;color:#5b4a3d}
 .splitlg i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
 @media(max-width:900px){.dh{grid-template-columns:1fr 1fr}.dh .hero{grid-column:1/-1}.dgrid{grid-template-columns:1fr}}
+.kds{display:grid;grid-template-columns:1fr 1fr 260px;gap:14px;align-items:stretch;min-height:calc(100vh - 110px)}
+.kcol{background:#fffdf9;border:1px solid var(--line);border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
+.kcol.serve{border:3px solid #2d6b3f}
+.kh{display:flex;align-items:center;gap:10px;padding:14px 18px;color:#fff;font-size:20px;letter-spacing:.08em;text-transform:uppercase;font-weight:800}
+.kcol.prep .kh{background:#e8672c}.kcol.serve .kh{background:#2d6b3f}
+.kh .kn{background:rgba(0,0,0,.22);border-radius:999px;padding:1px 10px;font-size:14px;letter-spacing:0}
+.kbody{padding:12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;align-content:start}
+.kc{background:#fff;border-radius:12px;border-left:6px solid #e8672c;box-shadow:0 2px 10px rgba(60,40,20,.12);padding:12px 14px}
+.kc.ready{border-left-color:#2d6b3f}
+.kc .kt{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.kc .kname{font-size:19px;display:block}
+.kc .ksub{color:var(--mut);font-size:14px;margin-top:2px}.kc .ksub b{color:var(--ink)}
+.kc .ki{width:40px;height:40px;border-radius:50%;background:#fbe9df;display:flex;align-items:center;justify-content:center;font-size:19px;flex:none}
+.kc.ready .ki{background:#e3efe6}
+.kc ul{margin:8px 0 10px;padding-left:18px;font-size:14px}
+.kc li small{color:var(--mut)}
+.kc .cust{background:#faf6f0;border-radius:8px;padding:6px 8px;margin:6px 0;font-size:13px}
+.kside{background:#fffdf9;border-radius:16px;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:18px;gap:30px;border:1px solid var(--line)}
+.kside .kmsg{text-align:center;font-size:30px;font-weight:800;color:#2d6b3f;line-height:1.15}
+.kside .kmsg i{display:block;font-style:normal;font-size:34px;font-weight:400;margin-bottom:6px}
+.kstats{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%}
+.kstats div{background:#fff;border-radius:12px;padding:10px 12px;box-shadow:0 2px 8px rgba(60,40,20,.1)}
+.kstats b{display:block;font-size:22px}.kstats small{color:var(--mut);font-size:11px;text-transform:uppercase;letter-spacing:.08em}
+@media(max-width:1100px){.kds{grid-template-columns:1fr 1fr}.kside{grid-column:1/-1;flex-direction:row;padding:12px;gap:16px}.kside .kmsg{font-size:20px}.kside .kmsg i{display:none}}
+@media(max-width:700px){.kds{grid-template-columns:1fr}}
 .side{overflow-y:auto}
 .menu .subnav{display:flex;flex-direction:column;gap:2px;margin:-2px 0 6px}
 .menu button.sub{display:block;padding:8px 16px 8px 52px;font-size:14px;color:#b9a898;border-radius:10px}
@@ -299,9 +324,11 @@ code{background:#f1e9df;padding:1px 5px;border-radius:5px}
     </section>
 
     <section id="v-bar" class="view">
-      <div class="queue">
-        <div><h3>Preparing <span class="badge" id="cPrep"></span></h3><div id="qPrep"></div></div>
-        <div><h3>Ready <span class="badge" id="cReady"></span></h3><div id="qReady"></div></div>
+      <div class="kds">
+        <div class="kcol prep"><div class="kh"><span>Preparing</span><span class="kn" id="cPrep"></span></div><div class="kbody" id="qPrep"></div></div>
+        <div class="kcol serve"><div class="kh"><span>Now serving</span><span class="kn" id="cReady"></span></div><div class="kbody" id="qReady"></div></div>
+        <div class="kside"><div class="kmsg"><i>⬇</i>ORDER PICK UP HERE</div>
+          <div class="kstats"><div><b id="kKit">0</b><small>In the kitchen</small></div><div><b id="kAvg">—</b><small>Average wait</small></div></div></div>
       </div>
     </section>
 
@@ -581,6 +608,7 @@ function tick(){
   const d=new Date();
   $('#clkD').textContent=d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
   $('#clkT').textContent=d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+  if(view==='bar')renderQueue(); // keeps the waiting minutes fresh
 }
 setInterval(tick,30000);
 
@@ -1061,7 +1089,9 @@ function showReceipt(ref){
    ===================================================================== */
 function renderQueue(){
   const live=ORDERS.filter(o=>o.status==='preparing'||o.status==='ready').sort((a,b)=>a.ts-b.ts);
-  const card=o=>`<div class="ticket ${o.status==='ready'?'ready':''}"><h4><span>${ono(o)}</span><span class="badge">${esc(o.type)} · ${tstr(o.ts)}</span></h4>
+  const mins=o=>Math.max(0,Math.floor((Date.now()-o.ts)/60000)),minTxt=m=>m<1?'Just now':m+' min'+(m===1?'':'s');
+  const ico={'Dine-in':'🍽️','Take-out':'🛍️','Delivery':'🛵'};
+  const card=o=>`<div class="kc ${o.status==='ready'?'ready':''}"><div class="kt"><div><b class="kname">${esc(o.custName||o.type)}</b><div class="ksub"><b>${ono(o)}</b> · ${o.status==='ready'?esc(o.type):minTxt(mins(o))}</div></div><span class="ki" title="${esc(o.type)}">${ico[o.type]||''}</span></div>
     ${o.type==='Delivery'?`<div class="cust"><b>${esc(o.custName||'')}</b>${o.custPhone?' · '+esc(o.custPhone):''}<br>${esc(o.custAddr||'').replace(/\n/g,'<br>')}</div>`:''}
     <ul>${o.items.map(i=>`<li><b>${i.qty}×</b> ${esc(i.name)}${i.size?' ('+esc(i.size)+')':''}${i.addons.length?`<br><small>+ ${esc(i.addons.join(', '))}</small>`:''}${i.note?`<br><small>“${esc(i.note)}”</small>`:''}</li>`).join('')}</ul>
     ${o.status==='preparing'?`<button class="ok" onclick="setStatus('${o.id}','ready')">Ready</button>`:`<button onclick="setStatus('${o.id}','served')">Served</button>`}</div>`;
@@ -1069,6 +1099,8 @@ function renderQueue(){
   $('#qPrep').innerHTML=prep.map(card).join('')||'<div class="empty">Nothing pending.</div>';
   $('#qReady').innerHTML=rdy.map(card).join('')||'<div class="empty">None yet.</div>';
   $('#cPrep').textContent=prep.length;$('#cReady').textContent=rdy.length;
+  $('#kKit').textContent=prep.length;
+  $('#kAvg').textContent=prep.length?minTxt(Math.round(prep.reduce((a,o)=>a+mins(o),0)/prep.length)):'—'; // average time the open orders have been waiting
 }
 async function setStatus(id,s){
   try{
