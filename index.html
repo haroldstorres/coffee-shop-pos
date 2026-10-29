@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Coffee Shop POS</title>
 <style>
-:root{--bg:#f6f1ea;--card:#fff;--ink:#2b2018;--mut:#7a6a5c;--brand:#6f4e37;--brand2:#a47148;--ok:#2f7d4f;--warn:#c47f17;--bad:#b3392f;--line:#e6dccf}
+:root{--bg:#f0e8dc;--card:#fff;--ink:#2b2018;--mut:#66564a;--brand:#6f4e37;--brand2:#a47148;--ok:#2f7d4f;--warn:#c47f17;--bad:#b3392f;--line:#d9cbb9}
 *{box-sizing:border-box}
 body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink);font-size:15px}
 button{font:inherit;cursor:pointer;border:0;border-radius:10px;padding:9px 14px;background:var(--brand);color:#fff}
@@ -99,14 +99,18 @@ main{padding:0 22px 22px}
 .scanmsg{color:var(--mut);font-size:13px;margin:8px 0}
 .onlbadge{background:#c9744a;color:#fff;border-radius:999px;padding:1px 8px;font-size:12px;font-style:normal}
 .dh{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:8px;margin:8px 0 10px}
-.dh .k{background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 12px}
-.dh .k small{display:block;color:#5b4a3d;font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.dh .k b{display:block;font-size:19px;line-height:1.3}
+.dh .k{--ac:var(--brand);position:relative;background:linear-gradient(135deg,color-mix(in srgb,var(--ac) 13%,var(--card)),var(--card) 70%);border:1px solid var(--line);border-left:5px solid var(--ac);border-radius:12px;padding:10px 14px}
+.dh .k::after{content:"";position:absolute;top:11px;right:11px;width:9px;height:9px;border-radius:50%;background:var(--ac)}
+.dh .k small{display:block;color:var(--ink);opacity:.82;font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:14px}
+.dh .k b{display:block;font-size:22px;line-height:1.3}
 .dh .k em{display:block;font-style:normal;color:var(--mut);font-size:12px}
-.dh .hero{border-left:5px solid var(--ok);grid-column:span 2}
-.dh .hero.neg{border-left-color:var(--bad)}
+.dh .k em.up{color:var(--ok);font-weight:600}
+.dh .k em.dn{color:var(--bad);font-weight:600}
+.dh .hero{--ac:var(--ok);grid-column:span 2}
+.dh .hero.neg{--ac:var(--bad)}
+.dh .hero b{font-size:30px}
 .dh .hero b{font-size:26px}
-.dpanel{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-bottom:10px}
+.dpanel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px}
 .dpanel h4{margin:0 0 6px;font-size:15px}
 .dpanel .chartbox{border:0;padding:0;margin:0}
 .dmain{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:10px;align-items:start}
@@ -226,6 +230,47 @@ td.n,th.n{text-align:right}
 #auth ol{padding-left:18px;line-height:1.6}
 .err{color:var(--bad);margin:8px 0;font-size:14px}
 code{background:#f1e9df;padding:1px 5px;border-radius:5px}
+
+.tgnum{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.tgnum b{font-size:24px}
+.tgt{position:relative;height:16px;border-radius:999px;background:var(--line);margin:8px 0 8px}
+.tgt i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--brand2),var(--ok))}
+.tgt u{position:absolute;top:-4px;bottom:-4px;width:3px;background:var(--ink);border-radius:2px;text-decoration:none}
+.ro{display:grid;grid-template-columns:36px 1fr auto;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line)}
+.ro:last-child{border-bottom:0}
+.ro .av2{width:36px;height:36px;border-radius:50%;background:color-mix(in srgb,var(--brand) 18%,var(--card));display:flex;align-items:center;justify-content:center;font-size:17px}
+.ro small{display:block;color:var(--mut);font-size:12px}
+.ro .am{font-weight:700;color:var(--ok)}
+.dn2{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.dn2 ul{list-style:none;margin:0;padding:0;font-size:13px;flex:1;min-width:150px}
+.dn2 li{display:flex;align-items:center;gap:6px;padding:3px 0}
+.dn2 li i{width:10px;height:10px;border-radius:3px;flex:none}
+.dn2 li span{flex:1}
+.lowrow{display:flex;justify-content:space-between;gap:10px;padding:5px 0;font-size:13px;border-bottom:1px solid var(--line)}
+.themebtn{background:var(--card);color:var(--ink);border:1px solid var(--line);padding:8px;border-radius:12px;line-height:0}
+.themebtn svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+/* dark mode */
+body.dark{color-scheme:dark;--bg:#16100c;--card:#231a14;--ink:#f1e8dd;--mut:#b8a898;--line:#3d2f25}
+body.dark input,body.dark select,body.dark textarea,body.dark .card,body.dark .dpanel,body.dark .stat,body.dark .chartbox,body.dark #modal,body.dark #auth .box,body.dark .ticket,body.dark .qty button,body.dark .qty span,body.dark .chip span,body.dark .kcol,body.dark .kside,body.dark .kstats div,body.dark .top .sbox input,body.dark .actbar .hold{background:var(--card);color:var(--ink)}
+body.dark .item,body.dark .kc{background:#2c2118;color:var(--ink)}
+body.dark button.ghost,body.dark .subtabs button,body.dark .quick button{background:var(--card);color:var(--ink);border-color:var(--line)}
+body.dark .subtabs button.on{background:var(--brand);color:#fff}
+body.dark .chip input:checked+span{background:var(--brand);color:#fff;border-color:var(--brand)}
+body.dark .cats button{background:#33261d;color:#e6d8c8}
+body.dark .cats button.on{background:#c9744a;color:#fff}
+body.dark .heldbtn{background:#33261d!important;color:#e6d8c8!important}
+body.dark .split,body.dark .hb .tr{background:#3a2c22}
+body.dark .warnbox{background:#3a2b12;border-color:#6b4f1d;color:#f0cf94}
+body.dark .card[style*="faf6f0"],body.dark .kc .cust,body.dark .ticket .cust{background:#2e2319!important}
+body.dark .top .clk,body.dark .top h2{color:var(--ink)}
+body.dark .top .sbox svg{stroke:var(--mut)}
+body.dark .row{color:var(--mut)}
+body.dark .row.total{color:var(--ink)}
+body.dark .receipt{background:#fff;color:#000;padding:10px;border-radius:8px}
+body.dark .poster{background:#fff;color:#2b2018}
+body.dark code,body.dark .badge{background:#3a2c22}
+body.dark .scanbtn{border:1px solid #4a382b}
+body.dark #toast{background:#f1e8dd;color:#16100c}
 @media print{
   body *{visibility:hidden}
   #receiptPrint,#receiptPrint *{visibility:visible}
@@ -269,6 +314,7 @@ code{background:#f1e9df;padding:1px 5px;border-radius:5px}
     <h2 id="topTitle" style="display:none"></h2>
     <button id="scanBtn" class="scanbtn" onclick="openScan()"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="6.5" height="6.5" rx="1"/><rect x="14" y="3.5" width="6.5" height="6.5" rx="1"/><rect x="3.5" y="14" width="6.5" height="6.5" rx="1"/><path d="M14 14h3v3M20.5 14v.01M14 20.5h3.5M20.5 17.5v3"/></svg><span>Scan order</span></button>
     <button id="onlBtn" class="scanbtn" onclick="showOnline()"><svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18.5h2"/></svg><span>Online</span><i id="onlN" class="onlbadge" style="display:none">0</i></button>
+    <button id="themeBtn" class="themebtn" onclick="toggleTheme()" title="Dark / light mode" aria-label="Toggle dark mode"></button>
     <div class="clk"><span class="d"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg><i id="clkD" style="font-style:normal"></i></span><span><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg><i id="clkT" style="font-style:normal"></i></span></div>
   </div>
   <main>
@@ -402,7 +448,7 @@ function download(name,text,type){
 
 /* ---------- defaults ---------- */
 function defaultSettings(){
-  return {shop:'Kape Corner',pwdRate:20,vatOn:false,vatRate:12,vatMode:'incl',pwdVatExempt:true,blockOnOut:true,address:'',phone:'',tin:'',footer:'',logo:'',sideLogo:'',orderUrl:'',
+  return {shop:'Kape Corner',pwdRate:20,dailyTarget:0,openHour:8,closeHour:20,vatOn:false,vatRate:12,vatMode:'incl',pwdVatExempt:true,blockOnOut:true,address:'',phone:'',tin:'',footer:'',logo:'',sideLogo:'',orderUrl:'',
     sizes:[{n:'Small',up:0,mult:1},{n:'Medium',up:10,mult:1.25},{n:'Large',up:20,mult:1.5}],addonUse:[],
     addons:[{n:'Extra shot',p:20},{n:'Oat milk',p:30},{n:'Whipped cream',p:15},{n:'Caramel syrup',p:15}]};
 }
@@ -1325,15 +1371,19 @@ async function saveAddonUse(){
 /* ----- reports ----- */
 /* ----- shared: load + analyze a date range ----- */
 const pct=(a,b)=>b>0?(a/b*100).toFixed(1)+'%':'—';
+async function loadSet(f,t){ // orders and expenses between two dates (monthly/yearly bills are always loaded)
+  const [q,e,rc]=await Promise.all([
+    fs.collection('orders').where('day','>=',f).where('day','<=',t).get(),
+    fs.collection('expenses').where('date','>=',f).where('date','<=',t).get(),
+    fs.collection('expenses').where('rec','in',['monthly','yearly']).get().catch(()=>({docs:[]}))]);
+  const seen={},E=[];
+  e.docs.concat(rc.docs).forEach(d=>{if(seen[d.id])return;seen[d.id]=1;E.push(Object.assign({id:d.id},d.data()))});
+  return {O:q.docs.map(d=>Object.assign({id:d.id},d.data())),E};
+}
 async function loadRange(){
   if(rf>rt)rt=rf;
-  try{
-    const [q,e]=await Promise.all([
-      fs.collection('orders').where('day','>=',rf).where('day','<=',rt).get(),
-      fs.collection('expenses').where('date','>=',rf).where('date','<=',rt).get()]);
-    RORDERS=q.docs.map(d=>Object.assign({id:d.id},d.data()));
-    REXP=e.docs.map(d=>Object.assign({id:d.id},d.data()));
-  }catch(err){toast(errMsg(err));RORDERS=[];REXP=[]}
+  try{const r=await loadSet(rf,rt);RORDERS=r.O;REXP=r.E}
+  catch(err){toast(errMsg(err));RORDERS=[];REXP=[]}
 }
 function orderCost(o){
   if(o.items.some(i=>i.cost==null))return null;
@@ -1344,9 +1394,21 @@ function orderProfit(o){
   return cost==null?null:r2(o.total-(o.vat||0)-(o.fee||0)-cost); // VAT and delivery fee are not income
 }
 const owed=o=>r2(o.total-(o.paid||0));
-function analyze(){
-  const ok=RORDERS.filter(o=>o.status!=='void');
-  const A={orders:ok.length,sales:0,vat:0,disc:0,cogs:0,unc:0,exp:0,fees:0,credit:0,unpaid:0,days:{},items:{},byPay:{},byCat:{}};
+function expPieces(e,fr,to){ // the part of an expense that falls inside fr..to; monthly/yearly bills are spread evenly per day
+  fr=fr||rf;to=to||rt;
+  const a=Number(e.amount)||0,d=String(e.date||'');
+  if(e.rec!=='monthly'&&e.rec!=='yearly')return d>=fr&&d<=to?[{date:d,amt:a}]:[];
+  const y=+d.slice(0,4),m=+d.slice(5,7)-1,yr=e.rec==='yearly';
+  const s0=yr?new Date(y,0,1):new Date(y,m,1),t0=yr?new Date(y,11,31):new Date(y,m+1,0);
+  const n=Math.round((t0-s0)/864e5)+1,per=a/n,out=[];
+  const from=new Date(Math.max(s0.getTime(),new Date(fr+'T00:00:00').getTime())),till=new Date(Math.min(t0.getTime(),new Date(to+'T00:00:00').getTime()));
+  for(const x=from;x<=till;x.setDate(x.getDate()+1))out.push({date:dstr(x.getTime()),amt:per});
+  return out;
+}
+function analyze(O,E,fr,to){
+  O=O||RORDERS;E=E||REXP;fr=fr||rf;to=to||rt;
+  const ok=O.filter(o=>o.status!=='void');
+  const A={orders:ok.length,sales:0,vat:0,disc:0,cogs:0,unc:0,exp:0,fees:0,credit:0,unpaid:0,days:{},items:{},byPay:{},byCat:{},byType:{},byCash:{},uncNames:{}};
   const day=k=>A.days[k]||(A.days[k]={sales:0,cogs:0,exp:0});
   ok.forEach(o=>{
     const fee=o.fee||0,rev=o.total-(o.vat||0)-fee; // VAT and delivery fee are not income
@@ -1354,14 +1416,16 @@ function analyze(){
     if(o.pay==='Credit'){A.credit+=o.total;A.unpaid+=owed(o)}
     else A.byPay[o.pay]=(A.byPay[o.pay]||0)+o.total;
     const f=o.sub>0?rev/o.sub:1,d=day(o.day);d.sales+=rev;
+    const bt=A.byType[o.type]||(A.byType[o.type]={n:0,s:0});bt.n++;bt.s+=rev;
+    const ck=o.cashier||'-',bc=A.byCash[ck]||(A.byCash[ck]={n:0,s:0});bc.n++;bc.s+=rev;
     o.items.forEach(i=>{
       const t=A.items[i.name]||(A.items[i.name]={q:0,s:0,c:0,cq:0,unc:0});
       t.q+=i.qty;t.s+=i.unit*i.qty*f; // net of discount
-      if(i.cost==null){t.unc+=i.qty;A.unc+=i.qty}
+      if(i.cost==null){t.unc+=i.qty;A.unc+=i.qty;A.uncNames[i.name]=1}
       else{const c=i.cost*i.qty;t.c+=c;t.cq+=i.qty;A.cogs+=c;d.cogs+=c}
     });
   });
-  REXP.forEach(e=>{const a=Number(e.amount)||0;A.exp+=a;day(e.date).exp+=a;A.byCat[e.cat]=(A.byCat[e.cat]||0)+a});
+  E.forEach(e=>expPieces(e,fr,to).forEach(p=>{A.exp+=p.amt;day(p.date).exp+=p.amt;A.byCat[e.cat]=(A.byCat[e.cat]||0)+p.amt}));
   A.sales=r2(A.sales);A.vat=r2(A.vat);A.disc=r2(A.disc);A.cogs=r2(A.cogs);A.exp=r2(A.exp);
   A.fees=r2(A.fees);A.credit=r2(A.credit);A.unpaid=r2(A.unpaid);
   A.gross=r2(A.sales-A.cogs);A.net=r2(A.gross-A.exp);
@@ -1390,7 +1454,9 @@ function rangeBar(fn,extra){
     <button class="ghost" onclick="${fn}()">Refresh</button>${extra||''}</div>`;
 }
 function uncBanner(A){
-  return A.unc?`<div class="warnbox">⚠ ${A.unc} item(s) sold in this period have no cost set, so cost and profit are understated or missing for them. Set the cost under Menu &amp; Stock (and sizes/add-ons under Settings).</div>`:'';
+  if(!A.unc)return '';
+  const names=Object.keys(A.uncNames||{}),shown=names.slice(0,8).map(esc).join(', ')+(names.length>8?' and '+(names.length-8)+' more':'');
+  return `<div class="warnbox">⚠ ${A.unc} item(s) sold in this period have no cost set, so cost and profit are understated: <b>${shown}</b>. <a href="#" onclick="subTo('menu');return false">Set the cost in Menu &amp; Stock</a> (sizes and add-ons are in Settings).</div>`;
 }
 function money(n){return `<span class="${n<0?'neg':''}">${fmt(n)}</span>`}
 
@@ -1405,7 +1471,7 @@ function chartSVG(A){
   const y=v=>T+(H-T-B)*(1-(v-mn)/(mx-mn));
   const gw=(W-L-R)/rows.length,bw=Math.min(16,gw*.8/3);
   let g='';
-  for(let v=mn;v<=mx+1e-9;v+=step){g+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="${v===0?'#8a7a6a':'#eadfd2'}"/><text x="${L-6}" y="${y(v)+4}" font-size="11" text-anchor="end" fill="#7a6a5c">${Math.round(v).toLocaleString('en-PH')}</text>`}
+  for(let v=mn;v<=mx+1e-9;v+=step){g+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" style="stroke:${v===0?'var(--mut)':'var(--line)'}"/><text x="${L-6}" y="${y(v)+4}" font-size="11" text-anchor="end" style="fill:var(--mut)">${Math.round(v).toLocaleString('en-PH')}</text>`}
   const every=Math.ceil(rows.length/10);
   const cols=['#6f4e37','#c47f17','#b3392f'];
   rows.forEach((r,i)=>{
@@ -1414,38 +1480,150 @@ function chartSVG(A){
       const x=cx+(j-1)*bw-bw/2,y0=y(0),y1=y(v);
       g+=`<rect x="${x}" y="${Math.min(y0,y1)}" width="${bw}" height="${Math.max(0.5,Math.abs(y0-y1))}" fill="${cols[j]}" rx="2"><title>${r.k}: ${['Sales','Cost of goods','Expenses'][j]} ${fmt(v)}</title></rect>`;
     });
-    if(i%every===0)g+=`<text x="${cx}" y="${H-10}" font-size="11" text-anchor="middle" fill="#7a6a5c">${r.k.slice(5)}</text>`;
+    if(i%every===0)g+=`<text x="${cx}" y="${H-10}" font-size="11" text-anchor="middle" style="fill:var(--mut)">${r.k.slice(5)}</text>`;
   });
   const pts=rows.map((r,i)=>`${L+gw*i+gw/2},${y(r.n)}`).join(' ');
   g+=`<polyline points="${pts}" fill="none" stroke="#2f7d4f" stroke-width="2.5"/>`+rows.map((r,i)=>`<circle cx="${L+gw*i+gw/2}" cy="${y(r.n)}" r="3.5" fill="#2f7d4f"><title>${r.k}: Net profit ${fmt(r.n)}</title></circle>`).join('');
   return `<div class="chartbox"><svg viewBox="0 0 ${W} ${H}" width="100%" style="min-width:${Math.max(480,rows.length*22)}px">${g}</svg>
   <div class="legend"><span><i style="background:#6f4e37"></i>Sales</span><span><i style="background:#c47f17"></i>Cost of goods</span><span><i style="background:#b3392f"></i>Expenses</span><span><i style="background:#2f7d4f"></i>Net profit (line)</span></div></div>`;
 }
+/* ----- dashboard helpers ----- */
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+const hrLabel=h=>(h%12||12)+(h<12||h===24?'a':'p');
+const hrFull=h=>(h%12||12)+(h<12||h===24?' AM':' PM');
+const compact=v=>v>=1000?(v/1000).toFixed(v>=10000?0:1)+'k':String(Math.round(v));
+const PAYCOL={Cash:'#2f7d4f',GCash:'#2f6fb3',Credit:'#c47f17'},TYPECOL={'Dine-in':'#6f4e37','Take-out':'#c9744a','Delivery':'#2f6fb3'};
+const TYPEICO={'Dine-in':'🍽️','Take-out':'🛍️','Delivery':'🛵'};
+let PREVC=null,YEARC=null;
+function donut(parts){
+  parts=parts.filter(p=>p.v>0);
+  const tot=parts.reduce((a,p)=>a+p.v,0);
+  if(!(tot>0))return '<div class="empty" style="padding:10px 0">No sales in this period.</div>';
+  const R=42,C=2*Math.PI*R;let off=0;
+  const arcs=parts.map(p=>{const len=p.v/tot*C,x=`<circle cx="60" cy="60" r="${R}" fill="none" stroke="${p.c}" stroke-width="18" stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-off}" transform="rotate(-90 60 60)"><title>${esc(p.n)}: ${fmt(p.v)}</title></circle>`;off+=len;return x}).join('');
+  return `<div class="dn2"><svg viewBox="0 0 120 120" width="130" height="130"><circle cx="60" cy="60" r="${R}" fill="none" style="stroke:var(--line)" stroke-width="18"/>${arcs}<text x="60" y="57" font-size="9" text-anchor="middle" style="fill:var(--mut)">Total</text><text x="60" y="71" font-size="10" font-weight="700" text-anchor="middle" style="fill:var(--ink)">${fmt(tot)}</text></svg>
+  <ul>${parts.map(p=>`<li><i style="background:${p.c}"></i><span>${esc(p.n)}</span><b>${fmt(p.v)}</b> <small style="color:var(--mut)">${pct(p.v,tot)}</small></li>`).join('')}</ul></div>`;
+}
+function targetPanel(A){
+  const tg=Number(S.dailyTarget)||0;
+  if(!(tg>0))return `<div class="dpanel"><h4>Daily sales target</h4><div style="color:var(--mut);font-size:13px">No target yet. <a href="#" onclick="subTo('settings');return false">Set one in Settings</a> to see progress and pace here.</div></div>`;
+  const today=todayStr(),base=new Date(rf+'T12:00:00').getTime(),L=Math.round((new Date(rt+'T12:00:00')-base)/864e5)+1;
+  const open=Number(S.openHour)||8,close=Number(S.closeHour)||20,now=new Date(),hrs=now.getHours()+now.getMinutes()/60;
+  const frac=clamp((hrs-open)/Math.max(1,close-open),0,1);
+  let done;
+  if(rt<today)done=L;
+  else if(rf>today)done=0;
+  else done=Math.round((new Date(today+'T12:00:00')-base)/864e5)+frac; // finished days + the part of today that is over
+  const full=r2(tg*L),exp=r2(tg*done),got=A.sales;
+  const pctDone=full>0?Math.min(100,got/full*100):0,mark=full>0?Math.min(100,exp/full*100):0;
+  const g=t=>`<span style="color:var(--ok);font-weight:600">${t}</span>`,b=t=>`<span style="color:var(--bad);font-weight:600">${t}</span>`;
+  let msg;
+  if(got>=full)msg=g('Target reached.');
+  else if(rt<today)msg=b('Missed the target by '+fmt(full-got)+'.');
+  else if(got>=exp)msg=g('On pace.')+' Expected by now: '+fmt(exp)+'.';
+  else msg=b('Behind pace by '+fmt(exp-got)+'.')+' Expected by now: '+fmt(exp)+'.';
+  return `<div class="dpanel"><h4>${L===1?'Daily':L+'-day'} sales target</h4>
+  <div class="tgnum"><span><b>${fmt(got)}</b> <span style="color:var(--mut)">of ${fmt(full)}</span></span><b style="font-size:18px">${pctDone.toFixed(0)}%</b></div>
+  <div class="tgt"><i style="width:${pctDone}%"></i>${rt>=today&&rf<=today?`<u style="left:calc(${mark}% - 1px)" title="Expected by now"></u>`:''}</div>
+  <div style="font-size:13px">${msg}</div></div>`;
+}
+function hourPanel(){
+  const ok=RORDERS.filter(o=>o.status!=='void'),h=new Array(24).fill(0),c=new Array(24).fill(0);
+  ok.forEach(o=>{const k=new Date(o.ts).getHours();h[k]+=o.total-(o.vat||0)-(o.fee||0);c[k]++});
+  const title=rf===rt?(rf===todayStr()?'Sales by hour (today)':'Sales by hour ('+rf+')'):'Sales by hour (all days in the range added together)';
+  if(!ok.length)return `<div class="dpanel"><h4>${title}</h4><div class="empty" style="padding:10px 0">No sales in this period.</div></div>`;
+  const used=c.map((n,i)=>n?i:-1).filter(i=>i>=0);
+  const a=Math.min(Number(S.openHour)||8,...used),b=Math.max((Number(S.closeHour)||20)-1,...used);
+  const mx=Math.max(...h),pk=h.indexOf(mx);
+  const W=900,H=170,L=10,R=10,T=18,B=24,n=b-a+1,gw=(W-L-R)/n,bw=Math.min(40,gw*.7);
+  let g=`<line x1="${L}" x2="${W-R}" y1="${H-B}" y2="${H-B}" style="stroke:var(--line)"/>`;
+  for(let i=a;i<=b;i++){
+    const cx=L+gw*(i-a)+gw/2,bh=mx>0?(H-T-B)*h[i]/mx:0;
+    g+=`<rect x="${cx-bw/2}" y="${H-B-bh}" width="${bw}" height="${Math.max(h[i]>0?2:0,bh)}" rx="3" fill="${i===pk?'#c9744a':'#6f4e37'}"><title>${hrFull(i)}: ${fmt(h[i])} · ${c[i]} order(s)</title></rect>`;
+    if(h[i]>0)g+=`<text x="${cx}" y="${H-B-bh-4}" font-size="11" text-anchor="middle" style="fill:var(--ink)">${compact(h[i])}</text>`;
+    g+=`<text x="${cx}" y="${H-8}" font-size="11" text-anchor="middle" style="fill:var(--mut)">${hrLabel(i)}</text>`;
+  }
+  return `<div class="dpanel"><h4>${title}</h4><div style="font-size:13px;color:var(--mut)">Peak hour: <b style="color:var(--ink)">${hrFull(pk)}</b> · ${fmt(h[pk])} · ${c[pk]} order(s)</div>
+  <div class="chartbox" style="border:0;padding:0;margin:4px 0 0"><svg viewBox="0 0 ${W} ${H}" width="100%" style="min-width:${Math.max(420,n*34)}px">${g}</svg></div></div>`;
+}
+async function loadYear(){
+  const y=new Date().getFullYear();
+  if(YEARC&&YEARC.y===y&&Date.now()-YEARC.ts<120000)return YEARC;
+  const q=await fs.collection('orders').where('day','>=',y+'-01-01').where('day','<=',y+'-12-31').get();
+  const m=new Array(12).fill(0);
+  q.docs.forEach(d=>{const o=d.data();if(o.status==='void')return;m[+String(o.day).slice(5,7)-1]+=o.total-(o.vat||0)-(o.fee||0)});
+  YEARC={y,ts:Date.now(),m:m.map(r2)};return YEARC;
+}
+function yearBars(c){
+  const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],cm=new Date().getMonth();
+  const W=900,H=170,L=10,R=10,T=18,B=24,gw=(W-L-R)/12,bw=Math.min(46,gw*.7),mx=Math.max(1,...c.m);
+  let g=`<line x1="${L}" x2="${W-R}" y1="${H-B}" y2="${H-B}" style="stroke:var(--line)"/>`;
+  c.m.forEach((v,i)=>{
+    const cx=L+gw*i+gw/2,bh=(H-T-B)*v/mx;
+    g+=`<rect x="${cx-bw/2}" y="${H-B-bh}" width="${bw}" height="${Math.max(v>0?2:0,bh)}" rx="3" fill="${i===cm?'#c9744a':'#6f4e37'}"><title>${MN[i]} ${c.y}: ${fmt(v)}</title></rect>`;
+    if(v>0)g+=`<text x="${cx}" y="${H-B-bh-4}" font-size="11" text-anchor="middle" style="fill:var(--ink)">${compact(v)}</text>`;
+    g+=`<text x="${cx}" y="${H-8}" font-size="11" text-anchor="middle" style="fill:var(--mut)">${MN[i]}</text>`;
+  });
+  const tot=r2(c.m.reduce((a,b)=>a+b,0));
+  return `<div style="font-size:13px;color:var(--mut)">${c.y} total: <b style="color:var(--ink)">${fmt(tot)}</b> (sales without VAT and delivery fees)</div>
+  <div class="chartbox" style="border:0;padding:0;margin:4px 0 0"><svg viewBox="0 0 ${W} ${H}" width="100%" style="min-width:520px">${g}</svg></div>`;
+}
 async function aDash(silent){
-  if(silent!==true)$('#aContent').innerHTML='<div class="empty">Loading…</div>';
+  if(silent!==true){$('#aContent').innerHTML='<div class="empty">Loading…</div>';YEARC=null;PREVC=null}
   await loadRange();
   if(view!=='admin'||aTab!=='dash')return;
   const A=analyze();
+  // the period right before this one, same length, for the ▲▼ comparisons
+  const base=new Date(rf+'T12:00:00').getTime(),L=Math.round((new Date(rt+'T12:00:00')-base)/864e5)+1;
+  const pt=dstr(base-864e5),pf=dstr(base-864e5*L),pkey=pf+'|'+pt;
+  let P=null;
+  try{
+    if(!(PREVC&&PREVC.key===pkey&&Date.now()-PREVC.ts<300000)){const r=await loadSet(pf,pt);PREVC={key:pkey,ts:Date.now(),A:analyze(r.O,r.E,pf,pt)}}
+    P=PREVC.A;
+  }catch(e){P=null}
+  if(view!=='admin'||aTab!=='dash')return;
+  const plabel=L===1?(rf===todayStr()?'vs yesterday':'vs previous day'):'vs previous '+L+' days';
+  const dlt=(cur,prev,inv)=>{
+    if(!P)return '';
+    if(!prev)return `<em>${plabel}: no data</em>`;
+    const ch=(cur-prev)/Math.abs(prev)*100;
+    if(Math.abs(ch)<0.05)return `<em>${plabel}: no change</em>`;
+    const good=inv?ch<0:ch>0;
+    return `<em class="${good?'up':'dn'}">${ch>0?'▲':'▼'} ${Math.abs(ch).toFixed(1)}% ${plabel}</em>`;
+  };
   const cats=Object.entries(A.byCat).sort((a,b)=>b[1]-a[1]);
   const top=Object.entries(A.items).sort((a,b)=>b[1].q-a[1].q).slice(0,5);
   const topMax=Math.max(1,...top.map(([n,t])=>t.q)),catMax=Math.max(1,...cats.map(([c,v])=>v));
   const spend=r2(A.cogs+A.exp),tot=Math.max(A.sales,spend,1),prof=Math.max(0,A.net);
   const seg=(v,col,lab)=>v>0?`<i style="width:${v/tot*100}%;background:${col}" title="${lab} ${fmt(v)}"></i>`:'';
   const hbar=(name,v,max,text)=>`<div class="hb"><span>${esc(name)}</span><span class="tr"><i style="width:${Math.max(2,v/max*100)}%"></i></span><span class="v">${text}</span></div>`;
-  $('#aContent').innerHTML=rangeBar('aDash',exportButtons('dash'))+ingBanner()+uncBanner(A)+`
-  <div class="dh">
-    <div class="k hero ${A.net<0?'neg':''}"><small>Net profit</small><b>${money(A.net)}</b><em>${A.orders?pct(A.net,A.sales)+' of sales':'No sales in this period'}</em></div>
-    <div class="k"><small>Sales${A.vat?' (excl. VAT)':''}</small><b>${fmt(A.sales)}</b></div>
-    <div class="k"><small>Orders</small><b>${A.orders}</b></div>
-    <div class="k"><small>Average / order</small><b>${fmt(A.orders?A.sales/A.orders:0)}</b></div>
-    <div class="k"><small>Cost of goods</small><b>${fmt(A.cogs)}</b></div>
-    <div class="k"><small>Gross profit · ${pct(A.gross,A.sales)}</small><b>${money(A.gross)}</b></div>
-    <div class="k"><small>Expenses</small><b>${fmt(A.exp)}</b></div>
-    ${A.vat?`<div class="k"><small>VAT collected (not income)</small><b>${fmt(A.vat)}</b></div>`:''}
-    ${A.fees?`<div class="k"><small>Delivery fees (not sales)</small><b>${fmt(A.fees)}</b></div>`:''}
-    ${A.credit?`<div class="k"><small>Unpaid credit (of ${fmt(A.credit)})</small><b>${fmt(A.unpaid)}</b></div>`:''}
-    ${Object.entries(A.byPay).map(([k,v])=>`<div class="k"><small>${esc(k)} payments</small><b>${fmt(r2(v))}</b></div>`).join('')}
-  </div>
+  const none=t=>`<div class="empty" style="padding:10px 0">${t}</div>`;
+  // KPI cards
+  const avg=A.orders?A.sales/A.orders:0,pavg=P&&P.orders?P.sales/P.orders:0;
+  const K=(ac,small,val,extra,cls)=>`<div class="k${cls?' '+cls:''}"${ac?` style="--ac:${ac}"`:''}><small>${small}</small><b>${val}</b>${extra||''}</div>`;
+  const kp=[
+    K('','Net profit',money(A.net),`<em>${A.orders?pct(A.net,A.sales)+' of sales':'No sales in this period'}</em>`+dlt(A.net,P&&P.net),'hero'+(A.net<0?' neg':'')),
+    K('#6f4e37','Sales'+(A.vat?' (excl. VAT)':''),fmt(A.sales),dlt(A.sales,P&&P.sales)),
+    K('#2f6fb3','Orders',A.orders,dlt(A.orders,P&&P.orders)),
+    K('#7b5ea7','Average / order',fmt(avg),dlt(avg,pavg)),
+    K('#c47f17','Cost of goods',fmt(A.cogs)),
+    K('#2f7d4f','Gross profit · '+pct(A.gross,A.sales)+(A.unc?' ⚠':''),money(A.gross),A.unc?'<em>Some costs are not set yet</em>':''),
+    K('#b3392f','Expenses',fmt(A.exp),dlt(A.exp,P&&P.exp,true))];
+  if(A.vat)kp.push(K('#5b7d99','VAT collected (not income)',fmt(A.vat)));
+  if(A.fees)kp.push(K('#8a7a6a','Delivery fees (not sales)',fmt(A.fees)));
+  if(A.credit)kp.push(K('#c9744a','Unpaid credit (of '+fmt(A.credit)+')',fmt(A.unpaid)));
+  Object.entries(A.byPay).forEach(([k,v])=>kp.push(K(PAYCOL[k]||'#8a7a6a',esc(k)+' payments',fmt(r2(v)))));
+  // payment mix, order types, cashiers
+  const payParts=Object.entries(A.byPay).map(([k,v])=>({n:k,v,c:PAYCOL[k]||'#8a7a6a'}));
+  if(A.credit)payParts.push({n:'Credit (unpaid)',v:A.credit,c:PAYCOL.Credit});
+  const types=Object.entries(A.byType),typeTot=types.reduce((a,[k,t])=>a+t.s,0);
+  const cash=Object.entries(A.byCash).sort((a,b)=>b[1].s-a[1].s),cashMax=Math.max(1,...cash.map(([k,t])=>t.s));
+  const recent=RORDERS.filter(o=>o.status!=='void').sort((a,b)=>b.ts-a.ts).slice(0,6);
+  const lowI=ING.filter(g=>ingStatus(g)!=='ok').sort((a,b)=>(a.stock||0)-(b.stock||0)),lowM=MENU.filter(m=>m.track&&m.stock<=3);
+  const yc=YEARC&&YEARC.y===new Date().getFullYear()&&Date.now()-YEARC.ts<120000?YEARC:null;
+  $('#aContent').innerHTML=rangeBar('aDash',exportButtons('dash'))+uncBanner(A)+`
+  <div class="dh">${kp.join('')}</div>
+  ${targetPanel(A)}
   <div class="dmain">
     <div>
       <div class="dpanel"><h4>Where the sales went</h4>
@@ -1453,15 +1631,25 @@ async function aDash(silent){
         <div class="splitlg"><span><i style="background:#c47f17"></i>Cost of goods ${fmt(A.cogs)} · ${pct(A.cogs,A.sales)}</span><span><i style="background:#b3392f"></i>Expenses ${fmt(A.exp)} · ${pct(A.exp,A.sales)}</span><span><i style="background:#2f7d4f"></i>Net profit ${fmt(A.net)} · ${pct(A.net,A.sales)}</span></div>
         ${A.net<0&&A.orders?`<div class="warnbox" style="margin:6px 0 0;padding:6px 10px;font-size:13px">Costs and expenses are higher than sales by ${fmt(-A.net)} in this period.</div>`:''}
       </div>
+      ${hourPanel()}
       <div class="dpanel"><h4>Sales, cost and expenses by day</h4>${chartSVG(A)}
       ${Math.round((new Date(rt+'T12:00:00')-new Date(rf+'T12:00:00'))/864e5)+1>93?'<div class="warnbox">The chart shows the first 93 days only. The totals above cover the whole range.</div>':''}</div>
+      <div class="dpanel"><h4>Monthly sales this year</h4><div id="yearBox">${yc?yearBars(yc):'<div class="empty" style="padding:10px 0">Loading…</div>'}</div></div>
     </div>
     <div>
-      <div class="dpanel"><h4>Top sellers</h4>${top.map(([n,t])=>hbar(n,t.q,topMax,t.q+' sold · '+fmt(t.s))).join('')||'<div class="empty" style="padding:10px 0">No sales in this period.</div>'}</div>
-      <div class="dpanel"><h4>Expenses by category</h4>${cats.map(([c,v])=>hbar(c,v,catMax,fmt(v)+' · '+pct(v,A.sales))).join('')||'<div class="empty" style="padding:10px 0">No expenses recorded for these dates.</div>'}</div>
+      <div class="dpanel"><h4>Top sellers</h4>${top.map(([n,t])=>hbar(n,t.q,topMax,t.q+' sold · '+fmt(t.s))).join('')||none('No sales in this period.')}</div>
+      <div class="dpanel"><h4>Payment mix</h4>${donut(payParts)}</div>
+      <div class="dpanel"><h4>Dine-in, take-out and delivery</h4>${typeTot>0?`<div class="split">${types.map(([k,t])=>`<i style="width:${t.s/typeTot*100}%;background:${TYPECOL[k]||'#8a7a6a'}" title="${esc(k)} ${fmt(t.s)}"></i>`).join('')}</div>
+        <div class="splitlg">${types.map(([k,t])=>`<span><i style="background:${TYPECOL[k]||'#8a7a6a'}"></i>${esc(k)} ${fmt(r2(t.s))} · ${t.n} order(s)</span>`).join('')}</div>`:none('No sales in this period.')}</div>
+      <div class="dpanel"><h4>Sales per cashier</h4>${cash.map(([k,t])=>hbar(k,t.s,cashMax,fmt(r2(t.s))+' · '+t.n+' order(s)')).join('')||none('No sales in this period.')}</div>
+      <div class="dpanel"><h4>Expenses by category</h4>${cats.map(([c,v])=>hbar(c,v,catMax,fmt(v)+' · '+pct(v,A.sales))).join('')||none('No expenses recorded for these dates.')}</div>
+      <div class="dpanel"><h4>Recent orders</h4>${recent.map(o=>`<div class="ro"><span class="av2">${TYPEICO[o.type]||'☕'}</span><div><b>${esc(o.custName||o.type)}</b><small>${ono(o)} · ${dstr(o.ts)===todayStr()?'':dstr(o.ts)+' '}${tstr(o.ts)} · ${esc(o.pay)}</small></div><span class="am">${fmt(o.total)}</span></div>`).join('')||none('No orders in this period.')}</div>
+      <div class="dpanel"><h4>Low stock</h4>${lowI.slice(0,6).map(g=>`<div class="lowrow"><span>${esc(g.name)}</span><span class="low">${g.stock||0} ${esc(g.unit)} · ${ingStatus(g)==='out'?'OUT':'LOW'}</span></div>`).join('')+lowM.slice(0,4).map(m=>`<div class="lowrow"><span>${esc(m.name)}</span><span class="low">${m.stock<=0?'Sold out':m.stock+' left'}</span></div>`).join('')||none('Everything is stocked.')}
+        ${lowI.length?`<div style="margin-top:8px;font-size:13px"><a href="#" onclick="subTo('ing');return false">Open Ingredients</a></div>`:''}</div>
     </div>
   </div>
-  <div style="color:var(--mut);font-size:12px;margin-top:10px">Net profit = Sales − Cost of goods − Expenses. Voided orders are excluded.${A.credit?' Credit sales count as sales when they are made, even if not paid yet.':''}${A.fees?' Delivery fees are not counted as sales or profit.':''}</div>`;
+  <div style="color:var(--mut);font-size:12px;margin-top:10px">Net profit = Sales − Cost of goods − Expenses. Voided orders are excluded. Monthly and yearly expenses are spread evenly across the days of their month or year.${A.credit?' Credit sales count as sales when they are made, even if not paid yet.':''}${A.fees?' Delivery fees are not counted as sales or profit.':''}</div>`;
+  if(!yc)loadYear().then(c=>{const el=$('#yearBox');if(el&&view==='admin'&&aTab==='dash')el.innerHTML=yearBars(c)}).catch(e=>{const el=$('#yearBox');if(el)el.innerHTML='<div class="empty" style="padding:10px 0">Could not load the yearly numbers.</div>'});
 }
 
 /* ----- Z-Reading (end of day) ----- */
@@ -1573,29 +1761,41 @@ async function aExpenses(){
   $('#aContent').innerHTML='<div class="empty">Loading…</div>';
   await loadRange();
   if(view!=='admin'||aTab!=='exp')return;
-  const list=REXP.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))||(b.ts||0)-(a.ts||0));
-  const total=r2(list.reduce((a,e)=>a+(Number(e.amount)||0),0));
+  const share=e=>r2(expPieces(e).reduce((a,p)=>a+p.amt,0));
+  const list=REXP.filter(e=>expPieces(e).length).sort((a,b)=>String(b.date).localeCompare(String(a.date))||(b.ts||0)-(a.ts||0));
+  const total=r2(list.reduce((a,e)=>a+share(e),0));
   $('#aContent').innerHTML=rangeBar('aExpenses',exportButtons('exp'))+`
   <div class="card" style="background:#faf6f0;margin-bottom:12px"><b>Add expense</b>
     <div class="two" style="margin-top:6px"><div><div class="lbl">Date</div><input id="xD" type="date" value="${todayStr()}"></div>
     <div><div class="lbl">Category</div><input id="xC" list="xCats" placeholder="e.g. Rent"><datalist id="xCats">${EXP_CATS.map(c=>`<option value="${c}">`).join('')}</datalist></div></div>
     <div class="two"><div><div class="lbl">Description (optional)</div><input id="xN" placeholder="e.g. October electricity bill"></div>
     <div><div class="lbl">Amount</div><input id="xA" type="number" min="0" step="0.01" placeholder="0.00"></div></div>
+    <div class="lbl">Repeat</div>
+    <select id="xR"><option value="">One-time (counted on its date)</option><option value="monthly">Monthly bill (spread across the days of that month)</option><option value="yearly">Yearly bill (spread across the days of that year)</option></select>
     <button style="margin-top:10px" onclick="addExpense()">Add expense</button></div>
   <div class="cards"><div class="stat"><small>Total expenses (${rf} to ${rt})</small><div>${fmt(total)}</div></div></div>
-  <table><tr><th>Date</th><th>Category</th><th>Description</th><th class="n">Amount</th><th>By</th><th></th></tr>
-  ${list.map(e=>`<tr><td>${esc(e.date)}</td><td>${esc(e.cat)}</td><td>${esc(e.desc||'')}</td><td class="n">${fmt(e.amount)}</td><td>${esc(e.by||'')}</td><td class="n"><button class="bad" onclick="delExpense('${e.id}')">Delete</button></td></tr>`).join('')||'<tr><td colspan="6">No expenses for these dates.</td></tr>'}</table>`;
+  <table><tr><th>Date</th><th>Category</th><th>Description</th><th>Repeat</th><th class="n">Amount</th><th>By</th><th></th></tr>
+  ${list.map(e=>`<tr><td>${esc(e.date)}</td><td>${esc(e.cat)}</td><td>${esc(e.desc||'')}</td>
+  <td><select style="width:auto;padding:5px 8px" onchange="setExpRec('${e.id}',this.value)"><option value="" ${!e.rec?'selected':''}>One-time</option><option value="monthly" ${e.rec==='monthly'?'selected':''}>Monthly</option><option value="yearly" ${e.rec==='yearly'?'selected':''}>Yearly</option></select></td>
+  <td class="n">${fmt(e.amount)}${e.rec?`<br><small>${fmt(share(e))} in this range</small>`:''}</td><td>${esc(e.by||'')}</td><td class="n"><button class="bad" onclick="delExpense('${e.id}')">Delete</button></td></tr>`).join('')||'<tr><td colspan="7">No expenses for these dates.</td></tr>'}</table>`;
 }
 async function addExpense(){
-  const date=$('#xD').value,cat=$('#xC').value.trim(),amount=r2(parseFloat($('#xA').value)||0);
+  const date=$('#xD').value,cat=$('#xC').value.trim(),amount=r2(parseFloat($('#xA').value)||0),rec=$('#xR').value;
   if(!date){toast('Pick a date');return}
   if(!cat){toast('Enter a category');return}
   if(!(amount>0)){toast('Enter an amount greater than 0');return}
   try{
-    await fs.collection('expenses').add({date,cat,desc:$('#xN').value.trim(),amount,by:ME.name,ts:Date.now()});
+    const d={date,cat,desc:$('#xN').value.trim(),amount,by:ME.name,ts:Date.now()};
+    if(rec)d.rec=rec;
+    await fs.collection('expenses').add(d);
     if(date<rf)rf=date;if(date>rt)rt=date; // make sure the new entry is visible
     toast('Expense added');aExpenses();
   }catch(e){toast(errMsg(e))}
+}
+async function setExpRec(id,v){
+  try{await fs.collection('expenses').doc(id).update({rec:v?v:firebase.firestore.FieldValue.delete()});toast('Updated')}
+  catch(e){toast(errMsg(e))}
+  aExpenses();
 }
 async function delExpense(id){
   if(!confirm('Delete this expense?'))return;
@@ -1881,13 +2081,14 @@ function dashDoc(){
     {h:'Expenses by category',cols:['Category','Amount','% of sales'],rows:cats,money:[1]}]};
 }
 function expDoc(){
-  const list=REXP.slice().sort((a,b)=>String(a.date).localeCompare(String(b.date))||(a.ts||0)-(b.ts||0));
-  const total=r2(list.reduce((a,e)=>a+(Number(e.amount)||0),0)),cats={};
-  list.forEach(e=>{cats[e.cat]=(cats[e.cat]||0)+(Number(e.amount)||0)});
+  const share=e=>r2(expPieces(e).reduce((a,p)=>a+p.amt,0));
+  const list=REXP.filter(e=>expPieces(e).length).sort((a,b)=>String(a.date).localeCompare(String(b.date))||(a.ts||0)-(b.ts||0));
+  const total=r2(list.reduce((a,e)=>a+share(e),0)),cats={};
+  list.forEach(e=>{cats[e.cat]=(cats[e.cat]||0)+share(e)});
   return {title:'Expenses',sub:rangeText(),file:'expenses_'+rf+'_to_'+rt,
     summary:[['Date range',rangeText()],['Total expenses',total,1],['Number of entries',list.length]],sections:[
     {h:'By category',cols:['Category','Amount','% of total'],rows:Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(([c,v])=>[c,r2(v),pct(v,total)]),money:[1]},
-    {h:'Expenses',cols:['Date','Category','Description','Amount','Added by'],rows:list.map(e=>[e.date,e.cat,e.desc||'',Number(e.amount)||0,e.by||'']),money:[3]}]};
+    {h:'Expenses',cols:['Date','Category','Description','Repeat','Amount in range','Added by'],rows:list.map(e=>[e.date,e.cat,e.desc||'',e.rec||'one-time',share(e),e.by||'']),money:[4]}]};
 }
 function zDoc(){
   const {Z,saved,date}=ZCUR;
@@ -1998,6 +2199,11 @@ async function resetPw(i){
 function aSettings(){
   $('#aContent').innerHTML=`<div class="lbl" style="margin-top:0">Shop name</div><input id="sShop" value="${esc(S.shop)}">
   <div class="lbl">PWD / Senior discount (%)</div><input id="sPwd" type="number" min="0" max="100" value="${S.pwdRate}">
+  <h4>Sales target &amp; opening hours</h4>
+  <div class="lbl" style="margin-top:0">Daily sales target (₱, leave 0 to hide)</div><input id="sTgt" type="number" min="0" step="1" value="${S.dailyTarget||0}">
+  <div class="two"><div><div class="lbl">Opening hour (0 to 23)</div><input id="sOpen" type="number" min="0" max="23" value="${S.openHour==null?8:S.openHour}"></div>
+  <div><div class="lbl">Closing hour (1 to 24)</div><input id="sClose" type="number" min="1" max="24" value="${S.closeHour==null?20:S.closeHour}"></div></div>
+  <small style="color:var(--mut)">Used for the target pace on the Dashboard ("behind pace" or "on pace") and the Sales by hour chart.</small>
   <h4>Customer ordering (QR for the wall)</h4>
   <div class="lbl" style="margin-top:0">Customer page address (where order.html is uploaded)</div>
   <input id="sOrdUrl" value="${esc(orderUrl())}" placeholder="https://yourshop.web.app/order.html">
@@ -2134,10 +2340,12 @@ function clearLogo(){pendingLogo='';const f=$('#sLogoFile');if(f)f.value='';logo
 async function saveSettings(){
   const sizes=parseSizes($('#sSizes').value);
   if(!sizes.length){toast('At least one size is required');return}
-  const d={shop:$('#sShop').value.trim()||'Coffee Shop',pwdRate:Math.min(100,Math.max(0,parseFloat($('#sPwd').value)||0)),
+  const hr=(id,def,lo,hi)=>{const v=parseInt($(id).value);return isNaN(v)?def:Math.min(hi,Math.max(lo,v))};
+  const d={shop:$('#sShop').value.trim()||'Coffee Shop',pwdRate:Math.min(100,Math.max(0,parseFloat($('#sPwd').value)||0)),dailyTarget:Math.max(0,r2(parseFloat($('#sTgt').value)||0)),openHour:hr('#sOpen',8,0,23),closeHour:hr('#sClose',20,1,24),
     sizes,addons:parseLines($('#sAdd').value).map(x=>({n:x.n,p:x.v,cost:x.c}))};
   Object.assign(d,{orderUrl:($('#sOrdUrl')||{value:''}).value.trim(),address:$('#sAddr').value.trim(),phone:$('#sPhone').value.trim(),tin:$('#sTin').value.trim(),footer:$('#sFoot').value.trim(),
     vatOn:$('#sVatOn').checked,vatRate:Math.min(100,Math.max(0,parseFloat($('#sVatRate').value)||0)),vatMode:$('#sVatMode').value,pwdVatExempt:$('#sPwdEx').checked,blockOnOut:$('#sBlock').checked});
+  if(d.closeHour<=d.openHour){toast('The closing hour must be after the opening hour');return}
   if(d.vatOn&&!(d.vatRate>0)){toast('Enter a VAT rate above 0');return}
   if(pendingLogo!==undefined)d.logo=pendingLogo;
   if(pendingSide!==undefined)d.sideLogo=pendingSide;
@@ -2146,6 +2354,13 @@ async function saveSettings(){
 
 function renderAll(){renderMenu();renderCart();renderQueue();netBadge();tick()}
 {const mEl=document.getElementById('modal');if(mEl&&mEl.addEventListener){mEl.addEventListener('input',saveDraft);mEl.addEventListener('change',saveDraft)}}
+/* ----- dark / light mode ----- */
+const ICO_SUN='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/></svg>';
+const ICO_MOON='<svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>';
+let darkMode=false;try{darkMode=localStorage.getItem('pos_theme')==='dark'}catch(e){}
+function applyTheme(){document.body.classList.toggle('dark',darkMode);const b=$('#themeBtn');if(b)b.innerHTML=darkMode?ICO_SUN:ICO_MOON}
+function toggleTheme(){darkMode=!darkMode;try{localStorage.setItem('pos_theme',darkMode?'dark':'light')}catch(e){}applyTheme()}
+applyTheme();
 init();
 </script>
 </body>
