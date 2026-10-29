@@ -53,6 +53,12 @@ main{padding:14px;max-width:760px;margin:0 auto}
 .row{display:flex;justify-content:space-between;margin:8px 0}
 .row.total{font-size:22px;font-weight:700;border-top:1px solid var(--line);padding-top:12px}
 .empty{color:var(--mut);text-align:center;padding:24px 0}
+@media(min-width:700px){
+  #ov{align-items:center;padding:20px}
+  #sheet{border-radius:18px;max-height:88vh;box-shadow:0 12px 40px rgba(0,0,0,.25)}
+  .bar{left:50%;right:auto;transform:translateX(-50%);width:100%;max-width:760px;background:transparent;border-top:0;padding:12px 14px 16px}
+  .bar button{box-shadow:0 6px 18px rgba(0,0,0,.22)}
+}
 #toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:10px;display:none;z-index:30;max-width:90vw;text-align:center}
 .done{text-align:center;padding:10px 0}
 .done canvas,.done img{width:230px;height:230px;image-rendering:pixelated;background:#fff;padding:10px;border-radius:12px;border:1px solid var(--line)}
@@ -221,7 +227,8 @@ async function submitOrder(){
     cart=[];sending=false;closeSheet();showDone(rec);
   }catch(e){
     sending=false;const b=$('#sendBtn');if(b){b.disabled=false;b.textContent='Place order'}
-    toast('Could not send your order. Please try again.',4000);
+    console.error(e);
+    toast('Could not send your order ('+(e&&(e.code||e.message)||'unknown error')+'). Please try again.',7000);
   }
 }
 function loadLast(){
