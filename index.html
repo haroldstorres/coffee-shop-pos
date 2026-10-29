@@ -126,6 +126,13 @@ main{padding:0 22px 22px}
 .hero2 em.up,.mini em.up{color:var(--ok);font-weight:600}.hero2 em.dn,.mini em.dn{color:var(--bad);font-weight:600}
 .hero2 .hsep{border-top:1px solid var(--line);margin:12px 0 8px}
 .minis{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.hrow{display:grid;grid-template-columns:auto minmax(0,1fr) minmax(150px,200px);gap:14px;align-items:start}
+.hrow .mini{margin:0}
+.hrow .mini b{font-size:20px}
+.hpay{display:flex;flex-direction:column;gap:8px}
+.hpay .mini{padding:8px 12px}
+.hpay .mini b{font-size:18px;margin-top:0}
+@media(max-width:700px){.hrow{grid-template-columns:1fr}}
 .mini{position:relative;border:1px solid var(--line);border-left:4px solid var(--ac);border-radius:12px;padding:12px 14px}
 .mini b{display:block;font-size:22px;line-height:1.3;margin-top:2px}
 .mini .mdot{position:absolute;top:12px;right:12px;width:10px;height:10px;border-radius:50%;background:var(--ac)}
@@ -1741,7 +1748,6 @@ async function aDash(silent){
   if(A.vat)kp.push(K('#5b7d99','VAT collected (not income)',fmt(A.vat)));
   if(A.fees)kp.push(K('#8a7a6a','Delivery fees (not sales)',fmt(A.fees)));
   if(A.credit)kp.push(K('#c9744a','Unpaid credit (of '+fmt(A.credit)+')',fmt(A.unpaid)));
-  Object.entries(A.byPay).forEach(([k,v])=>kp.push(K(PAYCOL[k]||'#8a7a6a',esc(k)+' payments',fmt(r2(v)))));
   // payment mix, order types, cashiers
   const payParts=Object.entries(A.byPay).map(([k,v])=>({n:k,v,c:PAYCOL[k]||'#8a7a6a'}));
   if(A.credit)payParts.push({n:'Credit (unpaid)',v:A.credit,c:PAYCOL.Credit});
@@ -1751,7 +1757,7 @@ async function aDash(silent){
   const lowI=ING.filter(g=>ingStatus(g)!=='ok').sort((a,b)=>(a.stock||0)-(b.stock||0)),lowM=MENU.filter(m=>m.track&&m.stock<=3);
   const yc=YEARC&&YEARC.y===new Date().getFullYear()&&Date.now()-YEARC.ts<120000?YEARC:null;
   const M=(ac,lab,val,extra)=>`<div class="mini" style="--ac:${ac}"><i class="mdot"></i><small>${lab}</small><b>${val}</b>${extra||''}</div>`;
-  const restKp=kp.filter((x,i)=>![0,1,2,3,6].includes(i));
+  const restKp=kp.filter((x,i)=>![0,1,2,3,5,6].includes(i));
   const ringParts=[{n:'Cost of goods',v:A.cogs,c:'#c47f17'},{n:'Expenses',v:A.exp,c:'#b3392f'},{n:'Net profit',v:Math.max(0,A.net),c:'#2f7d4f'}];
   const catOf=n=>{const m=MENU.find(x=>x.name===n);return m?(m.cat||'Others'):'Others'};
   const byC={},slowC={};
@@ -1771,8 +1777,10 @@ async function aDash(silent){
   if(A.unpaid>0)attRows.push(att('#c47f17','📒',fmt(A.unpaid)+' unpaid credit','In this period','Open','subTo(\'credits\')'));
   $('#aContent').innerHTML=rangeBar('aDash',exportButtons('dash'))+`
   <div class="dg1">
-    <div class="hero2" style="--ac:${A.net<0?'var(--bad)':'#2f7d4f'}"><small>Net profit</small><div class="bigp ${A.net<0?'neg':''}">${fmt(A.net)}</div>
-      <em>${A.orders?pct(A.net,A.sales)+' of sales':'No sales in this period'}</em>${dlt(A.net,P&&P.net)}
+    <div class="hero2" style="--ac:${A.net<0?'var(--bad)':'#2f7d4f'}"><div class="hrow"><div><small>Net profit</small><div class="bigp ${A.net<0?'neg':''}">${fmt(A.net)}</div>
+      <em>${A.orders?pct(A.net,A.sales)+' of sales':'No sales in this period'}</em>${dlt(A.net,P&&P.net)}</div>
+      ${M('#2f7d4f','Gross profit · '+pct(A.gross,A.sales)+(A.unc?' ⚠':''),money(A.gross),A.unc?'<em>Some costs are not set yet</em>':'')}
+      <div class="hpay">${Object.entries(A.byPay).map(([k,v])=>M(PAYCOL[k]||'#8a7a6a',esc(k)+' payments',fmt(r2(v)))).join('')}</div></div>
       <div class="hsep"></div>${targetPanel(A,true)}</div>
     <div class="minis">
       ${M('#6f4e37','Sales'+(A.vat?' (excl. VAT)':''),fmt(A.sales),dlt(A.sales,P&&P.sales))}
