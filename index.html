@@ -449,7 +449,7 @@ function download(name,text,type){
 /* ---------- defaults ---------- */
 function defaultSettings(){
   return {shop:'Kape Corner',pwdRate:20,dailyTarget:0,openHour:8,closeHour:20,vatOn:false,vatRate:12,vatMode:'incl',pwdVatExempt:true,blockOnOut:true,address:'',phone:'',tin:'',footer:'',logo:'',sideLogo:'',orderUrl:'',
-    sizes:[{n:'Small',up:0,mult:1},{n:'Medium',up:10,mult:1.25},{n:'Large',up:20,mult:1.5}],addonUse:[],
+    sizes:[{n:'Small',up:0,mult:1},{n:'Medium',up:10,mult:1.25},{n:'Large',up:20,mult:1.5}],addonUse:[],groups:[],
     addons:[{n:'Extra shot',p:20},{n:'Oat milk',p:30},{n:'Whipped cream',p:15},{n:'Caramel syrup',p:15}]};
 }
 function seedMenu(){
@@ -1207,6 +1207,9 @@ function editItem(id){
   <button class="ghost" style="margin-top:6px" onclick="addRecipeRow()">+ Add ingredient</button>
   <small style="display:block;color:var(--mut)">Other sizes use the size multiplier from Settings. Stock is deducted when the order is placed.</small>
   <label style="display:block;margin-top:10px"><input id="fS" type="checkbox" style="width:auto" ${m.sized?'checked':''}> Has sizes &amp; add-ons (drinks)</label>
+  <div class="lbl">Option groups on the order page (drinks only)</div>
+  ${(S.groups||[]).length?(S.groups||[]).map(g=>`<label style="display:block;margin-top:4px"><input class="fG" type="checkbox" style="width:auto" value="${esc(g.n)}" ${(m.groups||[]).includes(g.n)?'checked':''}> ${esc(g.n)} <small style="color:var(--mut)">${g.req?'required':'optional'}, max ${g.max}</small></label>`).join(''):'<small style="color:var(--mut)">No groups yet. Create them in Settings, under Menu options.</small>'}
+  <small style="display:block;color:var(--mut)">Leave all unticked to show every add-on in one list.</small>
   <label style="display:block;margin-top:6px"><input id="fT" type="checkbox" style="width:auto" ${m.track?'checked':''}> Track stock</label>
   <div class="lbl">Stock</div><input id="fK" type="number" min="0" step="1" value="${m.stock}">
   <div class="actions"><button class="ghost" onclick="closeModal()">Cancel</button><button onclick="saveItem(${id?`'${id}'`:'null'})">Save</button></div>`);
@@ -1247,7 +1250,7 @@ function addRecipeRow(){
 }
 async function saveItem(id){
   const name=$('#fN').value.trim();if(!name){toast('Enter a name');return}
-  const d={name,cat:$('#fC').value.trim()||'Others',price:Math.max(0,r2(parseFloat($('#fP').value)||0)),cost:$('#fCo').value.trim()===''?null:Math.max(0,r2(parseFloat($('#fCo').value)||0)),sized:$('#fS').checked,track:$('#fT').checked,stock:Math.max(0,parseInt($('#fK').value)||0),temp:$('#fTm').value};
+  const d={name,cat:$('#fC').value.trim()||'Others',price:Math.max(0,r2(parseFloat($('#fP').value)||0)),cost:$('#fCo').value.trim()===''?null:Math.max(0,r2(parseFloat($('#fCo').value)||0)),sized:$('#fS').checked,track:$('#fT').checked,stock:Math.max(0,parseInt($('#fK').value)||0),temp:$('#fTm').value,groups:[...document.querySelectorAll('#modal .fG:checked')].map(x=>x.value)};
   if(pendingPhoto!==undefined)d.photo=pendingPhoto;
   const rec={};
   document.querySelectorAll('#rList .rrow').forEach(r=>{
@@ -2235,6 +2238,8 @@ function aSettings(){
   <small style="color:var(--mut)">Example: Large,20,6,1.5 means +₱20 price, +₱6 cost, and 1.5× the recipe amounts.</small>
   <div class="lbl">Add-ons (one per line: Name, price, cost)</div><textarea id="sAdd" rows="5">${esc(S.addons.map(a=>a.n+','+a.p+','+(a.cost||0)).join('\n'))}</textarea>
   <small style="color:var(--mut)">Add-on example: Extra shot,20,6 means ₱20 price and ₱6 cost. What it uses up is set in the Ingredients tab.</small>
+  <div class="lbl">Option groups for the customer order page (one per line: Group name | required or optional | max picks | add-on; add-on; ...)</div><textarea id="sGroups" rows="6" placeholder="Milk | required | 1 | Whole milk; Oat milk&#10;Syrup | optional | 1 | Caramel syrup">${esc((S.groups||[]).map(g=>g.n+' | '+(g.req?'required':'optional')+' | '+g.max+' | '+(g.opts||[]).join('; ')).join('\n'))}</textarea>
+  <small style="color:var(--mut)">Every choice must be written exactly like an add-on above (that is where its price and cost come from). Then tick the groups on each drink in Menu &amp; Stock. A drink with no group ticked shows all add-ons in one list. If you rename a group, tick it again on the drinks.</small>
   <div class="actions" style="justify-content:flex-start"><button onclick="saveSettings()">Save settings</button></div>`;
   pendingLogo=undefined;logoPrev();pendingSide=undefined;sideLogoPrev();
 }
@@ -2247,6 +2252,22 @@ function parseSizes(t){
     if(p.length===2)return {n:p[0],up:num(p[1],0),cost:0,mult:1};
     return {n:p[0],up:0,cost:0,mult:1};
   }).filter(x=>x.n);
+}
+function parseGroups(t,addons){
+  const out=[],bad=[],seen=new Set(),names=new Set(addons.map(a=>a.n));
+  t.split('\n').map(l=>l.trim()).filter(Boolean).forEach(l=>{
+    const p=l.split('|').map(x=>x.trim());
+    if(p.length<4||!p[0]){bad.push('Wrong format: '+l);return}
+    if(seen.has(p[0])){bad.push('Duplicate group: '+p[0]);return}
+    seen.add(p[0]);
+    const opts=p.slice(3).join('|').split(';').map(x=>x.trim()).filter(Boolean);
+    const miss=opts.filter(n=>!names.has(n));
+    if(miss.length){bad.push('"'+p[0]+'" has unknown add-on: '+miss.join(', '));return}
+    if(!opts.length){bad.push('"'+p[0]+'" has no choices');return}
+    const req=/^(req|1|yes|true)/i.test(p[1]),max=Math.min(opts.length,Math.max(1,parseInt(p[2])||1));
+    out.push({n:p[0],req,max,opts});
+  });
+  return {groups:out,bad};
 }
 function parseLines(t){
   const num=x=>{const v=parseFloat(x);return isNaN(v)?0:Math.max(0,v)};
@@ -2340,9 +2361,12 @@ function clearLogo(){pendingLogo='';const f=$('#sLogoFile');if(f)f.value='';logo
 async function saveSettings(){
   const sizes=parseSizes($('#sSizes').value);
   if(!sizes.length){toast('At least one size is required');return}
+  const addonsNew=parseLines($('#sAdd').value).map(x=>({n:x.n,p:x.v,cost:x.c}));
+  const gp=parseGroups(($('#sGroups')||{value:''}).value,addonsNew);
+  if(gp.bad.length){toast(gp.bad[0],6000);return}
   const hr=(id,def,lo,hi)=>{const v=parseInt($(id).value);return isNaN(v)?def:Math.min(hi,Math.max(lo,v))};
   const d={shop:$('#sShop').value.trim()||'Coffee Shop',pwdRate:Math.min(100,Math.max(0,parseFloat($('#sPwd').value)||0)),dailyTarget:Math.max(0,r2(parseFloat($('#sTgt').value)||0)),openHour:hr('#sOpen',8,0,23),closeHour:hr('#sClose',20,1,24),
-    sizes,addons:parseLines($('#sAdd').value).map(x=>({n:x.n,p:x.v,cost:x.c}))};
+    sizes,addons:addonsNew,groups:gp.groups};
   Object.assign(d,{orderUrl:($('#sOrdUrl')||{value:''}).value.trim(),address:$('#sAddr').value.trim(),phone:$('#sPhone').value.trim(),tin:$('#sTin').value.trim(),footer:$('#sFoot').value.trim(),
     vatOn:$('#sVatOn').checked,vatRate:Math.min(100,Math.max(0,parseFloat($('#sVatRate').value)||0)),vatMode:$('#sVatMode').value,pwdVatExempt:$('#sPwdEx').checked,blockOnOut:$('#sBlock').checked});
   if(d.closeHour<=d.openHour){toast('The closing hour must be after the opening hour');return}
