@@ -137,6 +137,10 @@ main{padding:0 22px 22px}
 .sltabs button{padding:3px 10px;border-radius:6px;font-size:12px;background:transparent;color:var(--mut)}
 .sltabs button.on{background:var(--card);color:var(--ink);font-weight:600}
 .dmore{margin:18px 0 6px;font-size:16px}
+.bs{display:flex;justify-content:space-between;gap:12px;padding:10px 4px;border-bottom:1px solid var(--line);font-size:15px}
+.bs:last-child{border-bottom:0}
+.bs span:last-child{font-variant-numeric:tabular-nums}
+.bs.sl span:last-child{color:var(--mut)}
 body.dark .dpanel.ac{background:linear-gradient(135deg,color-mix(in srgb,var(--ac,var(--brand)) 11%,transparent),transparent 65%),var(--card)}
 @media(max-width:1000px){.dg1,.dg2,.dgm{grid-template-columns:1fr}}
 .dmain{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:10px;align-items:start}
@@ -1680,6 +1684,13 @@ function yearBars(c){
   return `<div style="font-size:13px;color:var(--mut)">${c.y} total: <b style="color:var(--ink)">${fmt(tot)}</b> (sales without VAT and delivery fees)</div>
   <div class="chartbox" style="border:0;padding:0;margin:4px 0 0"><svg viewBox="0 0 ${W} ${H}" width="100%" style="min-width:520px">${g}</svg></div>`;
 }
+function rangeWord(){
+  const t=todayStr();
+  if(rf===rt)return rf===t?'today':rf;
+  if(rt===t&&rf===dstr(Date.now()-6*864e5))return 'this week';
+  if(rt===t&&rf===t.slice(0,8)+'01')return 'this month';
+  return rf+' to '+rt;
+}
 function swSell(n){const t=$('#sellTop'),w=$('#sellSlow');if(!t||!w)return;t.style.display=n===1?'':'none';w.style.display=n===2?'':'none';$('#slT').classList.toggle('on',n===1);$('#slS').classList.toggle('on',n===2)}
 async function aDash(silent){
   if(silent!==true){$('#aContent').innerHTML='<div class="empty">Loading…</div>';YEARC=null;PREVC=null}
@@ -1737,8 +1748,9 @@ async function aDash(silent){
   const M=(ac,lab,val,extra)=>`<div class="mini" style="--ac:${ac}"><i class="mdot"></i><small>${lab}</small><b>${val}</b>${extra||''}</div>`;
   const restKp=kp.filter((x,i)=>![0,1,2,3,6].includes(i));
   const ringParts=[{n:'Cost of goods',v:A.cogs,c:'#c47f17'},{n:'Expenses',v:A.exp,c:'#b3392f'},{n:'Net profit',v:Math.max(0,A.net),c:'#2f7d4f'}];
+  const best=Object.entries(A.items).sort((a,b)=>b[1].q-a[1].q).slice(0,8);
   const sold=n=>(A.items[n]||{q:0,s:0});
-  const slow=MENU.map(m=>({n:m.name,q:sold(m.name).q,s:sold(m.name).s})).sort((x,y)=>x.q-y.q||x.n.localeCompare(y.n)).slice(0,5);
+  const slow=MENU.map(m=>({n:m.name,q:sold(m.name).q,s:sold(m.name).s})).sort((x,y)=>x.q-y.q||x.n.localeCompare(y.n)).slice(0,8);
   const lowAll=lowI.length+lowM.length,lowNames=lowI.map(g=>g.name).concat(lowM.map(m=>m.name)).slice(0,3).map(esc).join(', ');
   const att=(ac,ic,t,sub,link,fn)=>`<div class="at2" style="--ac:${ac}"><span class="ic">${ic}</span><div class="tx">${t}<small>${sub}</small></div><a href="#" onclick="${fn};return false">${link}</a></div>`;
   const attRows=[];
@@ -1763,9 +1775,9 @@ async function aDash(silent){
       ${A.net<0&&A.orders?`<div class="warnbox" style="margin:8px 0 0;padding:6px 10px;font-size:13px">Costs and expenses are higher than sales by ${fmt(-A.net)} in this period.</div>`:''}</div>
   </div>
   <div class="dg2">
-    <div class="dpanel ac" style="--ac:#6f4e37"><h4>Sellers <span class="sltabs"><button class="on" id="slT" onclick="swSell(1)">Top</button><button id="slS" onclick="swSell(2)">Slowest</button></span></h4>
-      <div id="sellTop">${top.map(([n,t])=>hbar(n,t.q,topMax,t.q+' sold · '+fmt(t.s))).join('')||none('No sales in this period.')}</div>
-      <div id="sellSlow" style="display:none">${slow.map(x=>`<div class="lowrow"><span>${esc(x.n)}</span><span style="color:var(--mut)">${x.q} sold${x.s?' · '+fmt(x.s):''}</span></div>`).join('')||none('No menu items yet.')}</div></div>
+    <div class="dpanel ac" style="--ac:#6f4e37"><h4>Best sellers - ${rangeWord()} <span class="sltabs"><button class="on" id="slT" onclick="swSell(1)">Top</button><button id="slS" onclick="swSell(2)">Slowest</button></span></h4>
+      <div id="sellTop">${best.map(([n,t])=>`<div class="bs" title="${esc(fmt(t.s))}"><span>${esc(n)}</span><span>${t.q}</span></div>`).join('')||none('No sales in this period.')}</div>
+      <div id="sellSlow" style="display:none">${slow.map(x=>`<div class="bs sl" title="${esc(fmt(x.s))}"><span>${esc(x.n)}</span><span>${x.q}</span></div>`).join('')||none('No menu items yet.')}</div></div>
     <div class="dpanel ac" style="--ac:#c47f17"><h4>Needs attention${attRows.length?' <small style="color:var(--mut);font-weight:400">'+attRows.length+'</small>':''}</h4>${attRows.join('')||'<div style="color:var(--ok);padding:6px 0">Nothing needs attention right now.</div>'}</div>
   </div>
   <div class="dpanel ac" style="--ac:#2f7d4f"><h4>Recent orders</h4>${recent.map(o=>`<div class="ro"><span class="av2">${TYPEICO[o.type]||'☕'}</span><div><b>${esc(o.custName||o.type)}</b><small>${ono(o)} · ${dstr(o.ts)===todayStr()?'':dstr(o.ts)+' '}${tstr(o.ts)} · ${esc(o.pay)}</small></div><span class="am">${fmt(o.total)}</span></div>`).join('')||none('No orders in this period.')}</div>
