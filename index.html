@@ -212,6 +212,26 @@ td.n,th.n{text-align:right}
 #overlay.on{display:flex}
 #modal{background:#fff;border-radius:16px;padding:18px;width:100%;max-width:440px;max-height:92vh;overflow:auto}
 #modal h3{margin:0 0 8px}
+.stabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.stabs button{background:rgba(111,78,55,.12);color:var(--ink);border-radius:999px;padding:8px 16px}
+.stabs button.on{background:var(--brand);color:#fff}
+.ssec[hidden]{display:none}
+.shd{margin:0 0 12px}.shd b{font-size:18px;display:block}.shd small{color:var(--mut)}
+.scard{border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px;background:var(--card)}
+.scard h4{margin:0 0 2px;font-size:15px}
+.scard .hint{color:var(--mut);font-size:13px;margin:0 0 10px}
+.f{display:flex;flex-direction:column;gap:3px;min-width:0}
+.f small{color:var(--mut);font-size:12px}
+.rrw{display:grid;gap:8px;align-items:end;margin-bottom:8px}
+.rrw.z{grid-template-columns:2fr 1fr 1fr 1fr auto}
+.rrw.a{grid-template-columns:2fr 1fr 1fr auto}
+.rrw.g{grid-template-columns:2fr 1.3fr 1fr auto}
+@media(max-width:640px){.rrw.z,.rrw.a,.rrw.g{grid-template-columns:1fr 1fr}.rrw>.f:first-child{grid-column:1/-1}}
+.gcard{border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:10px}
+.gcard .chips{margin-top:6px}
+.sbar{position:sticky;bottom:0;background:var(--bg);padding:10px 0 12px;display:flex;gap:12px;align-items:center;border-top:1px solid var(--line)}
+.sbar small{color:var(--mut)}
+
 #modal.itemsheet{padding:0;max-width:460px}
 .ihero{height:130px;background:linear-gradient(135deg,#e8d8c4,#c9a583);display:flex;align-items:center;justify-content:center;font-size:48px;overflow:hidden;border-radius:16px 16px 0 0}
 .ihero img{width:100%;height:100%;object-fit:cover;display:block}
@@ -2262,50 +2282,122 @@ async function resetPw(i){
 }
 
 /* ----- settings ----- */
-function aSettings(){
-  $('#aContent').innerHTML=`<div class="lbl" style="margin-top:0">Shop name</div><input id="sShop" value="${esc(S.shop)}">
-  <div class="lbl">PWD / Senior discount (%)</div><input id="sPwd" type="number" min="0" max="100" value="${S.pwdRate}">
-  <h4>Sales target &amp; opening hours</h4>
-  <div class="lbl" style="margin-top:0">Daily sales target (₱, leave 0 to hide)</div><input id="sTgt" type="number" min="0" step="1" value="${S.dailyTarget||0}">
-  <div class="two"><div><div class="lbl">Opening hour (0 to 23)</div><input id="sOpen" type="number" min="0" max="23" value="${S.openHour==null?8:S.openHour}"></div>
-  <div><div class="lbl">Closing hour (1 to 24)</div><input id="sClose" type="number" min="1" max="24" value="${S.closeHour==null?20:S.closeHour}"></div></div>
-  <small style="color:var(--mut)">Used for the target pace on the Dashboard ("behind pace" or "on pace") and the Sales by hour chart.</small>
-  <h4>Customer ordering (QR for the wall)</h4>
-  <div class="lbl" style="margin-top:0">Customer page address (where order.html is uploaded)</div>
-  <input id="sOrdUrl" value="${esc(orderUrl())}" placeholder="https://yourshop.web.app/order.html">
-  <small style="color:var(--mut)">Customers scan the QR to open this page and order from their phone.</small>
-  <div class="actions" style="justify-content:flex-start"><button onclick="showWallQR()">Show / print QR poster</button></div>
-  <h4>Sidebar logo</h4>
-  <div class="lbl" style="margin-top:0">Logo shown at the top of the sidebar (PNG with transparent background works best)</div>
-  <div id="sideLogoPrev" style="margin:6px 0"></div>
-  <input id="sSideFile" type="file" accept="image/*" onchange="pickSideLogo(this)">
-  <button class="ghost" style="margin-top:8px" onclick="clearSideLogo()">Use default icon</button>
-  <h4>Receipt details &amp; VAT</h4>
-  <div class="lbl" style="margin-top:0">Receipt logo (printed at the top)</div>
-  <div id="logoPrev" style="margin:6px 0"></div>
-  <input id="sLogoFile" type="file" accept="image/*" onchange="pickLogo(this)">
-  <label style="display:flex;gap:8px;align-items:center;margin-top:8px"><input id="sLogoBW" type="checkbox" style="width:auto" checked> Convert to black &amp; white (best for thermal printers)</label>
-  <button class="ghost" style="margin-top:8px" onclick="clearLogo()">Remove logo</button>
-  <div class="lbl">Business address (shown on receipts)</div><textarea id="sAddr" rows="2">${esc(S.address||'')}</textarea>
-  <div class="lbl">Phone (optional)</div><input id="sPhone" value="${esc(S.phone||'')}" placeholder="(02) 1234 5678">
-  <div class="lbl">TIN</div><input id="sTin" value="${esc(S.tin||'')}" placeholder="000-000-000-000">
-  <div class="lbl">Receipt footer message (printed under "Thank you!", up to 3 lines)</div><textarea id="sFoot" rows="3" placeholder="Please ask our staff for an invoice.">${esc(S.footer||'')}</textarea>
-  <label style="display:flex;gap:8px;align-items:center;margin-top:12px"><input id="sVatOn" type="checkbox" style="width:auto" ${S.vatOn?'checked':''}> Business is VAT-registered (enable VAT)</label>
-  <div class="two"><div><div class="lbl">VAT rate (%)</div><input id="sVatRate" type="number" min="0" max="100" step="0.01" value="${S.vatRate}"></div>
-  <div><div class="lbl">Menu prices</div><select id="sVatMode"><option value="incl" ${S.vatMode!=='excl'?'selected':''}>Already include VAT</option><option value="excl" ${S.vatMode==='excl'?'selected':''}>Exclude VAT (add on top)</option></select></div></div>
-  <label style="display:flex;gap:8px;align-items:center;margin-top:10px"><input id="sPwdEx" type="checkbox" style="width:auto" ${S.pwdVatExempt!==false?'checked':''}> PWD/Senior sales are VAT-exempt (discount is taken on the price without VAT)</label>
-  <label style="display:flex;gap:8px;align-items:center;margin-top:12px"><input id="sBlock" type="checkbox" style="width:auto" ${S.blockOnOut!==false?'checked':''}> Block a sale when an ingredient is not enough</label>
-  <small style="color:var(--mut)">When off, the sale goes through and the stock stops at zero with an OUT alert.</small>
-  <h4>Menu options</h4>
-  <div class="lbl">Sizes (one per line: Name, extra price, extra cost, recipe multiplier)</div><textarea id="sSizes" rows="4">${esc(S.sizes.map(z=>z.n+','+z.up+','+(z.cost||0)+','+(z.mult||1)).join('\n'))}</textarea>
-  <small style="color:var(--mut)">Example: Large,20,6,1.5 means +₱20 price, +₱6 cost, and 1.5× the recipe amounts.</small>
-  <div class="lbl">Add-ons (one per line: Name, price, cost)</div><textarea id="sAdd" rows="5">${esc(S.addons.map(a=>a.n+','+a.p+','+(a.cost||0)).join('\n'))}</textarea>
-  <small style="color:var(--mut)">Add-on example: Extra shot,20,6 means ₱20 price and ₱6 cost. What it uses up is set in the Ingredients tab.</small>
-  <div class="lbl">Option groups for the customer order page (one per line: Group name | required or optional | max picks | add-on; add-on; ...)</div><textarea id="sGroups" rows="6" placeholder="Milk | required | 1 | Whole milk; Oat milk&#10;Syrup | optional | 1 | Caramel syrup">${esc((S.groups||[]).map(g=>g.n+' | '+(g.req?'required':'optional')+' | '+g.max+' | '+(g.opts||[]).join('; ')).join('\n'))}</textarea>
-  <small style="color:var(--mut)">Every choice must be written exactly like an add-on above (that is where its price and cost come from). Then tick the groups on each drink in Menu &amp; Stock. A drink with no group ticked shows all add-ons in one list. If you rename a group, tick it again on the drinks.</small>
-  <div class="actions" style="justify-content:flex-start"><button onclick="saveSettings()">Save settings</button></div>`;
-  pendingLogo=undefined;logoPrev();pendingSide=undefined;sideLogoPrev();
+let setSec='shop',SET=null;
+const newUid=()=>'u'+Math.random().toString(36).slice(2,9);
+const setNum=v=>{const x=parseFloat(v);return isNaN(x)?0:Math.max(0,x)};
+function setSection(k){
+  setSec=k;
+  document.querySelectorAll('#aContent .ssec').forEach(e=>e.hidden=e.dataset.s!==k);
+  document.querySelectorAll('#aContent .stabs button').forEach(b=>b.classList.toggle('on',b.dataset.s===k));
 }
+function aSettings(){
+  SET={sizes:S.sizes.map(z=>({id:newUid(),n:z.n,up:z.up||0,cost:z.cost||0,mult:z.mult||1,_o:z.n})),
+    addons:S.addons.map(a=>({id:newUid(),n:a.n,p:a.p||0,cost:a.cost||0,_o:a.n}))};
+  SET.groups=(S.groups||[]).map(g=>({id:newUid(),n:g.n,req:!!g.req,max:g.max||1,_o:g.n,
+    opts:(g.opts||[]).map(n=>(SET.addons.find(a=>a.n===n)||{}).id).filter(Boolean)}));
+  const tabs=[['shop','Shop'],['sales','Sales'],['receipt','Receipt &amp; VAT'],['menu','Menu options'],['online','Online ordering']];
+  $('#aContent').innerHTML=`<div class="stabs">${tabs.map(t=>`<button data-s="${t[0]}" onclick="setSection('${t[0]}')">${t[1]}</button>`).join('')}</div>
+
+  <div class="ssec" data-s="shop">
+    <div class="shd"><b>Shop</b><small>How your shop appears in this app.</small></div>
+    <div class="scard"><h4>Shop name</h4><div class="hint">Shown on the order page and the app header.</div>
+      <input id="sShop" value="${esc(S.shop)}"></div>
+    <div class="scard"><h4>Sidebar logo</h4><div class="hint">Shown at the top of the left menu. A PNG with a transparent background works best.</div>
+      <div id="sideLogoPrev" style="margin:6px 0"></div>
+      <input id="sSideFile" type="file" accept="image/*" onchange="pickSideLogo(this)">
+      <button class="ghost" style="margin-top:8px" onclick="clearSideLogo()">Use default icon</button></div>
+  </div>
+
+  <div class="ssec" data-s="sales">
+    <div class="shd"><b>Sales</b><small>Discounts, daily goal and selling rules.</small></div>
+    <div class="scard"><h4>PWD / Senior discount</h4><div class="hint">Percent taken off when you pick this discount at checkout.</div>
+      <div class="f" style="max-width:200px"><small>Discount (%)</small><input id="sPwd" type="number" min="0" max="100" value="${S.pwdRate}"></div></div>
+    <div class="scard"><h4>Daily sales target and opening hours</h4><div class="hint">Used for the "on pace" or "behind pace" message on the Dashboard and for the Sales by hour chart.</div>
+      <div class="f" style="max-width:260px"><small>Daily sales target (₱, 0 hides it)</small><input id="sTgt" type="number" min="0" step="1" value="${S.dailyTarget||0}"></div>
+      <div class="two" style="margin-top:8px"><div class="f"><small>Opens at (0 to 23)</small><input id="sOpen" type="number" min="0" max="23" value="${S.openHour==null?8:S.openHour}"></div>
+      <div class="f"><small>Closes at (1 to 24)</small><input id="sClose" type="number" min="1" max="24" value="${S.closeHour==null?20:S.closeHour}"></div></div></div>
+    <div class="scard"><h4>Stock rule</h4>
+      <label style="display:flex;gap:8px;align-items:center;margin-top:6px"><input id="sBlock" type="checkbox" style="width:auto" ${S.blockOnOut!==false?'checked':''}> Block a sale when an ingredient is not enough</label>
+      <div class="hint" style="margin-top:6px">When off, the sale goes through and the stock stops at zero with an OUT alert.</div></div>
+  </div>
+
+  <div class="ssec" data-s="receipt">
+    <div class="shd"><b>Receipt &amp; VAT</b><small>What is printed on receipts and how tax is computed.</small></div>
+    <div class="scard"><h4>Receipt header</h4>
+      <div class="hint">Receipt logo (printed at the top)</div>
+      <div id="logoPrev" style="margin:6px 0"></div>
+      <input id="sLogoFile" type="file" accept="image/*" onchange="pickLogo(this)">
+      <label style="display:flex;gap:8px;align-items:center;margin-top:8px"><input id="sLogoBW" type="checkbox" style="width:auto" checked> Convert to black &amp; white (best for thermal printers)</label>
+      <button class="ghost" style="margin-top:8px" onclick="clearLogo()">Remove logo</button>
+      <div class="f" style="margin-top:12px"><small>Business address</small><textarea id="sAddr" rows="2">${esc(S.address||'')}</textarea></div>
+      <div class="two" style="margin-top:8px"><div class="f"><small>Phone (optional)</small><input id="sPhone" value="${esc(S.phone||'')}" placeholder="(02) 1234 5678"></div>
+      <div class="f"><small>TIN</small><input id="sTin" value="${esc(S.tin||'')}" placeholder="000-000-000-000"></div></div></div>
+    <div class="scard"><h4>Receipt footer</h4><div class="hint">Printed under "Thank you!". Up to 3 lines.</div>
+      <textarea id="sFoot" rows="3" placeholder="Please ask our staff for an invoice.">${esc(S.footer||'')}</textarea></div>
+    <div class="scard"><h4>VAT</h4>
+      <label style="display:flex;gap:8px;align-items:center;margin-top:6px"><input id="sVatOn" type="checkbox" style="width:auto" ${S.vatOn?'checked':''}> Business is VAT-registered (enable VAT)</label>
+      <div class="two" style="margin-top:8px"><div class="f"><small>VAT rate (%)</small><input id="sVatRate" type="number" min="0" max="100" step="0.01" value="${S.vatRate}"></div>
+      <div class="f"><small>Menu prices</small><select id="sVatMode"><option value="incl" ${S.vatMode!=='excl'?'selected':''}>Already include VAT</option><option value="excl" ${S.vatMode==='excl'?'selected':''}>Exclude VAT (add on top)</option></select></div></div>
+      <label style="display:flex;gap:8px;align-items:center;margin-top:10px"><input id="sPwdEx" type="checkbox" style="width:auto" ${S.pwdVatExempt!==false?'checked':''}> PWD/Senior sales are VAT-exempt (discount is taken on the price without VAT)</label></div>
+  </div>
+
+  <div class="ssec" data-s="menu">
+    <div class="shd"><b>Menu options</b><small>Sizes, extras, and how they are grouped on the order screen. Start with sizes, then add-ons, then groups.</small></div>
+    <div class="scard"><h4>1. Sizes</h4><div class="hint">Every drink uses these. "Recipe amount ×" is how much of the recipe a size uses: Small 1, Large 1.5 means 1.5 times the coffee, milk and so on.</div>
+      <div id="sizeList"></div><button class="ghost" onclick="addSize()">+ Add size</button></div>
+    <div class="scard"><h4>2. Add-ons</h4><div class="hint">Extras a customer can add, like Extra shot or Oat milk. Choices such as "Whole milk" can be added here at ₱0. What each one uses from stock is set in the Ingredients tab.</div>
+      <div id="addonList"></div><button class="ghost" onclick="addAddon()">+ Add add-on</button></div>
+    <div class="scard"><h4>3. Option groups</h4><div class="hint">Put add-ons into sections like Milk or Syrup. Required means the customer must pick one. Then tick the groups on each drink in Menu &amp; Stock. A drink with no group ticked shows all add-ons in one list.</div>
+      <div id="groupList"></div><button class="ghost" onclick="addGroup()">+ Add group</button></div>
+  </div>
+
+  <div class="ssec" data-s="online">
+    <div class="shd"><b>Online ordering</b><small>Let customers order from their own phone.</small></div>
+    <div class="scard"><h4>Customer page</h4><div class="hint">Customers scan the QR to open this page and order from their phone.</div>
+      <div class="f"><small>Page address (where order.html is uploaded)</small><input id="sOrdUrl" value="${esc(orderUrl())}" placeholder="https://yourshop.web.app/order.html"></div>
+      <div class="actions" style="justify-content:flex-start"><button onclick="showWallQR()">Show / print QR poster</button></div></div>
+  </div>
+
+  <div class="sbar"><button onclick="saveSettings()">Save settings</button><small>Changes in all sections are saved together.</small></div>`;
+  pendingLogo=undefined;logoPrev();pendingSide=undefined;sideLogoPrev();
+  renderSizes();renderAddons();renderGroups();setSection(setSec);
+}
+function setRow(k,id,f,v){
+  const r=SET[k].find(x=>x.id===id);if(!r)return;r[f]=v;
+  if(k==='addons'&&f==='n')renderGroups();
+}
+function lastFocus(sel){const l=document.querySelector(sel+' .rrw:last-child input,'+sel+' .gcard:last-child input');if(l)l.focus()}
+function renderSizes(){
+  $('#sizeList').innerHTML=SET.sizes.map(z=>`<div class="rrw z">
+  <label class="f"><small>Name</small><input value="${esc(z.n)}" placeholder="e.g. Large" oninput="setRow('sizes','${z.id}','n',this.value)"></label>
+  <label class="f"><small>Extra price (₱)</small><input type="number" min="0" step="0.01" value="${z.up}" oninput="setRow('sizes','${z.id}','up',this.value)"></label>
+  <label class="f"><small>Extra cost (₱)</small><input type="number" min="0" step="0.01" value="${z.cost}" oninput="setRow('sizes','${z.id}','cost',this.value)"></label>
+  <label class="f"><small>Recipe amount ×</small><input type="number" min="0.1" step="0.05" value="${z.mult}" oninput="setRow('sizes','${z.id}','mult',this.value)"></label>
+  <button class="bad" aria-label="Remove size" onclick="delSize('${z.id}')">✕</button></div>`).join('');
+}
+function addSize(){SET.sizes.push({id:newUid(),n:'',up:0,cost:0,mult:1,_o:null});renderSizes();lastFocus('#sizeList')}
+function delSize(id){if(SET.sizes.length<=1){toast('Keep at least one size');return}SET.sizes=SET.sizes.filter(x=>x.id!==id);renderSizes()}
+function renderAddons(){
+  $('#addonList').innerHTML=SET.addons.length?SET.addons.map(a=>`<div class="rrw a">
+  <label class="f"><small>Name</small><input value="${esc(a.n)}" placeholder="e.g. Extra shot" oninput="setRow('addons','${a.id}','n',this.value)"></label>
+  <label class="f"><small>Price (₱)</small><input type="number" min="0" step="0.01" value="${a.p}" oninput="setRow('addons','${a.id}','p',this.value)"></label>
+  <label class="f"><small>Cost (₱)</small><input type="number" min="0" step="0.01" value="${a.cost}" oninput="setRow('addons','${a.id}','cost',this.value)"></label>
+  <button class="bad" aria-label="Remove add-on" onclick="delAddon('${a.id}')">✕</button></div>`).join(''):'<div class="hint">No add-ons yet.</div>';
+}
+function addAddon(){SET.addons.push({id:newUid(),n:'',p:0,cost:0,_o:null});renderAddons();renderGroups();lastFocus('#addonList')}
+function delAddon(id){SET.addons=SET.addons.filter(x=>x.id!==id);SET.groups.forEach(g=>g.opts=g.opts.filter(x=>x!==id));renderAddons();renderGroups()}
+function renderGroups(){
+  const named=SET.addons.filter(a=>String(a.n).trim());
+  $('#groupList').innerHTML=SET.groups.length?SET.groups.map(g=>`<div class="gcard"><div class="rrw g" style="margin-bottom:0">
+  <label class="f"><small>Group name</small><input value="${esc(g.n)}" placeholder="e.g. Milk" oninput="setRow('groups','${g.id}','n',this.value)"></label>
+  <label class="f"><small>Customer</small><select onchange="setRow('groups','${g.id}','req',this.value==='1')"><option value="1" ${g.req?'selected':''}>Must pick</option><option value="0" ${g.req?'':'selected'}>Can skip</option></select></label>
+  <label class="f"><small>Max picks</small><input type="number" min="1" step="1" value="${g.max}" oninput="setRow('groups','${g.id}','max',this.value)"></label>
+  <button class="bad" aria-label="Remove group" onclick="delGroup('${g.id}')">✕</button></div>
+  <div class="chips">${named.length?named.map(a=>`<label class="chip"><input type="checkbox" ${g.opts.includes(a.id)?'checked':''} onchange="toggleOpt('${g.id}','${a.id}',this.checked)"><span>${esc(a.n)}${a.p?' +'+a.p:''}</span></label>`).join(''):'<small style="color:var(--mut)">Add some add-ons first (step 2).</small>'}</div></div>`).join(''):'<div class="hint">No groups yet.</div>';
+}
+function addGroup(){SET.groups.push({id:newUid(),n:'',req:false,max:1,opts:[],_o:null});renderGroups();lastFocus('#groupList')}
+function delGroup(id){SET.groups=SET.groups.filter(x=>x.id!==id);renderGroups()}
+function toggleOpt(gid,aid,on){const g=SET.groups.find(x=>x.id===gid);if(!g)return;g.opts=on?[...new Set(g.opts.concat(aid))]:g.opts.filter(x=>x!==aid)}
 function parseSizes(t){
   const num=(x,d)=>{const v=parseFloat(x);return isNaN(v)?d:Math.max(0,v)};
   return t.split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{
@@ -2422,21 +2514,40 @@ function pickLogo(inp){
 }
 function clearLogo(){pendingLogo='';const f=$('#sLogoFile');if(f)f.value='';logoPrev()}
 async function saveSettings(){
-  const sizes=parseSizes($('#sSizes').value);
-  if(!sizes.length){toast('At least one size is required');return}
-  const addonsNew=parseLines($('#sAdd').value).map(x=>({n:x.n,p:x.v,cost:x.c}));
-  const gp=parseGroups(($('#sGroups')||{value:''}).value,addonsNew);
-  if(gp.bad.length){toast(gp.bad[0],6000);return}
+  const cl=x=>String(x==null?'':x).trim(),bail=(m,sec)=>{setSection(sec||'menu');toast(m,5000)};
+  const sizes=SET.sizes.filter(z=>cl(z.n)).map(z=>({n:cl(z.n),up:setNum(z.up),cost:setNum(z.cost),mult:setNum(z.mult)||1}));
+  if(!sizes.length){bail('At least one size is required');return}
+  if(new Set(sizes.map(z=>z.n.toLowerCase())).size!==sizes.length){bail('Two sizes have the same name');return}
+  const addonsNew=SET.addons.filter(a=>cl(a.n)).map(a=>({n:cl(a.n),p:setNum(a.p),cost:setNum(a.cost)}));
+  if(new Set(addonsNew.map(a=>a.n.toLowerCase())).size!==addonsNew.length){bail('Two add-ons have the same name');return}
+  const idName={};SET.addons.forEach(a=>{if(cl(a.n))idName[a.id]=cl(a.n)});
+  const groupsNew=[],gseen=new Set();
+  for(const g of SET.groups){
+    if(!cl(g.n)&&!g.opts.length)continue;
+    if(!cl(g.n)){bail('A group has no name');return}
+    if(gseen.has(cl(g.n).toLowerCase())){bail('Two groups have the same name: '+cl(g.n));return}
+    gseen.add(cl(g.n).toLowerCase());
+    const opts=g.opts.map(i=>idName[i]).filter(Boolean);
+    if(!opts.length){bail('Group "'+cl(g.n)+'" needs at least one choice ticked');return}
+    groupsNew.push({n:cl(g.n),req:!!g.req,max:Math.min(opts.length,Math.max(1,parseInt(g.max)||1)),opts});
+  }
+  const gp={groups:groupsNew};
+  const addRen=SET.addons.filter(a=>a._o&&cl(a.n)&&cl(a.n)!==a._o);
+  const grpRen=SET.groups.filter(g=>g._o&&cl(g.n)&&cl(g.n)!==g._o).map(g=>[g._o,cl(g.n)]);
   const hr=(id,def,lo,hi)=>{const v=parseInt($(id).value);return isNaN(v)?def:Math.min(hi,Math.max(lo,v))};
   const d={shop:$('#sShop').value.trim()||'Coffee Shop',pwdRate:Math.min(100,Math.max(0,parseFloat($('#sPwd').value)||0)),dailyTarget:Math.max(0,r2(parseFloat($('#sTgt').value)||0)),openHour:hr('#sOpen',8,0,23),closeHour:hr('#sClose',20,1,24),
     sizes,addons:addonsNew,groups:gp.groups};
   Object.assign(d,{orderUrl:($('#sOrdUrl')||{value:''}).value.trim(),address:$('#sAddr').value.trim(),phone:$('#sPhone').value.trim(),tin:$('#sTin').value.trim(),footer:$('#sFoot').value.trim(),
     vatOn:$('#sVatOn').checked,vatRate:Math.min(100,Math.max(0,parseFloat($('#sVatRate').value)||0)),vatMode:$('#sVatMode').value,pwdVatExempt:$('#sPwdEx').checked,blockOnOut:$('#sBlock').checked});
-  if(d.closeHour<=d.openHour){toast('The closing hour must be after the opening hour');return}
-  if(d.vatOn&&!(d.vatRate>0)){toast('Enter a VAT rate above 0');return}
+  if(d.closeHour<=d.openHour){bail('The closing hour must be after the opening hour','sales');return}
+  if(d.vatOn&&!(d.vatRate>0)){bail('Enter a VAT rate above 0','receipt');return}
+  if(addRen.length){const mp={};addRen.forEach(a=>mp[a._o]=cl(a.n));d.addonUse=(S.addonUse||[]).map(u=>mp[u.n]?Object.assign({},u,{n:mp[u.n]}):u)}
   if(pendingLogo!==undefined)d.logo=pendingLogo;
   if(pendingSide!==undefined)d.sideLogo=pendingSide;
-  try{await fs.collection('settings').doc('main').set(d,{merge:true});pendingLogo=undefined;pendingSide=undefined;toast('Saved')}catch(e){toast(errMsg(e))}
+  try{await fs.collection('settings').doc('main').set(d,{merge:true});
+    for(const [o,n] of grpRen){for(const m of MENU.filter(x=>(x.groups||[]).includes(o)))await fs.collection('menu').doc(m.id).update({groups:m.groups.map(g=>g===o?n:g)})}
+    SET.sizes.forEach(z=>{if(cl(z.n))z._o=cl(z.n)});SET.addons.forEach(a=>{if(cl(a.n))a._o=cl(a.n)});SET.groups.forEach(g=>{if(cl(g.n))g._o=cl(g.n)});
+    pendingLogo=undefined;pendingSide=undefined;toast('Saved')}catch(e){toast(errMsg(e))}
 }
 
 function renderAll(){renderMenu();renderCart();renderQueue();netBadge();tick()}
