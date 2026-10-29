@@ -106,37 +106,14 @@ main{padding:0 22px 22px}
 .dh .k em{display:block;font-style:normal;color:var(--mut);font-size:12px}
 .dh .k em.up{color:var(--ok);font-weight:600}
 .dh .k em.dn{color:var(--bad);font-weight:600}
-.dh .hero{--ac:var(--ok);grid-column:span 2}
-.dh .hero.neg{--ac:var(--bad)}
-.dh .hero b{font-size:30px}
-.dh .hero b{font-size:26px}
 .dpanel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px}
 .dpanel h4{margin:0 0 6px;font-size:15px}
 .dpanel .chartbox{border:0;padding:0;margin:0}
 
-.dg1{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:12px;margin:10px 0 12px}
 .dg2{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:12px;margin-bottom:12px;align-items:stretch}
 .dg3{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr);gap:12px;margin-bottom:12px;align-items:stretch}
 .dgm{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start}
-.dg2>.dpanel,.dg3>.dpanel,.dgm>.dpanel,.dg1>.hero2{margin-bottom:0}
-.dpanel.ac,.hero2,.mini{border-left:4px solid var(--ac,var(--brand));background:linear-gradient(135deg,color-mix(in srgb,var(--ac,var(--brand)) 11%,transparent),transparent 65%),var(--card)}
-.hero2{border:1px solid var(--line);border-left:4px solid var(--ac);border-radius:12px;padding:16px 18px}
-.hero2 small,.mini small{display:block;color:var(--mut);font-size:13px}
-.hero2 .bigp{font-size:38px;font-weight:800;line-height:1.15;margin:2px 0}
-.hero2 em,.mini em{display:block;font-style:normal;color:var(--mut);font-size:12px}
-.hero2 em.up,.mini em.up{color:var(--ok);font-weight:600}.hero2 em.dn,.mini em.dn{color:var(--bad);font-weight:600}
-.hero2 .hsep{border-top:1px solid var(--line);margin:12px 0 8px}
-.minis{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.hrow{display:grid;grid-template-columns:auto auto auto;justify-content:start;gap:12px;align-items:stretch}
-.hrow>div:first-child{padding-right:6px}
-.hrow>.mini{margin:0;min-width:190px}
-.hpay{min-width:170px}
-.hrow .mini b{font-size:20px}
-.hpay{display:flex;flex-direction:column;gap:8px}
-.hpay .mini{flex:1}
-.hpay .mini{padding:8px 12px}
-.hpay .mini b{font-size:18px;margin-top:0}
-@media(max-width:700px){.hrow{grid-template-columns:1fr}}
+.dg2>.dpanel,.dg3>.dpanel,.dgm>.dpanel{margin-bottom:0}
 .mini{position:relative;border:1px solid var(--line);border-left:4px solid var(--ac);border-radius:12px;padding:12px 14px}
 .mini b{display:block;font-size:22px;line-height:1.3;margin-top:2px}
 .mini .mdot{position:absolute;top:12px;right:12px;width:10px;height:10px;border-radius:50%;background:var(--ac)}
@@ -157,8 +134,30 @@ main{padding:0 22px 22px}
 .bs span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bs span:last-child{font-variant-numeric:tabular-nums}
 .bs.sl span:last-child{color:var(--mut)}
-body.dark .dpanel.ac{background:linear-gradient(135deg,color-mix(in srgb,var(--ac,var(--brand)) 11%,transparent),transparent 65%),var(--card)}
-@media(max-width:1000px){.dg1,.dg2,.dg3,.dgm{grid-template-columns:1fr!important}}
+/* ---- flat dashboard cards ---- */
+.dpanel,.dpanel.ac,.mini,.dh .k{background:var(--card);border:1px solid var(--line);border-left:1px solid var(--line);border-radius:12px;box-shadow:none}
+.dpanel{padding:14px 16px}
+.dh .k::after,.mini .mdot{display:none}
+.dh .k small{padding-right:0;font-weight:600}
+.g4{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:12px}
+.pcard{margin:10px 0 12px}
+.pro{display:flex;flex-wrap:wrap;gap:14px 0}
+.pro>div{padding:0 22px;border-left:1px solid var(--line);min-width:150px}
+.pro>div:first-child{padding-left:0;border-left:0}
+.pro small,.mini small{display:block;color:var(--mut);font-size:13px}
+.pro b{display:block;font-size:22px;font-weight:600;line-height:1.3}
+.pro em,.mini em{display:block;font-style:normal;color:var(--mut);font-size:12px}
+.pro em.up,.mini em.up{color:var(--ok);font-weight:600}
+.pro em.dn,.mini em.dn{color:var(--bad);font-weight:600}
+.pcard .bigp{font-size:32px;font-weight:700;line-height:1.2;margin:2px 0}
+.pcard .bigp.neg{color:var(--bad)}
+.pcard .hsep{border-top:1px solid var(--line);margin:12px 0 8px}
+.mini{padding:12px 14px}
+.mini b{display:block;font-size:22px;font-weight:600;line-height:1.3;margin-top:2px}
+.at2 .ic{background:transparent}
+.dpanel{background:linear-gradient(135deg,color-mix(in srgb,var(--ac,var(--brand)) 8%,var(--card)),var(--card) 80%)}
+.dpanel.ac,.pcard,.mini,.dh .k{background:linear-gradient(135deg,color-mix(in srgb,var(--ac,var(--brand)) 18%,var(--card)),var(--card) 80%)}
+@media(max-width:1000px){.dg2,.dg3,.dgm{grid-template-columns:1fr!important}}
 .dmain{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:10px;align-items:start}
 .hb{display:grid;grid-template-columns:minmax(60px,1fr) 1.4fr auto;gap:8px;align-items:center;padding:4px 0;font-size:13px}
 .hb .tr{background:#efe7dc;border-radius:999px;height:8px;overflow:hidden}
@@ -349,30 +348,6 @@ code{background:#f1e9df;padding:1px 5px;border-radius:5px}
 .dn2 li i{width:10px;height:10px;border-radius:3px;flex:none}
 .dn2 li span{flex:1}
 .lowrow{display:flex;justify-content:space-between;gap:10px;padding:5px 0;font-size:13px;border-bottom:1px solid var(--line)}
-.themebtn{background:var(--card);color:var(--ink);border:1px solid var(--line);padding:8px;border-radius:12px;line-height:0}
-.themebtn svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-/* dark mode */
-body.dark{color-scheme:dark;--bg:#16100c;--card:#231a14;--ink:#f1e8dd;--mut:#b8a898;--line:#3d2f25}
-body.dark input,body.dark select,body.dark textarea,body.dark .card,body.dark .dpanel,body.dark .stat,body.dark .chartbox,body.dark #modal,body.dark #auth .box,body.dark .ticket,body.dark .qty button,body.dark .qty span,body.dark .chip span,body.dark .kcol,body.dark .kside,body.dark .kstats div,body.dark .top .sbox input,body.dark .actbar .hold{background:var(--card);color:var(--ink)}
-body.dark .item,body.dark .kc{background:#2c2118;color:var(--ink)}
-body.dark button.ghost,body.dark .subtabs button,body.dark .quick button{background:var(--card);color:var(--ink);border-color:var(--line)}
-body.dark .subtabs button.on{background:var(--brand);color:#fff}
-body.dark .chip input:checked+span{background:var(--brand);color:#fff;border-color:var(--brand)}
-body.dark .cats button{background:#33261d;color:#e6d8c8}
-body.dark .cats button.on{background:#c9744a;color:#fff}
-body.dark .heldbtn{background:#33261d!important;color:#e6d8c8!important}
-body.dark .split,body.dark .hb .tr{background:#3a2c22}
-body.dark .warnbox{background:#3a2b12;border-color:#6b4f1d;color:#f0cf94}
-body.dark .card[style*="faf6f0"],body.dark .kc .cust,body.dark .ticket .cust{background:#2e2319!important}
-body.dark .top .clk,body.dark .top h2{color:var(--ink)}
-body.dark .top .sbox svg{stroke:var(--mut)}
-body.dark .row{color:var(--mut)}
-body.dark .row.total{color:var(--ink)}
-body.dark .receipt{background:#fff;color:#000;padding:10px;border-radius:8px}
-body.dark .poster{background:#fff;color:#2b2018}
-body.dark code,body.dark .badge{background:#3a2c22}
-body.dark .scanbtn{border:1px solid #4a382b}
-body.dark #toast{background:#f1e8dd;color:#16100c}
 @media print{
   body *{visibility:hidden}
   #receiptPrint,#receiptPrint *{visibility:visible}
@@ -416,7 +391,6 @@ body.dark #toast{background:#f1e8dd;color:#16100c}
     <h2 id="topTitle" style="display:none"></h2>
     <button id="scanBtn" class="scanbtn" onclick="openScan()"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="6.5" height="6.5" rx="1"/><rect x="14" y="3.5" width="6.5" height="6.5" rx="1"/><rect x="3.5" y="14" width="6.5" height="6.5" rx="1"/><path d="M14 14h3v3M20.5 14v.01M14 20.5h3.5M20.5 17.5v3"/></svg><span>Scan order</span></button>
     <button id="onlBtn" class="scanbtn" onclick="showOnline()"><svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18.5h2"/></svg><span>Online</span><i id="onlN" class="onlbadge" style="display:none">0</i></button>
-    <button id="themeBtn" class="themebtn" onclick="toggleTheme()" title="Dark / light mode" aria-label="Toggle dark mode"></button>
     <div class="clk"><span class="d"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg><i id="clkD" style="font-style:normal"></i></span><span><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg><i id="clkT" style="font-style:normal"></i></span></div>
   </div>
   <main>
@@ -1725,7 +1699,7 @@ function hourPanel(){
   let g=`<line x1="${L}" x2="${W-R}" y1="${H-B}" y2="${H-B}" style="stroke:var(--line)"/>`;
   for(let i=a;i<=b;i++){
     const cx=L+gw*(i-a)+gw/2,bh=mx>0?(H-T-B)*h[i]/mx:0;
-    g+=`<rect x="${cx-bw/2}" y="${H-B-bh}" width="${bw}" height="${Math.max(h[i]>0?2:0,bh)}" rx="3" fill="${i===pk?'#c9744a':'#6f4e37'}"><title>${hrFull(i)}: ${fmt(h[i])} · ${c[i]} order(s)</title></rect>`;
+    g+=`<rect x="${cx-bw/2}" y="${H-B-bh}" width="${bw}" height="${Math.max(h[i]>0?2:0,bh)}" rx="3" fill="${i===pk?'#6f4e37':'#d9cbb9'}"><title>${hrFull(i)}: ${fmt(h[i])} · ${c[i]} order(s)</title></rect>`;
     if(h[i]>0)g+=`<text x="${cx}" y="${H-B-bh-4}" font-size="11" text-anchor="middle" style="fill:var(--ink)">${compact(h[i])}</text>`;
     g+=`<text x="${cx}" y="${H-8}" font-size="11" text-anchor="middle" style="fill:var(--mut)">${hrLabel(i)}</text>`;
   }
@@ -1814,7 +1788,7 @@ async function aDash(silent){
   const recent=RORDERS.filter(o=>o.status!=='void').sort((a,b)=>b.ts-a.ts).slice(0,6);
   const lowI=ING.filter(g=>ingStatus(g)!=='ok').sort((a,b)=>(a.stock||0)-(b.stock||0)),lowM=MENU.filter(m=>m.track&&m.stock<=3);
   const yc=YEARC&&YEARC.y===new Date().getFullYear()&&Date.now()-YEARC.ts<120000?YEARC:null;
-  const M=(ac,lab,val,extra)=>`<div class="mini" style="--ac:${ac}"><i class="mdot"></i><small>${lab}</small><b>${val}</b>${extra||''}</div>`;
+  const M=(ac,lab,val,extra)=>`<div class="mini" style="--ac:${ac||'#6f4e37'}"><small>${lab}</small><b>${val}</b>${extra||''}</div>`;
   const restKp=kp.filter((x,i)=>![0,1,2,3,5,6].includes(i));
   const ringParts=[{n:'Cost of goods',v:A.cogs,c:'#c47f17'},{n:'Expenses',v:A.exp,c:'#b3392f'},{n:'Net profit',v:Math.max(0,A.net),c:'#2f7d4f'}];
   const catOf=n=>{const m=MENU.find(x=>x.name===n);return m?(m.cat||'Others'):'Others'};
@@ -1834,18 +1808,20 @@ async function aDash(silent){
   if(A.unc)attRows.push(att('#c47f17','🏷️',A.unc+' item(s) have no cost set','Profit looks higher than it is until the cost is set','Set costs','subTo(\'menu\')'));
   if(A.unpaid>0)attRows.push(att('#c47f17','📒',fmt(A.unpaid)+' unpaid credit','In this period','Open','subTo(\'credits\')'));
   $('#aContent').innerHTML=rangeBar('aDash',exportButtons('dash'))+`
-  <div class="dg1">
-    <div class="hero2" style="--ac:${A.net<0?'var(--bad)':'#2f7d4f'}"><div class="hrow"><div><small>Net profit</small><div class="bigp ${A.net<0?'neg':''}">${fmt(A.net)}</div>
-      <em>${A.orders?pct(A.net,A.sales)+' of sales':'No sales in this period'}</em>${dlt(A.net,P&&P.net)}</div>
-      ${M('#2f7d4f','Gross profit · '+pct(A.gross,A.sales)+(A.unc?' ⚠':''),money(A.gross),A.unc?'<em>Some costs are not set yet</em>':'')}
-      <div class="hpay">${Object.entries(A.byPay).map(([k,v])=>M(PAYCOL[k]||'#8a7a6a',esc(k)+' payments',fmt(r2(v)))).join('')}</div></div>
-      <div class="hsep"></div>${targetPanel(A,true)}</div>
-    <div class="minis">
-      ${M('#6f4e37','Sales'+(A.vat?' (excl. VAT)':''),fmt(A.sales),dlt(A.sales,P&&P.sales))}
-      ${M('#2f6fb3','Orders',A.orders,dlt(A.orders,P&&P.orders))}
-      ${M('#7b5ea7','Average / order',fmt(avg),dlt(avg,pavg))}
-      ${M('#b3392f','Expenses',fmt(A.exp),dlt(A.exp,P&&P.exp,true))}
+  <div class="dpanel pcard" style="--ac:${A.net<0?'#b3392f':'#2f7d4f'}">
+    <div class="pro">
+      <div><small>Net profit</small><div class="bigp ${A.net<0?'neg':''}">${fmt(A.net)}</div>
+        <em>${A.orders?pct(A.net,A.sales)+' of sales':'No sales in this period'}</em>${dlt(A.net,P&&P.net)}</div>
+      <div><small>Gross profit · ${pct(A.gross,A.sales)}${A.unc?' ⚠':''}</small><b>${money(A.gross)}</b>${A.unc?'<em>Some costs are not set yet</em>':''}</div>
+      ${Object.entries(A.byPay).map(([k,v])=>`<div><small>${esc(k)}</small><b>${fmt(r2(v))}</b></div>`).join('')}
     </div>
+    <div class="hsep"></div>${targetPanel(A,true)}
+  </div>
+  <div class="g4">
+    ${M('#6f4e37','Sales'+(A.vat?' (excl. VAT)':''),fmt(A.sales),dlt(A.sales,P&&P.sales))}
+    ${M('#2f6fb3','Orders',A.orders,dlt(A.orders,P&&P.orders))}
+    ${M('#7b5ea7','Average / order',fmt(avg),dlt(avg,pavg))}
+    ${M('#b3392f','Expenses',fmt(A.exp),dlt(A.exp,P&&P.exp,true))}
   </div>
   <div class="dg3">
     ${hourPanel()}
@@ -2700,13 +2676,6 @@ async function saveSettings(){
 
 function renderAll(){renderMenu();renderCart();renderQueue();netBadge();tick()}
 {const mEl=document.getElementById('modal');if(mEl&&mEl.addEventListener){mEl.addEventListener('input',saveDraft);mEl.addEventListener('change',saveDraft)}}
-/* ----- dark / light mode ----- */
-const ICO_SUN='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/></svg>';
-const ICO_MOON='<svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>';
-let darkMode=false;try{darkMode=localStorage.getItem('pos_theme')==='dark'}catch(e){}
-function applyTheme(){document.body.classList.toggle('dark',darkMode);const b=$('#themeBtn');if(b)b.innerHTML=darkMode?ICO_SUN:ICO_MOON}
-function toggleTheme(){darkMode=!darkMode;try{localStorage.setItem('pos_theme',darkMode?'dark':'light')}catch(e){}applyTheme()}
-applyTheme();
 init();
 </script>
 </body>
