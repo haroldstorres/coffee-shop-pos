@@ -140,8 +140,11 @@ code{background:#f1e9df;padding:1px 5px;border-radius:5px}
             <input id="customPct" type="number" min="0" max="100" placeholder="%" style="display:none" oninput="renderTotals()">
           </div>
           <div class="row" style="margin-top:12px"><span>Subtotal</span><span id="tSub"></span></div>
+          <div class="row" id="rVex" style="display:none"><span>Less: VAT exemption (SC/PWD)</span><span id="tVex"></span></div>
           <div class="row"><span>Discount</span><span id="tDisc"></span></div>
+          <div class="row" id="rVatAdd" style="display:none"><span id="lVatAdd">VAT</span><span id="tVatAdd"></span></div>
           <div class="row total"><span>Total</span><span id="tTotal"></span></div>
+          <div class="row" id="rVatInc" style="display:none;color:var(--mut);font-size:13px"><span id="lVatInc">VAT included</span><span id="tVatInc"></span></div>
           <div class="lbl">Payment</div>
           <select id="pay" onchange="renderTotals()"><option value="Cash">Cash</option><option value="GCash">GCash</option></select>
           <div id="cashBox">
@@ -210,7 +213,7 @@ function download(name,text,type){
 
 /* ---------- defaults ---------- */
 function defaultSettings(){
-  return {shop:'Kape Corner',pwdRate:20,
+  return {shop:'Kape Corner',pwdRate:20,vatOn:false,vatRate:12,vatMode:'incl',pwdVatExempt:true,address:'',tin:'',footer:'',
     sizes:[{n:'Small',up:0},{n:'Medium',up:10},{n:'Large',up:20}],
     addons:[{n:'Extra shot',p:20},{n:'Oat milk',p:30},{n:'Whipped cream',p:15},{n:'Caramel syrup',p:15}]};
 }
@@ -334,7 +337,7 @@ function startListeners(){
   const er=e=>toast(errMsg(e));
   unsubs.push(fs.collection('settings').doc('main').onSnapshot(s=>{
     S=Object.assign(defaultSettings(),s.exists?s.data():{});
-    renderMenu();
+    renderMenu();renderCart();
     if(view==='admin'&&aTab==='settings'&&!modalOpen()&&!document.activeElement.closest('#aContent'))aSettings();
   },er));
   unsubs.push(fs.collection('menu').onSnapshot(q=>{
@@ -359,7 +362,7 @@ function applyRole(){
   ['pos','bar','admin'].forEach(x=>{$('#nav-'+x).style.display=can[x].includes(ME.role)?'':'none'});
   $('#who').textContent=ME.name+' · '+ME.role;
   const nav=loadNav();
-  if(['dash','reports','exp','menu','staff','settings'].includes(nav.aTab))aTab=nav.aTab;
+  if(['dash','reports','zread','exp','menu','staff','settings'].includes(nav.aTab))aTab=nav.aTab;
   view='';
   go(nav.view&&can[nav.view]&&can[nav.view].includes(ME.role)?nav.view:(ME.role==='barista'?'bar':'pos'));
   renderAll();
@@ -465,8 +468,21 @@ function calc(){
   let rate=0,label='';
   if(mode==='pwd'){rate=Number(S.pwdRate)||0;label='PWD/Senior '+rate+'%'}
   else if(mode==='custom'){rate=Math.min(100,Math.max(0,parseFloat($('#customPct').value)||0));label=rate?'Discount '+rate+'%':''}
-  const disc=r2(sub*rate/100);
-  return {sub,disc,label,total:r2(sub-disc)};
+  const vOn=!!S.vatOn,vr=Number(S.vatRate)||0,incl=S.vatMode!=='excl';
+  const R={sub,label,vOn,vr,incl,adj:0,vatable:0,vat:0,exempt:0};
+  if(!vOn){
+    R.disc=r2(sub*rate/100);R.total=r2(sub-R.disc);
+  }else if(mode==='pwd'&&S.pwdVatExempt!==false){
+    // BIR rule: SC/PWD sale is VAT-exempt and the discount is taken on the price without VAT
+    const net=incl?r2(sub/(1+vr/100)):sub;
+    R.adj=r2(net-sub);R.disc=r2(net*rate/100);R.total=r2(net-R.disc);R.exempt=R.total;
+  }else{
+    R.disc=r2(sub*rate/100);
+    const after=r2(sub-R.disc);
+    if(incl){R.total=after;R.vatable=r2(after/(1+vr/100));R.vat=r2(R.total-R.vatable)}
+    else{R.vatable=after;R.vat=r2(after*vr/100);R.total=r2(after+R.vat);R.adj=R.vat}
+  }
+  return R;
 }
 function renderCart(){
   const el=$('#cartList');
@@ -478,6 +494,10 @@ function renderTotals(){
   $('#customPct').style.display=$('#disc').value==='custom'?'block':'none';
   const t=calc(),cash=$('#pay').value==='Cash';
   $('#tSub').textContent=fmt(t.sub);$('#tDisc').textContent='− '+fmt(t.disc);$('#tTotal').textContent=fmt(t.total);
+  const exm=t.vOn&&t.adj<0,add=t.vOn&&!t.incl&&t.vat>0,inc=t.vOn&&t.incl&&t.vat>0;
+  $('#rVex').style.display=exm?'flex':'none';$('#tVex').textContent='− '+fmt(-t.adj);
+  $('#rVatAdd').style.display=add?'flex':'none';$('#lVatAdd').textContent='VAT '+t.vr+'%';$('#tVatAdd').textContent='+ '+fmt(t.vat);
+  $('#rVatInc').style.display=inc?'flex':'none';$('#lVatInc').textContent='VAT included ('+t.vr+'%)';$('#tVatInc').textContent=fmt(t.vat);
   $('#cashBox').style.display=cash?'block':'none';
   const tend=parseFloat($('#tender').value)||0;
   $('#tChange').textContent=fmt(Math.max(0,tend-t.total));
@@ -509,7 +529,7 @@ async function placeOrder(){
       const no=(cs.exists?(cs.data().n||0):0)+1;
       tx.set(cref,{n:no});
       mdocs.forEach(d=>tx.update(d.ref,{stock:(d.data().stock||0)-need[d.id]}));
-      const o={no,day,ts:Date.now(),type,items,sub:t.sub,discLabel:t.label,disc:t.disc,total:t.total,pay,
+      const o={no,day,ts:Date.now(),type,items,sub:t.sub,discLabel:t.label,disc:t.disc,adj:t.adj,vatOn:t.vOn,vatRate:t.vr,vatMode:t.incl?'incl':'excl',vatable:t.vatable,vat:t.vat,vatExempt:t.exempt,total:t.total,pay,
         tendered:cash?tend:t.total,change:cash?r2(tend-t.total):0,status:'preparing',cashier:ME.name,cashierUid:ME.uid};
       tx.set(orderRef,o);
       return Object.assign({id:orderRef.id},o);
@@ -525,23 +545,32 @@ async function placeOrder(){
 
 /* ---------- receipt ---------- */
 function ono(o){return '#'+String(o.no).padStart(3,'0')}
+function bizHeader(){
+  return `<b>${esc(S.shop)}</b>${S.address?'<br>'+esc(S.address).replace(/\n/g,'<br>'):''}${S.tin?'<br>'+(S.vatOn?'VAT REG TIN: ':'NON-VAT REG TIN: ')+esc(S.tin):''}`;
+}
 function showReceipt(ref){
   const o=typeof ref==='string'?(ORDERS.concat(RORDERS).find(x=>x.id===ref)):ref;
   if(!o)return;
+  const adj=o.adj||0,vr=o.vatRate||0;
   modal(`<div id="receiptPrint" class="receipt">
-    <div class="c"><b>${esc(S.shop)}</b><br>Receipt</div><hr>
+    <div class="c">${bizHeader()}<br>Receipt</div><hr>
     <div class="r"><span>Order ${ono(o)}</span><span>${esc(o.type)}</span></div>
     <div>${dstr(o.ts)} ${tstr(o.ts)}</div>
     <div>Cashier: ${esc(o.cashier||'')}</div><hr>
     ${o.items.map(i=>`<div class="r"><span>${i.qty} x ${esc(i.name)}${i.size?' ('+esc(i.size)+')':''}</span><span>${fmt(i.unit*i.qty)}</span></div>${i.addons.length?`<div>&nbsp;&nbsp;+ ${esc(i.addons.join(', '))}</div>`:''}${i.note?`<div>&nbsp;&nbsp;“${esc(i.note)}”</div>`:''}`).join('')}
     <hr>
     <div class="r"><span>Subtotal</span><span>${fmt(o.sub)}</span></div>
+    ${o.vatOn&&adj<0?`<div class="r"><span>Less: VAT exemption</span><span>− ${fmt(-adj)}</span></div>`:''}
     ${o.disc?`<div class="r"><span>${esc(o.discLabel||'Discount')}</span><span>− ${fmt(o.disc)}</span></div>`:''}
+    ${o.vatOn&&adj>0?`<div class="r"><span>VAT ${vr}%</span><span>+ ${fmt(adj)}</span></div>`:''}
     <div class="r"><b>TOTAL</b><b>${fmt(o.total)}</b></div>
     <div class="r"><span>${esc(o.pay)}</span><span>${fmt(o.tendered)}</span></div>
     ${o.pay==='Cash'?`<div class="r"><span>Change</span><span>${fmt(o.change)}</span></div>`:''}
+    ${o.vatOn?`<hr><div class="r"><span>VATable Sales</span><span>${fmt(o.vatable||0)}</span></div>
+    <div class="r"><span>VAT Amount (${vr}%)</span><span>${fmt(o.vat||0)}</span></div>
+    ${o.vatExempt?`<div class="r"><span>VAT-Exempt Sales</span><span>${fmt(o.vatExempt)}</span></div>`:''}`:''}
     ${o.status==='void'?'<div class="c"><b>*** VOID ***</b></div>':''}
-    <hr><div class="c">Thank you! Come again ☕</div>
+    <hr><div class="c">${esc(S.footer||'Thank you! Come again ☕')}</div>
   </div>
   <div class="actions"><button class="ghost" onclick="closeModal()">Close</button><button onclick="window.print()">Print</button></div>`);
 }
@@ -568,9 +597,9 @@ async function setStatus(id,s){
    ===================================================================== */
 function renderAdmin(){
   saveNav();
-  const T={dash:'Dashboard',reports:'Sales Report',exp:'Expenses',menu:'Menu &amp; Stock',staff:'Staff',settings:'Settings'};
+  const T={dash:'Dashboard',reports:'Sales Report',zread:'Z-Reading',exp:'Expenses',menu:'Menu &amp; Stock',staff:'Staff',settings:'Settings'};
   $('#adminBody').innerHTML=`<div class="subtabs">${Object.keys(T).map(t=>`<button class="${aTab===t?'on':''}" onclick="aTab='${t}';renderAdmin()">${T[t]}</button>`).join('')}</div><div class="card" id="aContent"></div>`;
-  ({dash:aDash,reports:aReports,exp:aExpenses,menu:aMenu,staff:aStaff,settings:aSettings})[aTab]();
+  ({dash:aDash,reports:aReports,zread:aZ,exp:aExpenses,menu:aMenu,staff:aStaff,settings:aSettings})[aTab]();
 }
 
 /* ----- menu ----- */
@@ -626,15 +655,16 @@ async function loadRange(){
 }
 function orderProfit(o){
   if(o.items.some(i=>i.cost==null))return null;
-  return r2(o.total-o.items.reduce((a,i)=>a+i.cost*i.qty,0));
+  return r2(o.total-(o.vat||0)-o.items.reduce((a,i)=>a+i.cost*i.qty,0));
 }
 function analyze(){
   const ok=RORDERS.filter(o=>o.status!=='void');
-  const A={orders:ok.length,sales:0,disc:0,cogs:0,unc:0,exp:0,days:{},items:{},byPay:{},byCat:{}};
+  const A={orders:ok.length,sales:0,vat:0,disc:0,cogs:0,unc:0,exp:0,days:{},items:{},byPay:{},byCat:{}};
   const day=k=>A.days[k]||(A.days[k]={sales:0,cogs:0,exp:0});
   ok.forEach(o=>{
-    A.sales+=o.total;A.disc+=o.disc||0;A.byPay[o.pay]=(A.byPay[o.pay]||0)+o.total;
-    const f=o.sub>0?o.total/o.sub:1,d=day(o.day);d.sales+=o.total;
+    const rev=o.total-(o.vat||0); // VAT collected is owed to BIR, not income
+    A.sales+=rev;A.vat+=o.vat||0;A.disc+=o.disc||0;A.byPay[o.pay]=(A.byPay[o.pay]||0)+o.total;
+    const f=o.sub>0?rev/o.sub:1,d=day(o.day);d.sales+=rev;
     o.items.forEach(i=>{
       const t=A.items[i.name]||(A.items[i.name]={q:0,s:0,c:0,cq:0,unc:0});
       t.q+=i.qty;t.s+=i.unit*i.qty*f; // net of discount
@@ -643,7 +673,7 @@ function analyze(){
     });
   });
   REXP.forEach(e=>{const a=Number(e.amount)||0;A.exp+=a;day(e.date).exp+=a;A.byCat[e.cat]=(A.byCat[e.cat]||0)+a});
-  A.sales=r2(A.sales);A.disc=r2(A.disc);A.cogs=r2(A.cogs);A.exp=r2(A.exp);
+  A.sales=r2(A.sales);A.vat=r2(A.vat);A.disc=r2(A.disc);A.cogs=r2(A.cogs);A.exp=r2(A.exp);
   A.gross=r2(A.sales-A.cogs);A.net=r2(A.gross-A.exp);
   Object.values(A.items).forEach(t=>{t.s=r2(t.s);t.c=r2(t.c)});
   return A;
@@ -709,17 +739,100 @@ async function aDash(silent){
   const cats=Object.entries(A.byCat).sort((a,b)=>b[1]-a[1]);
   $('#aContent').innerHTML=rangeBar('aDash')+uncBanner(A)+`
   <div class="cards">
-    <div class="stat"><small>Sales (after discounts)</small><div>${fmt(A.sales)}</div></div>
+    <div class="stat"><small>Sales (after discounts${A.vat?', excl. VAT':''})</small><div>${fmt(A.sales)}</div></div>
     <div class="stat"><small>Cost of goods</small><div>${fmt(A.cogs)}</div></div>
     <div class="stat"><small>Gross profit · ${pct(A.gross,A.sales)}</small><div>${money(A.gross)}</div></div>
     <div class="stat"><small>Expenses</small><div>${fmt(A.exp)}</div></div>
     <div class="stat"><small>Net profit · ${pct(A.net,A.sales)}</small><div>${money(A.net)}</div></div>
-    <div class="stat"><small>Orders</small><div>${A.orders}</div></div></div>
+    <div class="stat"><small>Orders</small><div>${A.orders}</div></div>
+    ${A.vat?`<div class="stat"><small>VAT collected (payable, not income)</small><div>${fmt(A.vat)}</div></div>`:''}</div>
   <h4 style="margin:6px 0">By day</h4>${chartSVG(A)}
   ${Math.round((new Date(rt+'T12:00:00')-new Date(rf+'T12:00:00'))/864e5)+1>93?'<div class="warnbox">The chart shows the first 93 days only. The totals above cover the whole range.</div>':''}
   <h4>Expenses by category</h4>
   <table><tr><th>Category</th><th class="n">Amount</th><th class="n">% of sales</th></tr>${cats.map(([c,v])=>`<tr><td>${esc(c)}</td><td class="n">${fmt(v)}</td><td class="n">${pct(v,A.sales)}</td></tr>`).join('')||'<tr><td colspan="3">No expenses recorded for these dates.</td></tr>'}</table>
   <div style="color:var(--mut);font-size:12px;margin-top:10px">Net profit = Sales − Cost of goods − Expenses. Voided orders are excluded.</div>`;
+}
+
+/* ----- Z-Reading (end of day) ----- */
+let zDate=null;
+function zCompute(orders){
+  const ok=orders.filter(o=>o.status!=='void'),vd=orders.filter(o=>o.status==='void');
+  const Z={orders:ok.length,first:null,last:null,gross:0,disc:0,total:0,vatable:0,vat:0,exempt:0,nonvat:0,byPay:{},voids:vd.length,voidAmt:0};
+  const nos=ok.map(o=>o.no);if(nos.length){Z.first=Math.min(...nos);Z.last=Math.max(...nos)}
+  ok.forEach(o=>{
+    Z.gross+=o.sub;Z.disc+=o.disc||0;Z.total+=o.total;
+    if(o.vatOn){Z.vatable+=o.vatable||0;Z.vat+=o.vat||0;Z.exempt+=o.vatExempt||0}else Z.nonvat+=o.total;
+    Z.byPay[o.pay]=(Z.byPay[o.pay]||0)+o.total;
+  });
+  vd.forEach(o=>Z.voidAmt+=o.total);
+  ['gross','disc','total','vatable','vat','exempt','nonvat','voidAmt'].forEach(k=>Z[k]=r2(Z[k]));
+  Object.keys(Z.byPay).forEach(k=>Z.byPay[k]=r2(Z.byPay[k]));
+  Z.adj=r2(Z.total-Z.gross+Z.disc);
+  return Z;
+}
+function zHTML(Z,saved){
+  const pn=(a,b)=>`<div class="r"><span>${a}</span><span>${b}</span></div>`;
+  const cash=Z.byPay.Cash||0;
+  return `<div id="receiptPrint" class="receipt" style="max-width:340px;background:#fff;border:1px solid var(--line);padding:12px">
+    <div class="c">${bizHeader()}<br><b>${saved?'Z-READING':'X-READING (preview, not saved)'}</b></div><hr>
+    ${pn('Date',esc(zDate))}${saved?pn('Z-counter','#'+String(saved.z).padStart(4,'0'))+pn('Printed by',esc(saved.by||''))+pn('Saved at',dstr(saved.ts)+' '+tstr(saved.ts)):''}
+    ${pn('Orders',Z.orders)}${Z.orders?pn('First / last order','#'+String(Z.first).padStart(3,'0')+' / #'+String(Z.last).padStart(3,'0')):''}<hr>
+    ${pn('Gross sales',fmt(Z.gross))}${pn('Less: discounts','− '+fmt(Z.disc))}
+    ${Z.adj?pn(Z.adj<0?'Less: VAT exemption':'Add: VAT on top',(Z.adj<0?'− ':'+ ')+fmt(Math.abs(Z.adj))):''}
+    <div class="r"><b>NET COLLECTED</b><b>${fmt(Z.total)}</b></div><hr>
+    ${Z.vatable||Z.vat||S.vatOn?pn('VATable sales',fmt(Z.vatable))+pn('VAT amount',fmt(Z.vat)):''}
+    ${Z.exempt?pn('VAT-exempt sales',fmt(Z.exempt)):''}${Z.nonvat?pn('Non-VAT sales',fmt(Z.nonvat)):''}<hr>
+    <div><b>Payments</b></div>${Object.entries(Z.byPay).map(([k,v])=>pn(esc(k),fmt(v))).join('')||pn('—','')}<hr>
+    ${pn('Voided orders',Z.voids+' ('+fmt(Z.voidAmt)+')')}
+    ${saved?`<hr><div><b>Cash drawer</b></div>${pn('Opening float',fmt(saved.float||0))}${pn('Cash sales',fmt(cash))}${pn('Expected cash',fmt(r2((saved.float||0)+cash)))}
+    ${saved.counted==null?'':pn('Counted cash',fmt(saved.counted))+pn('Over / (short)',fmt(r2(saved.counted-((saved.float||0)+cash))))}`:''}
+  </div>`;
+}
+async function aZ(){
+  if(!zDate)zDate=todayStr();
+  $('#aContent').innerHTML='<div class="empty">Loading…</div>';
+  let orders=[],saved=null,past=[];
+  try{
+    const [q,zs,pz]=await Promise.all([
+      fs.collection('orders').where('day','==',zDate).get(),
+      fs.collection('zreports').doc(zDate).get(),
+      fs.collection('zreports').orderBy('ts','desc').limit(10).get()]);
+    orders=q.docs.map(d=>d.data());saved=zs.exists?zs.data():null;past=pz.docs.map(d=>d.data());
+  }catch(e){toast(errMsg(e))}
+  if(view!=='admin'||aTab!=='zread')return;
+  const live=zCompute(orders),Z=saved?saved.data:live;
+  const late=saved&&(live.orders!==saved.data.orders||live.total!==saved.data.total||live.voids!==saved.data.voids);
+  $('#aContent').innerHTML=`<div class="toolbar"><div><div class="lbl">Date</div><input type="date" value="${zDate}" max="${todayStr()}" onchange="zDate=this.value||todayStr();aZ()"></div>
+    <button class="ghost" onclick="zDate=todayStr();aZ()">Today</button><button class="ghost" onclick="aZ()">Refresh</button>
+    ${saved?'<button onclick="window.print()">Print Z-Reading</button>':''}</div>
+  ${late?`<div class="warnbox">⚠ This day's orders changed after the Z-Reading was saved (now ${live.orders} orders, ${fmt(live.total)}; the Z-Reading shows ${saved.data.orders} orders, ${fmt(saved.data.total)}). A saved Z-Reading cannot be edited.</div>`:''}
+  ${!saved?`<div class="card" style="background:#faf6f0;margin-bottom:12px"><b>Close the day</b>
+    <div class="two" style="margin-top:6px"><div><div class="lbl">Opening cash float</div><input id="zF" type="number" min="0" step="0.01" placeholder="0.00"></div>
+    <div><div class="lbl">Counted cash in drawer (optional)</div><input id="zC" type="number" min="0" step="0.01" placeholder="0.00"></div></div>
+    <button style="margin-top:10px" onclick="saveZ()" ${live.orders||live.voids?'':'disabled'}>Save Z-Reading for ${zDate}</button>
+    <div style="color:var(--mut);font-size:12px;margin-top:6px">Saving closes this date once. It cannot be edited or deleted afterwards.</div></div>`:''}
+  ${zHTML(Z,saved)}
+  <h4>Recent Z-Readings</h4>
+  <table><tr><th>Z #</th><th>Date</th><th class="n">Net collected</th><th></th></tr>
+  ${past.map(p=>`<tr><td>#${String(p.z).padStart(4,'0')}</td><td>${esc(p.date)}</td><td class="n">${fmt(p.data.total)}</td><td class="n"><button class="ghost" onclick="zDate='${p.date}';aZ()">Open</button></td></tr>`).join('')||'<tr><td colspan="4">None yet.</td></tr>'}</table>`;
+}
+async function saveZ(){
+  const date=zDate,fl=r2(parseFloat($('#zF').value)||0),cc=$('#zC').value.trim()===''?null:r2(parseFloat($('#zC').value)||0);
+  if(!confirm('Save the Z-Reading for '+date+'? It cannot be edited or deleted afterwards.'))return;
+  try{
+    const q=await fs.collection('orders').where('day','==',date).get();
+    const Z=zCompute(q.docs.map(d=>d.data()));
+    const cref=fs.collection('counters').doc('zreading'),zref=fs.collection('zreports').doc(date);
+    await fs.runTransaction(async tx=>{
+      const [cs,zs]=await Promise.all([tx.get(cref),tx.get(zref)]);
+      if(zs.exists)throw new Error('A Z-Reading for '+date+' already exists.');
+      const z=(cs.exists?(cs.data().n||0):0)+1;
+      tx.set(cref,{n:z});
+      tx.set(zref,{date,z,ts:Date.now(),by:ME.name,byUid:ME.uid,float:fl,counted:cc,data:Z});
+    });
+    toast('Z-Reading saved');
+  }catch(e){toast(errMsg(e))}
+  aZ();
 }
 
 /* ----- expenses ----- */
@@ -765,12 +878,13 @@ async function aReports(silent){
   const A=analyze(),list=RORDERS.slice().sort((a,b)=>b.ts-a.ts);
   const topL=Object.entries(A.items).sort((a,b)=>b[1].q-a[1].q).slice(0,15);
   $('#aContent').innerHTML=rangeBar('aReports','<button class="ghost" onclick="exportCSV()">Export CSV</button>')+uncBanner(A)+`
-  <div class="cards"><div class="stat"><small>Sales</small><div>${fmt(A.sales)}</div></div>
+  <div class="cards"><div class="stat"><small>Sales${A.vat?' (excl. VAT)':''}</small><div>${fmt(A.sales)}</div></div>
   <div class="stat"><small>Orders</small><div>${A.orders}</div></div>
   <div class="stat"><small>Average / order</small><div>${fmt(A.orders?A.sales/A.orders:0)}</div></div>
   <div class="stat"><small>Total discount</small><div>${fmt(A.disc)}</div></div>
   <div class="stat"><small>Cost of goods</small><div>${fmt(A.cogs)}</div></div>
   <div class="stat"><small>Gross profit · ${pct(A.gross,A.sales)}</small><div>${money(A.gross)}</div></div>
+  ${A.vat?`<div class="stat"><small>VAT collected</small><div>${fmt(A.vat)}</div></div>`:''}
   ${Object.entries(A.byPay).map(([k,v])=>`<div class="stat"><small>${esc(k)}</small><div>${fmt(r2(v))}</div></div>`).join('')}</div>
   <h4>Best sellers &amp; profit per item</h4>
   <table><tr><th>Item</th><th class="n">Sold</th><th class="n">Sales</th><th class="n">Cost / unit</th><th class="n">Total cost</th><th class="n">Profit</th><th class="n">Margin</th></tr>
@@ -798,10 +912,10 @@ async function voidOrder(id){
 }
 function exportCSV(){
   const q=v=>'"'+String(v).replace(/"/g,'""')+'"';
-  const rows=[['Order','Date','Time','Type','Items','Subtotal','Discount','Total','Cost','Profit','Payment','Cashier','Status']];
+  const rows=[['Order','Date','Time','Type','Items','Subtotal','Discount','Total','VAT','Cost','Profit','Payment','Cashier','Status']];
   RORDERS.slice().sort((a,b)=>a.ts-b.ts).forEach(o=>{
     const p=orderProfit(o);
-    rows.push([ono(o),dstr(o.ts),tstr(o.ts),o.type,o.items.map(i=>i.qty+'x '+i.name+(i.size?' ('+i.size+')':'')).join('; '),o.sub,o.disc,o.total,p==null?'':r2(o.total-p),p==null?'':p,o.pay,o.cashier||'',o.status]);
+    rows.push([ono(o),dstr(o.ts),tstr(o.ts),o.type,o.items.map(i=>i.qty+'x '+i.name+(i.size?' ('+i.size+')':'')).join('; '),o.sub,o.disc,o.total,o.vat||0,p==null?'':r2(o.total-(o.vat||0)-p),p==null?'':p,o.pay,o.cashier||'',o.status]);
   });
   download('sales_'+rf+'_to_'+rt+'.csv',rows.map(r=>r.map(q).join(',')).join('\n'),'text/csv');
 }
@@ -867,6 +981,15 @@ async function resetPw(i){
 function aSettings(){
   $('#aContent').innerHTML=`<div class="lbl" style="margin-top:0">Shop name</div><input id="sShop" value="${esc(S.shop)}">
   <div class="lbl">PWD / Senior discount (%)</div><input id="sPwd" type="number" min="0" max="100" value="${S.pwdRate}">
+  <h4>Receipt details &amp; VAT</h4>
+  <div class="lbl" style="margin-top:0">Business address (shown on receipts)</div><textarea id="sAddr" rows="2">${esc(S.address||'')}</textarea>
+  <div class="lbl">TIN</div><input id="sTin" value="${esc(S.tin||'')}" placeholder="000-000-000-000">
+  <div class="lbl">Receipt footer message</div><input id="sFoot" value="${esc(S.footer||'')}" placeholder="Thank you! Come again ☕">
+  <label style="display:flex;gap:8px;align-items:center;margin-top:12px"><input id="sVatOn" type="checkbox" style="width:auto" ${S.vatOn?'checked':''}> Business is VAT-registered (enable VAT)</label>
+  <div class="two"><div><div class="lbl">VAT rate (%)</div><input id="sVatRate" type="number" min="0" max="100" step="0.01" value="${S.vatRate}"></div>
+  <div><div class="lbl">Menu prices</div><select id="sVatMode"><option value="incl" ${S.vatMode!=='excl'?'selected':''}>Already include VAT</option><option value="excl" ${S.vatMode==='excl'?'selected':''}>Exclude VAT (add on top)</option></select></div></div>
+  <label style="display:flex;gap:8px;align-items:center;margin-top:10px"><input id="sPwdEx" type="checkbox" style="width:auto" ${S.pwdVatExempt!==false?'checked':''}> PWD/Senior sales are VAT-exempt (discount is taken on the price without VAT)</label>
+  <h4>Menu options</h4>
   <div class="lbl">Sizes (one per line: Name, extra price, extra cost)</div><textarea id="sSizes" rows="4">${esc(S.sizes.map(z=>z.n+','+z.up+','+(z.cost||0)).join('\n'))}</textarea>
   <div class="lbl">Add-ons (one per line: Name, price, cost)</div><textarea id="sAdd" rows="5">${esc(S.addons.map(a=>a.n+','+a.p+','+(a.cost||0)).join('\n'))}</textarea>
   <small style="color:var(--mut)">Example: Large,20,6 means +₱20 price and +₱6 cost. The third number is optional.</small>
@@ -886,6 +1009,9 @@ async function saveSettings(){
   if(!sizes.length){toast('At least one size is required');return}
   const d={shop:$('#sShop').value.trim()||'Coffee Shop',pwdRate:Math.min(100,Math.max(0,parseFloat($('#sPwd').value)||0)),
     sizes,addons:parseLines($('#sAdd').value).map(x=>({n:x.n,p:x.v,cost:x.c}))};
+  Object.assign(d,{address:$('#sAddr').value.trim(),tin:$('#sTin').value.trim(),footer:$('#sFoot').value.trim(),
+    vatOn:$('#sVatOn').checked,vatRate:Math.min(100,Math.max(0,parseFloat($('#sVatRate').value)||0)),vatMode:$('#sVatMode').value,pwdVatExempt:$('#sPwdEx').checked});
+  if(d.vatOn&&!(d.vatRate>0)){toast('Enter a VAT rate above 0');return}
   try{await fs.collection('settings').doc('main').set(d,{merge:true});toast('Saved')}catch(e){toast(errMsg(e))}
 }
 
