@@ -58,6 +58,7 @@ main{padding:14px;max-width:1300px;margin:0 auto}
 .ticket h4{margin:0 0 6px;display:flex;justify-content:space-between}
 .ticket ul{margin:6px 0 10px;padding-left:18px}
 .ticket li small{color:var(--mut)}
+.ticket .cust{background:#faf6f0;border-radius:8px;padding:6px 8px;margin:6px 0;font-size:13px}
 .badge{font-size:12px;padding:2px 8px;border-radius:999px;background:#eee;color:var(--mut)}
 .subtabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
 .subtabs button{background:#fff;color:var(--brand);border:1px solid var(--line)}
@@ -82,6 +83,7 @@ td.n,th.n{text-align:right}
 #overlay.on{display:flex}
 #modal{background:#fff;border-radius:16px;padding:18px;width:100%;max-width:440px;max-height:92vh;overflow:auto}
 #modal h3{margin:0 0 8px}
+#modal.wide{max-width:640px}
 .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
 #toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:10px;display:none;z-index:30;max-width:90vw;text-align:center}
 .receipt{font-family:"Courier New",monospace;font-size:13px;width:100%;max-width:300px;margin:0 auto}
@@ -136,10 +138,20 @@ code{background:#f1e9df;padding:1px 5px;border-radius:5px}
         <div class="card">
           <h3 style="margin:0 0 6px">Current Order</h3>
           <div class="two">
-            <select id="otype"><option>Dine-in</option><option>Take-out</option></select>
+            <select id="otype" onchange="renderTotals()"><option>Dine-in</option><option>Take-out</option><option>Delivery</option></select>
             <button class="ghost" onclick="clearCart()">Clear all</button>
           </div>
           <div id="cartList"></div>
+          <div id="custBox" style="display:none">
+            <div class="lbl">Customer</div>
+            <input id="cName" list="custNames" placeholder="Customer name" autocomplete="off">
+            <datalist id="custNames"></datalist>
+            <input id="cPhone" placeholder="Phone (optional)" style="margin-top:6px">
+            <div id="delBox" style="display:none">
+              <textarea id="cAddr" rows="2" placeholder="Delivery address" style="margin-top:6px"></textarea>
+              <input id="dFee" type="number" min="0" step="0.01" placeholder="Delivery fee (optional)" oninput="renderTotals()" style="margin-top:6px">
+            </div>
+          </div>
           <div class="lbl">Discount</div>
           <div class="two">
             <select id="disc" onchange="renderTotals()"><option value="none">No discount</option><option value="pwd">PWD / Senior</option><option value="custom">Custom %</option></select>
@@ -149,10 +161,12 @@ code{background:#f1e9df;padding:1px 5px;border-radius:5px}
           <div class="row" id="rVex" style="display:none"><span>Less: VAT exemption (SC/PWD)</span><span id="tVex"></span></div>
           <div class="row"><span>Discount</span><span id="tDisc"></span></div>
           <div class="row" id="rVatAdd" style="display:none"><span id="lVatAdd">VAT</span><span id="tVatAdd"></span></div>
+          <div class="row" id="rFee" style="display:none"><span>Delivery fee</span><span id="tFee"></span></div>
           <div class="row total"><span>Total</span><span id="tTotal"></span></div>
           <div class="row" id="rVatInc" style="display:none;color:var(--mut);font-size:13px"><span id="lVatInc">VAT included</span><span id="tVatInc"></span></div>
           <div class="lbl">Payment</div>
-          <select id="pay" onchange="renderTotals()"><option value="Cash">Cash</option><option value="GCash">GCash</option></select>
+          <select id="pay" onchange="onPayChange()"><option value="Cash">Cash</option><option value="GCash">GCash</option><option value="Credit">Credit (utang)</option></select>
+          <div id="creditNote" class="warnbox" style="display:none">Customer pays later. The balance is recorded under Admin &gt; Credits.</div>
           <div id="cashBox">
             <input id="tender" type="number" min="0" placeholder="Cash received" oninput="renderTotals()" style="margin-top:6px">
             <div class="quick" id="quick"></div>
@@ -203,7 +217,7 @@ const todayStr=()=>dstr(Date.now());
 const tstr=ts=>{const d=new Date(ts);return pad(d.getHours())+':'+pad(d.getMinutes())};
 function toast(t,ms){const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',ms||3000)}
 let draftKind=null,draftId=null,INGLOADED=false,MENULOADED=false;
-function modal(h){draftKind=null;try{localStorage.removeItem('pos_draft')}catch(e){}$('#modal').innerHTML=h;$('#overlay').classList.add('on')}
+function modal(h){$('#modal').classList.remove('wide');draftKind=null;try{localStorage.removeItem('pos_draft')}catch(e){}$('#modal').innerHTML=h;$('#overlay').classList.add('on')}
 /* unsaved item / ingredient forms survive a page refresh */
 function setDraft(kind,id){draftKind=kind;draftId=id;saveDraft()}
 function saveDraft(){
@@ -254,8 +268,8 @@ function seedMenu(){
 }
 
 /* ---------- state ---------- */
-let fs,auth,ME=null,S=defaultSettings(),MENU=[],ORDERS=[],RORDERS=[],REXP=[],STAFF=[],ING=[],unsubs=[];
-let settingUp=false,placing=false;
+let fs,auth,ME=null,S=defaultSettings(),MENU=[],ORDERS=[],RORDERS=[],REXP=[],STAFF=[],ING=[],CREDITS=[],CGROUPS=[],unsubs=[];
+let settingUp=false,placing=false,paying=false,payTarget=null,custNamesAt=0;
 let cart=[],cat='All',view='pos',aTab='dash',rf=todayStr(),rt=todayStr();
 const can={pos:['admin','cashier'],bar:['admin','cashier','barista'],admin:['admin']};
 
@@ -360,7 +374,7 @@ async function bootUser(u){
     renderAuth('login',errMsg(e));
   }
 }
-function stopListeners(){unsubs.forEach(f=>{try{f()}catch(e){}});unsubs=[];MENU=[];ORDERS=[];ING=[];INGLOADED=false;MENULOADED=false;cart=[]}
+function stopListeners(){unsubs.forEach(f=>{try{f()}catch(e){}});unsubs=[];MENU=[];ORDERS=[];ING=[];CREDITS=[];custNamesAt=0;INGLOADED=false;MENULOADED=false;cart=[]}
 function startListeners(){
   const er=e=>toast(errMsg(e));
   unsubs.push(fs.collection('settings').doc('main').onSnapshot(s=>{
@@ -396,7 +410,7 @@ function applyRole(){
   ['pos','bar','admin'].forEach(x=>{$('#nav-'+x).style.display=can[x].includes(ME.role)?'':'none'});
   $('#who').textContent=ME.name+' · '+ME.role;
   const nav=loadNav();
-  if(['dash','reports','zread','exp','menu','ing','staff','settings'].includes(nav.aTab))aTab=nav.aTab;
+  if(['dash','reports','zread','exp','credits','menu','ing','staff','settings'].includes(nav.aTab))aTab=nav.aTab;
   view='';
   go(nav.view&&can[nav.view]&&can[nav.view].includes(ME.role)?nav.view:(ME.role==='barista'?'bar':'pos'));
   restoreDraft();
@@ -525,7 +539,17 @@ function chg(i,d){
   c.qty+=d;if(c.qty<=0)cart.splice(i,1);
   renderCart();
 }
-function clearCart(){cart=[];$('#tender').value='';renderCart()}
+function resetCustomer(){['#cName','#cPhone','#cAddr','#dFee'].forEach(s=>{$(s).value=''})}
+function clearCart(){cart=[];$('#tender').value='';resetCustomer();renderCart()}
+function onPayChange(){renderTotals();if($('#pay').value==='Credit')loadCustNames()}
+async function loadCustNames(){ // suggest names of past credit customers
+  if(Date.now()-custNamesAt<60000)return;
+  custNamesAt=Date.now();
+  try{
+    await loadCredits();
+    $('#custNames').innerHTML=[...new Set(CREDITS.map(o=>o.custName).filter(Boolean))].map(n=>`<option value="${esc(n)}">`).join('');
+  }catch(e){}
+}
 
 /* ---------- POS: cart & totals ---------- */
 function calc(){
@@ -548,6 +572,8 @@ function calc(){
     if(incl){R.total=after;R.vatable=r2(after/(1+vr/100));R.vat=r2(R.total-R.vatable)}
     else{R.vatable=after;R.vat=r2(after*vr/100);R.total=r2(after+R.vat);R.adj=R.vat}
   }
+  const deliveryFee=$('#otype').value==='Delivery'?Math.max(0,r2(parseFloat($('#dFee').value)||0)):0;
+  R.fee=deliveryFee;R.total=r2(R.total+deliveryFee); // fee is added after discount and VAT
   return R;
 }
 function renderCart(){
@@ -557,24 +583,34 @@ function renderCart(){
   renderTotals();
 }
 function renderTotals(){
+  const isDelivery=$('#otype').value==='Delivery',onCredit=$('#pay').value==='Credit';
   $('#customPct').style.display=$('#disc').value==='custom'?'block':'none';
+  $('#custBox').style.display=isDelivery||onCredit?'block':'none';
+  $('#delBox').style.display=isDelivery?'block':'none';
+  $('#creditNote').style.display=onCredit?'block':'none';
   const t=calc(),cash=$('#pay').value==='Cash';
   $('#tSub').textContent=fmt(t.sub);$('#tDisc').textContent='− '+fmt(t.disc);$('#tTotal').textContent=fmt(t.total);
   const exm=t.vOn&&t.adj<0,add=t.vOn&&!t.incl&&t.vat>0,inc=t.vOn&&t.incl&&t.vat>0;
   $('#rVex').style.display=exm?'flex':'none';$('#tVex').textContent='− '+fmt(-t.adj);
   $('#rVatAdd').style.display=add?'flex':'none';$('#lVatAdd').textContent='VAT '+t.vr+'%';$('#tVatAdd').textContent='+ '+fmt(t.vat);
   $('#rVatInc').style.display=inc?'flex':'none';$('#lVatInc').textContent='VAT included ('+t.vr+'%)';$('#tVatInc').textContent=fmt(t.vat);
+  $('#rFee').style.display=t.fee>0?'flex':'none';$('#tFee').textContent='+ '+fmt(t.fee);
   $('#cashBox').style.display=cash?'block':'none';
   const tend=parseFloat($('#tender').value)||0;
   $('#tChange').textContent=fmt(Math.max(0,tend-t.total));
   const q=[['Exact',t.total],[100,100],[200,200],[500,500],[1000,1000]];
   $('#quick').innerHTML=q.map(([l,v])=>`<button onclick="$('#tender').value=${v};renderTotals()">${typeof l==='number'?'₱'+l:l}</button>`).join('');
+  $('#placeBtn').textContent=onCredit?'Save as credit':'Complete order';
   $('#placeBtn').disabled=placing||!cart.length||(cash&&tend<t.total);
 }
 async function placeOrder(){
   if(!cart.length||placing)return;
   const t=calc(),cash=$('#pay').value==='Cash',tend=parseFloat($('#tender').value)||0;
+  const type=$('#otype').value,pay=$('#pay').value,onCredit=pay==='Credit',isDelivery=type==='Delivery';
+  const custName=$('#cName').value.trim(),custPhone=$('#cPhone').value.trim(),custAddr=$('#cAddr').value.trim();
   if(cash&&tend<t.total){toast('Not enough cash received');return}
+  if((onCredit||isDelivery)&&!custName){toast('Enter the customer name');return}
+  if(isDelivery&&!custAddr){toast('Enter the delivery address');return}
   if(!navigator.onLine){toast('No internet. A connection is needed to save the order.');return}
   placing=true;renderTotals();
   const day=todayStr();
@@ -584,7 +620,6 @@ async function placeOrder(){
   const orderRef=fs.collection('orders').doc();
   const cref=fs.collection('counters').doc(day);
   const items=cart.map(c=>({id:c.id,name:c.name,size:c.size,addons:c.addons,note:c.note,unit:c.unit,cost:c.cost==null?null:c.cost,qty:c.qty}));
-  const type=$('#otype').value,pay=$('#pay').value;
   try{
     const order=await fs.runTransaction(async tx=>{
       const cs=await tx.get(cref);
@@ -607,11 +642,16 @@ async function placeOrder(){
         else if((g.low||0)>0&&left<=g.low)alerts.push(g.name+' ('+left+' '+g.unit+' left)');
       });
       const o={no,day,ts:Date.now(),type,items,sub:t.sub,discLabel:t.label,disc:t.disc,adj:t.adj,vatOn:t.vOn,vatRate:t.vr,vatMode:t.incl?'incl':'excl',vatable:t.vatable,vat:t.vat,vatExempt:t.exempt,total:t.total,pay,
-        tendered:cash?tend:t.total,change:cash?r2(tend-t.total):0,status:'preparing',ingUse:used,cashier:ME.name,cashierUid:ME.uid};
+        tendered:cash?tend:(onCredit?0:t.total),change:cash?r2(tend-t.total):0,status:'preparing',ingUse:used,cashier:ME.name,cashierUid:ME.uid,
+        fee:t.fee,custName:onCredit||isDelivery?custName:'',custPhone:onCredit||isDelivery?custPhone:'',custAddr:isDelivery?custAddr:''};
+      if(onCredit)Object.assign(o,{paid:0,payments:[],payDays:[]});
       tx.set(orderRef,o);
       return Object.assign({id:orderRef.id},o);
     });
     cart=[];$('#tender').value='';$('#disc').value='none';$('#customPct').value='';
+    resetCustomer();
+    if(onCredit)$('#pay').value='Cash';
+    if(isDelivery)$('#otype').value='Dine-in';
     placing=false;renderCart();
     showReceipt(order);
     if(alerts.length)toast('Low stock: '+alerts.join(', '),6000);
@@ -627,15 +667,18 @@ function bizHeader(){
   return `${S.logo?`<img class="logo" src="${S.logo}" alt="">`:''}<b>${esc(S.shop)}</b>${S.address?'<br>'+esc(S.address).replace(/\n/g,'<br>'):''}${S.phone?'<br>Tel: '+esc(S.phone):''}${S.tin?'<br>'+(S.vatOn?'VAT REG TIN: ':'NON-VAT REG TIN: ')+esc(S.tin):''}`;
 }
 function showReceipt(ref){
-  const o=typeof ref==='string'?(ORDERS.concat(RORDERS).find(x=>x.id===ref)):ref;
+  const o=typeof ref==='string'?(ORDERS.concat(RORDERS,CREDITS).find(x=>x.id===ref)):ref;
   if(!o)return;
   const adj=o.adj||0,vr=o.vatRate||0,excl=o.vatOn&&o.vatMode==='excl';
+  const onCredit=o.pay==='Credit',balance=onCredit?r2(o.total-(o.paid||0)):0;
   const row=(a,b,cls)=>`<div class="r ${cls||''}"><span>${a}</span><span>${b}</span></div>`;
   modal(`<div id="receiptPrint" class="receipt">
     <div class="c">${bizHeader()}</div><hr>
     <div>Date: ${dstr(o.ts)} &nbsp;Time: ${tstr(o.ts)}</div>
     <div>Order No: ${ono(o)} &nbsp;(${esc(o.type)})</div>
     <div>Cashier: ${esc(o.cashier||'')}</div>
+    ${o.custName?`<div>Customer: ${esc(o.custName)}</div>`:''}
+    ${o.type==='Delivery'?`${o.custPhone?`<div>Phone: ${esc(o.custPhone)}</div>`:''}<div>Deliver to: ${esc(o.custAddr||'').replace(/\n/g,'<br>')}</div>`:''}
     <hr>
     <div class="it"><span>ITEM NAME</span><span>QTY</span><span>AMOUNT</span></div>
     <hr>
@@ -645,9 +688,10 @@ function showReceipt(ref){
     ${o.vatOn&&adj<0?row('Less: VAT exemption','− '+fmt(-adj)):''}
     ${o.disc?row(esc(o.discLabel||'Discount'),'− '+fmt(o.disc)):''}
     ${excl&&adj>0?row('Total tax (VAT '+vr+'%)','+ '+fmt(adj)):''}
+    ${o.fee?row('Delivery fee','+ '+fmt(o.fee)):''}
     ${row('Total',fmt(o.total),'t')}
     <hr>
-    ${row(esc(o.pay),fmt(o.tendered))}
+    ${onCredit?row('CREDIT (unpaid)',fmt(o.total))+row('Paid so far',fmt(o.paid||0))+row('Balance due',fmt(balance),'t'):row(esc(o.pay),fmt(o.tendered))}
     ${o.pay==='Cash'?row('Change back (Cash)',fmt(o.change)):''}
     ${o.vatOn?`<hr>${row('VATable Sales',fmt(o.vatable||0))}${row('VAT Amount ('+vr+'%)',fmt(o.vat||0))}${o.vatExempt?row('VAT-Exempt Sales',fmt(o.vatExempt)):''}`:''}
     ${o.status==='void'?'<div class="c"><b>*** VOID ***</b></div>':''}
@@ -664,6 +708,7 @@ function showReceipt(ref){
 function renderQueue(){
   const live=ORDERS.filter(o=>o.status==='preparing'||o.status==='ready').sort((a,b)=>a.ts-b.ts);
   const card=o=>`<div class="ticket ${o.status==='ready'?'ready':''}"><h4><span>${ono(o)}</span><span class="badge">${esc(o.type)} · ${tstr(o.ts)}</span></h4>
+    ${o.type==='Delivery'?`<div class="cust"><b>${esc(o.custName||'')}</b>${o.custPhone?' · '+esc(o.custPhone):''}<br>${esc(o.custAddr||'').replace(/\n/g,'<br>')}</div>`:''}
     <ul>${o.items.map(i=>`<li><b>${i.qty}×</b> ${esc(i.name)}${i.size?' ('+esc(i.size)+')':''}${i.addons.length?`<br><small>+ ${esc(i.addons.join(', '))}</small>`:''}${i.note?`<br><small>“${esc(i.note)}”</small>`:''}</li>`).join('')}</ul>
     ${o.status==='preparing'?`<button class="ok" onclick="setStatus('${o.id}','ready')">Ready</button>`:`<button onclick="setStatus('${o.id}','served')">Served</button>`}</div>`;
   const prep=live.filter(o=>o.status==='preparing'),rdy=live.filter(o=>o.status==='ready');
@@ -680,9 +725,9 @@ async function setStatus(id,s){
    ===================================================================== */
 function renderAdmin(){
   saveNav();
-  const T={dash:'Dashboard',reports:'Sales Report',zread:'Z-Reading',exp:'Expenses',menu:'Menu &amp; Stock',ing:'Ingredients',staff:'Staff',settings:'Settings'};
+  const T={dash:'Dashboard',reports:'Sales Report',zread:'Z-Reading',exp:'Expenses',credits:'Credits',menu:'Menu &amp; Stock',ing:'Ingredients',staff:'Staff',settings:'Settings'};
   $('#adminBody').innerHTML=`<div class="subtabs">${Object.keys(T).map(t=>`<button data-t="${t}" class="${aTab===t?'on':''}" onclick="aTab='${t}';renderAdmin()">${T[t]}${t==='ing'&&ingAlerts().length?` <span class="badge" style="background:#b3392f;color:#fff">${ingAlerts().length}</span>`:''}</button>`).join('')}</div><div class="card" id="aContent"></div>`;
-  ({dash:aDash,reports:aReports,zread:aZ,exp:aExpenses,menu:aMenu,ing:aIng,staff:aStaff,settings:aSettings})[aTab]();
+  ({dash:aDash,reports:aReports,zread:aZ,exp:aExpenses,credits:aCredits,menu:aMenu,ing:aIng,staff:aStaff,settings:aSettings})[aTab]();
 }
 
 /* ----- menu ----- */
@@ -843,17 +888,24 @@ async function loadRange(){
     REXP=e.docs.map(d=>Object.assign({id:d.id},d.data()));
   }catch(err){toast(errMsg(err));RORDERS=[];REXP=[]}
 }
-function orderProfit(o){
+function orderCost(o){
   if(o.items.some(i=>i.cost==null))return null;
-  return r2(o.total-(o.vat||0)-o.items.reduce((a,i)=>a+i.cost*i.qty,0));
+  return r2(o.items.reduce((a,i)=>a+i.cost*i.qty,0));
 }
+function orderProfit(o){
+  const cost=orderCost(o);
+  return cost==null?null:r2(o.total-(o.vat||0)-(o.fee||0)-cost); // VAT and delivery fee are not income
+}
+const owed=o=>r2(o.total-(o.paid||0));
 function analyze(){
   const ok=RORDERS.filter(o=>o.status!=='void');
-  const A={orders:ok.length,sales:0,vat:0,disc:0,cogs:0,unc:0,exp:0,days:{},items:{},byPay:{},byCat:{}};
+  const A={orders:ok.length,sales:0,vat:0,disc:0,cogs:0,unc:0,exp:0,fees:0,credit:0,unpaid:0,days:{},items:{},byPay:{},byCat:{}};
   const day=k=>A.days[k]||(A.days[k]={sales:0,cogs:0,exp:0});
   ok.forEach(o=>{
-    const rev=o.total-(o.vat||0); // VAT collected is owed to BIR, not income
-    A.sales+=rev;A.vat+=o.vat||0;A.disc+=o.disc||0;A.byPay[o.pay]=(A.byPay[o.pay]||0)+o.total;
+    const fee=o.fee||0,rev=o.total-(o.vat||0)-fee; // VAT and delivery fee are not income
+    A.sales+=rev;A.vat+=o.vat||0;A.disc+=o.disc||0;A.fees+=fee;
+    if(o.pay==='Credit'){A.credit+=o.total;A.unpaid+=owed(o)}
+    else A.byPay[o.pay]=(A.byPay[o.pay]||0)+o.total;
     const f=o.sub>0?rev/o.sub:1,d=day(o.day);d.sales+=rev;
     o.items.forEach(i=>{
       const t=A.items[i.name]||(A.items[i.name]={q:0,s:0,c:0,cq:0,unc:0});
@@ -864,6 +916,7 @@ function analyze(){
   });
   REXP.forEach(e=>{const a=Number(e.amount)||0;A.exp+=a;day(e.date).exp+=a;A.byCat[e.cat]=(A.byCat[e.cat]||0)+a});
   A.sales=r2(A.sales);A.vat=r2(A.vat);A.disc=r2(A.disc);A.cogs=r2(A.cogs);A.exp=r2(A.exp);
+  A.fees=r2(A.fees);A.credit=r2(A.credit);A.unpaid=r2(A.unpaid);
   A.gross=r2(A.sales-A.cogs);A.net=r2(A.gross-A.exp);
   Object.values(A.items).forEach(t=>{t.s=r2(t.s);t.c=r2(t.c)});
   return A;
@@ -927,7 +980,7 @@ async function aDash(silent){
   if(view!=='admin'||aTab!=='dash')return;
   const A=analyze();
   const cats=Object.entries(A.byCat).sort((a,b)=>b[1]-a[1]);
-  $('#aContent').innerHTML=rangeBar('aDash')+ingBanner()+uncBanner(A)+`
+  $('#aContent').innerHTML=rangeBar('aDash',exportButtons('dash'))+ingBanner()+uncBanner(A)+`
   <div class="cards">
     <div class="stat"><small>Sales (after discounts${A.vat?', excl. VAT':''})</small><div>${fmt(A.sales)}</div></div>
     <div class="stat"><small>Cost of goods</small><div>${fmt(A.cogs)}</div></div>
@@ -935,67 +988,90 @@ async function aDash(silent){
     <div class="stat"><small>Expenses</small><div>${fmt(A.exp)}</div></div>
     <div class="stat"><small>Net profit · ${pct(A.net,A.sales)}</small><div>${money(A.net)}</div></div>
     <div class="stat"><small>Orders</small><div>${A.orders}</div></div>
-    ${A.vat?`<div class="stat"><small>VAT collected (payable, not income)</small><div>${fmt(A.vat)}</div></div>`:''}</div>
+    ${A.vat?`<div class="stat"><small>VAT collected (payable, not income)</small><div>${fmt(A.vat)}</div></div>`:''}
+    ${A.fees?`<div class="stat"><small>Delivery fees (not sales)</small><div>${fmt(A.fees)}</div></div>`:''}
+    ${A.credit?`<div class="stat"><small>Unpaid credit (of ${fmt(A.credit)} sold)</small><div>${fmt(A.unpaid)}</div></div>`:''}</div>
   <h4 style="margin:6px 0">By day</h4>${chartSVG(A)}
   ${Math.round((new Date(rt+'T12:00:00')-new Date(rf+'T12:00:00'))/864e5)+1>93?'<div class="warnbox">The chart shows the first 93 days only. The totals above cover the whole range.</div>':''}
   <h4>Expenses by category</h4>
   <table><tr><th>Category</th><th class="n">Amount</th><th class="n">% of sales</th></tr>${cats.map(([c,v])=>`<tr><td>${esc(c)}</td><td class="n">${fmt(v)}</td><td class="n">${pct(v,A.sales)}</td></tr>`).join('')||'<tr><td colspan="3">No expenses recorded for these dates.</td></tr>'}</table>
-  <div style="color:var(--mut);font-size:12px;margin-top:10px">Net profit = Sales − Cost of goods − Expenses. Voided orders are excluded.</div>`;
+  <div style="color:var(--mut);font-size:12px;margin-top:10px">Net profit = Sales − Cost of goods − Expenses. Voided orders are excluded.${A.credit?' Credit sales count as sales when they are made, even if not paid yet.':''}${A.fees?' Delivery fees are not counted as sales or profit.':''}</div>`;
 }
 
 /* ----- Z-Reading (end of day) ----- */
-let zDate=null;
-function zCompute(orders){
+let zDate=null,ZCUR=null;
+function zCompute(orders,pays){
   const ok=orders.filter(o=>o.status!=='void'),vd=orders.filter(o=>o.status==='void');
-  const Z={orders:ok.length,first:null,last:null,gross:0,disc:0,total:0,vatable:0,vat:0,exempt:0,nonvat:0,byPay:{},voids:vd.length,voidAmt:0};
+  const Z={orders:ok.length,first:null,last:null,gross:0,disc:0,total:0,vatable:0,vat:0,exempt:0,nonvat:0,byPay:{},voids:vd.length,voidAmt:0,fees:0,credit:0,col:{},colTotal:0};
   const nos=ok.map(o=>o.no);if(nos.length){Z.first=Math.min(...nos);Z.last=Math.max(...nos)}
   ok.forEach(o=>{
-    Z.gross+=o.sub;Z.disc+=o.disc||0;Z.total+=o.total;
-    if(o.vatOn){Z.vatable+=o.vatable||0;Z.vat+=o.vat||0;Z.exempt+=o.vatExempt||0}else Z.nonvat+=o.total;
-    Z.byPay[o.pay]=(Z.byPay[o.pay]||0)+o.total;
+    Z.gross+=o.sub;Z.disc+=o.disc||0;Z.total+=o.total;Z.fees+=o.fee||0;
+    if(o.vatOn){Z.vatable+=o.vatable||0;Z.vat+=o.vat||0;Z.exempt+=o.vatExempt||0}else Z.nonvat+=o.total-(o.fee||0);
+    if(o.pay==='Credit')Z.credit+=o.total; // not collected yet
+    else Z.byPay[o.pay]=(Z.byPay[o.pay]||0)+o.total;
   });
+  (pays||[]).forEach(p=>{Z.col[p.method]=(Z.col[p.method]||0)+p.amt;Z.colTotal+=p.amt}); // credit payments received that day
   vd.forEach(o=>Z.voidAmt+=o.total);
-  ['gross','disc','total','vatable','vat','exempt','nonvat','voidAmt'].forEach(k=>Z[k]=r2(Z[k]));
+  ['gross','disc','total','vatable','vat','exempt','nonvat','voidAmt','fees','credit','colTotal'].forEach(k=>Z[k]=r2(Z[k]));
   Object.keys(Z.byPay).forEach(k=>Z.byPay[k]=r2(Z.byPay[k]));
-  Z.adj=r2(Z.total-Z.gross+Z.disc);
+  Object.keys(Z.col).forEach(k=>Z.col[k]=r2(Z.col[k]));
+  Z.adj=r2(Z.total-Z.fees-Z.gross+Z.disc);
   return Z;
+}
+async function zLoad(date){ // orders sold that day + credit payments received that day
+  const [sold,paid]=await Promise.all([
+    fs.collection('orders').where('day','==',date).get(),
+    fs.collection('orders').where('payDays','array-contains',date).get()]);
+  const orders=sold.docs.map(d=>d.data()),pays=[];
+  paid.docs.forEach(d=>{const o=d.data();(o.payments||[]).forEach(p=>{if(p.date===date)pays.push(Object.assign({no:o.no,cust:o.custName},p))})});
+  return {orders,pays};
 }
 function zHTML(Z,saved){
   const pn=(a,b)=>`<div class="r"><span>${a}</span><span>${b}</span></div>`;
-  const cash=Z.byPay.Cash||0;
+  const credit=Z.credit||0,fees=Z.fees||0,col=Z.col||{},colTotal=Z.colTotal||0;
+  const cashSales=Z.byPay.Cash||0,cashIn=r2(cashSales+(col.Cash||0));
+  const fromSales=r2(Z.total-credit);
+  const payRows=Object.entries(Z.byPay).map(([k,v])=>pn(esc(k),fmt(v))).join('')
+    +Object.entries(col).map(([k,v])=>pn('Credit payment ('+esc(k)+')',fmt(v))).join('')
+    +(credit?pn('On credit (unpaid)',fmt(credit)):'');
   return `<div id="receiptPrint" class="receipt" style="max-width:340px;background:#fff;border:1px solid var(--line);padding:12px">
     <div class="c">${bizHeader()}<br><b>${saved?'Z-READING':'X-READING (preview, not saved)'}</b></div><hr>
     ${pn('Date',esc(zDate))}${saved?pn('Z-counter','#'+String(saved.z).padStart(4,'0'))+pn('Printed by',esc(saved.by||''))+pn('Saved at',dstr(saved.ts)+' '+tstr(saved.ts)):''}
     ${pn('Orders',Z.orders)}${Z.orders?pn('First / last order','#'+String(Z.first).padStart(3,'0')+' / #'+String(Z.last).padStart(3,'0')):''}<hr>
     ${pn('Gross sales',fmt(Z.gross))}${pn('Less: discounts','− '+fmt(Z.disc))}
     ${Z.adj?pn(Z.adj<0?'Less: VAT exemption':'Add: VAT on top',(Z.adj<0?'− ':'+ ')+fmt(Math.abs(Z.adj))):''}
-    <div class="r"><b>NET COLLECTED</b><b>${fmt(Z.total)}</b></div><hr>
+    ${fees?pn('Add: delivery fees','+ '+fmt(fees)):''}
+    ${credit||colTotal
+      ?`<div class="r"><b>NET SALES</b><b>${fmt(Z.total)}</b></div>${credit?pn('Less: credit sales (unpaid)','− '+fmt(credit)):''}${pn('Collected from sales',fmt(fromSales))}${colTotal?pn('Add: credit payments received','+ '+fmt(colTotal)):''}<div class="r"><b>TOTAL COLLECTED</b><b>${fmt(r2(fromSales+colTotal))}</b></div>`
+      :`<div class="r"><b>NET COLLECTED</b><b>${fmt(Z.total)}</b></div>`}<hr>
     ${Z.vatable||Z.vat||S.vatOn?pn('VATable sales',fmt(Z.vatable))+pn('VAT amount',fmt(Z.vat)):''}
     ${Z.exempt?pn('VAT-exempt sales',fmt(Z.exempt)):''}${Z.nonvat?pn('Non-VAT sales',fmt(Z.nonvat)):''}<hr>
-    <div><b>Payments</b></div>${Object.entries(Z.byPay).map(([k,v])=>pn(esc(k),fmt(v))).join('')||pn('—','')}<hr>
+    <div><b>Payments</b></div>${payRows||pn('—','')}<hr>
     ${pn('Voided orders',Z.voids+' ('+fmt(Z.voidAmt)+')')}
-    ${saved?`<hr><div><b>Cash drawer</b></div>${pn('Opening float',fmt(saved.float||0))}${pn('Cash sales',fmt(cash))}${pn('Expected cash',fmt(r2((saved.float||0)+cash)))}
-    ${saved.counted==null?'':pn('Counted cash',fmt(saved.counted))+pn('Over / (short)',fmt(r2(saved.counted-((saved.float||0)+cash))))}`:''}
+    ${saved?`<hr><div><b>Cash drawer</b></div>${pn('Opening float',fmt(saved.float||0))}${pn('Cash sales',fmt(cashSales))}${col.Cash?pn('Credit payments (cash)',fmt(col.Cash)):''}${pn('Expected cash',fmt(r2((saved.float||0)+cashIn)))}
+    ${saved.counted==null?'':pn('Counted cash',fmt(saved.counted))+pn('Over / (short)',fmt(r2(saved.counted-((saved.float||0)+cashIn))))}`:''}
   </div>`;
 }
 async function aZ(){
   if(!zDate)zDate=todayStr();
   $('#aContent').innerHTML='<div class="empty">Loading…</div>';
-  let orders=[],saved=null,past=[];
+  let zData={orders:[],pays:[]},saved=null,past=[];
   try{
-    const [q,zs,pz]=await Promise.all([
-      fs.collection('orders').where('day','==',zDate).get(),
+    const [loaded,zs,pz]=await Promise.all([
+      zLoad(zDate),
       fs.collection('zreports').doc(zDate).get(),
       fs.collection('zreports').orderBy('ts','desc').limit(10).get()]);
-    orders=q.docs.map(d=>d.data());saved=zs.exists?zs.data():null;past=pz.docs.map(d=>d.data());
+    zData=loaded;saved=zs.exists?zs.data():null;past=pz.docs.map(x=>x.data());
   }catch(e){toast(errMsg(e))}
   if(view!=='admin'||aTab!=='zread')return;
-  const live=zCompute(orders),Z=saved?saved.data:live;
-  const late=saved&&(live.orders!==saved.data.orders||live.total!==saved.data.total||live.voids!==saved.data.voids);
+  const live=zCompute(zData.orders,zData.pays),Z=saved?saved.data:live;
+  ZCUR={Z,saved,date:zDate};
+  const late=saved&&(live.orders!==saved.data.orders||live.total!==saved.data.total||live.voids!==saved.data.voids||live.colTotal!==(saved.data.colTotal||0));
   $('#aContent').innerHTML=`<div class="toolbar"><div><div class="lbl">Date</div><input type="date" value="${zDate}" max="${todayStr()}" onchange="zDate=this.value||todayStr();aZ()"></div>
     <button class="ghost" onclick="zDate=todayStr();aZ()">Today</button><button class="ghost" onclick="aZ()">Refresh</button>
+    ${exportButtons('zread')}
     ${saved?'<button onclick="window.print()">Print Z-Reading</button>':''}</div>
-  ${late?`<div class="warnbox">⚠ This day's orders changed after the Z-Reading was saved (now ${live.orders} orders, ${fmt(live.total)}; the Z-Reading shows ${saved.data.orders} orders, ${fmt(saved.data.total)}). A saved Z-Reading cannot be edited.</div>`:''}
+  ${late?`<div class="warnbox">⚠ This day's orders or credit payments changed after the Z-Reading was saved (now ${live.orders} orders, ${fmt(live.total)}; the Z-Reading shows ${saved.data.orders} orders, ${fmt(saved.data.total)}). A saved Z-Reading cannot be edited.</div>`:''}
   ${!saved?`<div class="card" style="background:#faf6f0;margin-bottom:12px"><b>Close the day</b>
     <div class="two" style="margin-top:6px"><div><div class="lbl">Opening cash float</div><input id="zF" type="number" min="0" step="0.01" placeholder="0.00"></div>
     <div><div class="lbl">Counted cash in drawer (optional)</div><input id="zC" type="number" min="0" step="0.01" placeholder="0.00"></div></div>
@@ -1003,15 +1079,15 @@ async function aZ(){
     <div style="color:var(--mut);font-size:12px;margin-top:6px">Saving closes this date once. It cannot be edited or deleted afterwards.</div></div>`:''}
   ${zHTML(Z,saved)}
   <h4>Recent Z-Readings</h4>
-  <table><tr><th>Z #</th><th>Date</th><th class="n">Net collected</th><th></th></tr>
+  <table><tr><th>Z #</th><th>Date</th><th class="n">Net sales</th><th></th></tr>
   ${past.map(p=>`<tr><td>#${String(p.z).padStart(4,'0')}</td><td>${esc(p.date)}</td><td class="n">${fmt(p.data.total)}</td><td class="n"><button class="ghost" onclick="zDate='${p.date}';aZ()">Open</button></td></tr>`).join('')||'<tr><td colspan="4">None yet.</td></tr>'}</table>`;
 }
 async function saveZ(){
   const date=zDate,fl=r2(parseFloat($('#zF').value)||0),cc=$('#zC').value.trim()===''?null:r2(parseFloat($('#zC').value)||0);
   if(!confirm('Save the Z-Reading for '+date+'? It cannot be edited or deleted afterwards.'))return;
   try{
-    const q=await fs.collection('orders').where('day','==',date).get();
-    const Z=zCompute(q.docs.map(d=>d.data()));
+    const zData=await zLoad(date);
+    const Z=zCompute(zData.orders,zData.pays);
     const cref=fs.collection('counters').doc('zreading'),zref=fs.collection('zreports').doc(date);
     await fs.runTransaction(async tx=>{
       const [cs,zs]=await Promise.all([tx.get(cref),tx.get(zref)]);
@@ -1033,7 +1109,7 @@ async function aExpenses(){
   if(view!=='admin'||aTab!=='exp')return;
   const list=REXP.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))||(b.ts||0)-(a.ts||0));
   const total=r2(list.reduce((a,e)=>a+(Number(e.amount)||0),0));
-  $('#aContent').innerHTML=rangeBar('aExpenses')+`
+  $('#aContent').innerHTML=rangeBar('aExpenses',exportButtons('exp'))+`
   <div class="card" style="background:#faf6f0;margin-bottom:12px"><b>Add expense</b>
     <div class="two" style="margin-top:6px"><div><div class="lbl">Date</div><input id="xD" type="date" value="${todayStr()}"></div>
     <div><div class="lbl">Category</div><input id="xC" list="xCats" placeholder="e.g. Rent"><datalist id="xCats">${EXP_CATS.map(c=>`<option value="${c}">`).join('')}</datalist></div></div>
@@ -1067,7 +1143,7 @@ async function aReports(silent){
   if(view!=='admin'||aTab!=='reports')return;
   const A=analyze(),list=RORDERS.slice().sort((a,b)=>b.ts-a.ts);
   const topL=Object.entries(A.items).sort((a,b)=>b[1].q-a[1].q).slice(0,15);
-  $('#aContent').innerHTML=rangeBar('aReports','<button class="ghost" onclick="exportCSV()">Export CSV</button>')+uncBanner(A)+`
+  $('#aContent').innerHTML=rangeBar('aReports',exportButtons('sales')+'<button class="ghost" onclick="exportCSV()">Export CSV</button>')+uncBanner(A)+`
   <div class="cards"><div class="stat"><small>Sales${A.vat?' (excl. VAT)':''}</small><div>${fmt(A.sales)}</div></div>
   <div class="stat"><small>Orders</small><div>${A.orders}</div></div>
   <div class="stat"><small>Average / order</small><div>${fmt(A.orders?A.sales/A.orders:0)}</div></div>
@@ -1075,13 +1151,15 @@ async function aReports(silent){
   <div class="stat"><small>Cost of goods</small><div>${fmt(A.cogs)}</div></div>
   <div class="stat"><small>Gross profit · ${pct(A.gross,A.sales)}</small><div>${money(A.gross)}</div></div>
   ${A.vat?`<div class="stat"><small>VAT collected</small><div>${fmt(A.vat)}</div></div>`:''}
+  ${A.fees?`<div class="stat"><small>Delivery fees (not sales)</small><div>${fmt(A.fees)}</div></div>`:''}
+  ${A.credit?`<div class="stat"><small>Credit: unpaid (of ${fmt(A.credit)} sold)</small><div>${fmt(A.unpaid)}</div></div>`:''}
   ${Object.entries(A.byPay).map(([k,v])=>`<div class="stat"><small>${esc(k)}</small><div>${fmt(r2(v))}</div></div>`).join('')}</div>
   <h4>Best sellers &amp; profit per item</h4>
   <table><tr><th>Item</th><th class="n">Sold</th><th class="n">Sales</th><th class="n">Cost / unit</th><th class="n">Total cost</th><th class="n">Profit</th><th class="n">Margin</th></tr>
   ${topL.map(([n,t])=>{const full=t.unc===0;return `<tr><td>${esc(n)}</td><td class="n">${t.q}</td><td class="n">${fmt(t.s)}</td><td class="n">${t.cq?fmt(t.c/t.cq):'—'}</td><td class="n">${full?fmt(t.c):'—'}</td><td class="n">${full?money(r2(t.s-t.c)):'—'}</td><td class="n">${full?pct(t.s-t.c,t.s):'—'}</td></tr>`}).join('')||'<tr><td colspan="7">No data.</td></tr>'}</table>
   <h4>Orders</h4>
   <table><tr><th>#</th><th>Time</th><th>Items</th><th class="n">Total</th><th class="n">Profit</th><th>Payment</th><th>Cashier</th><th></th></tr>
-  ${list.map(o=>{const p=orderProfit(o);return `<tr class="${o.status==='void'?'void':''}"><td>${ono(o)}</td><td>${dstr(o.ts)} ${tstr(o.ts)}</td><td>${esc(o.items.map(i=>i.qty+'× '+i.name).join(', '))}</td><td class="n">${fmt(o.total)}</td><td class="n">${p==null?'—':money(p)}</td><td>${esc(o.pay)}</td><td>${esc(o.cashier||'')}</td>
+  ${list.map(o=>{const p=orderProfit(o);return `<tr class="${o.status==='void'?'void':''}"><td>${ono(o)}</td><td>${dstr(o.ts)} ${tstr(o.ts)}</td><td>${esc(o.items.map(i=>i.qty+'× '+i.name).join(', '))}${o.custName?`<br><small>${o.type==='Delivery'?'Delivery: ':''}${esc(o.custName)}</small>`:''}</td><td class="n">${fmt(o.total)}</td><td class="n">${p==null?'—':money(p)}</td><td>${esc(o.pay)}${o.pay==='Credit'&&o.status!=='void'?(owed(o)>0?` <span class="low">owes ${fmt(owed(o))}</span>`:' <small>(paid)</small>'):''}</td><td>${esc(o.cashier||'')}</td>
   <td class="n"><button class="ghost" onclick="showReceipt('${o.id}')">Receipt</button> ${o.status!=='void'?`<button class="bad" onclick="voidOrder('${o.id}')">Void</button>`:''}</td></tr>`}).join('')||'<tr><td colspan="8">No orders for these dates.</td></tr>'}</table>`;
 }
 async function voidOrder(id){
@@ -1092,6 +1170,7 @@ async function voidOrder(id){
       const oref=fs.collection('orders').doc(id);
       const od=await tx.get(oref);
       if(!od.exists||od.data().status==='void')throw new Error('This order is already void');
+      if(od.data().pay==='Credit'&&(od.data().paid||0)>0)throw new Error('This credit order already has payments, so it cannot be voided.');
       const back={};od.data().items.forEach(i=>{back[i.id]=(back[i.id]||0)+i.qty});
       const md=await Promise.all(Object.keys(back).map(k=>tx.get(fs.collection('menu').doc(k))));
       const iu=od.data().ingUse||{};
@@ -1105,12 +1184,290 @@ async function voidOrder(id){
 }
 function exportCSV(){
   const q=v=>'"'+String(v).replace(/"/g,'""')+'"';
-  const rows=[['Order','Date','Time','Type','Items','Subtotal','Discount','Total','VAT','Cost','Profit','Payment','Cashier','Status']];
+  const rows=[['Order','Date','Time','Type','Items','Subtotal','Discount','Total','VAT','Cost','Profit','Payment','Cashier','Status','Customer','Phone','Address','Delivery fee','Paid','Balance']];
   RORDERS.slice().sort((a,b)=>a.ts-b.ts).forEach(o=>{
-    const p=orderProfit(o);
-    rows.push([ono(o),dstr(o.ts),tstr(o.ts),o.type,o.items.map(i=>i.qty+'x '+i.name+(i.size?' ('+i.size+')':'')).join('; '),o.sub,o.disc,o.total,o.vat||0,p==null?'':r2(o.total-(o.vat||0)-p),p==null?'':p,o.pay,o.cashier||'',o.status]);
+    const p=orderProfit(o),c=orderCost(o),credit=o.pay==='Credit';
+    rows.push([ono(o),dstr(o.ts),tstr(o.ts),o.type,o.items.map(i=>i.qty+'x '+i.name+(i.size?' ('+i.size+')':'')).join('; '),o.sub,o.disc,o.total,o.vat||0,c==null?'':c,p==null?'':p,o.pay,o.cashier||'',o.status,
+      o.custName||'',o.custPhone||'',(o.custAddr||'').replace(/\n/g,' '),o.fee||0,credit?(o.paid||0):'',credit?owed(o):'']);
   });
   download('sales_'+rf+'_to_'+rt+'.csv',rows.map(r=>r.map(q).join(',')).join('\n'),'text/csv');
+}
+
+/* ----- credits (utang) ----- */
+async function loadCredits(){
+  const q=await fs.collection('orders').where('pay','==','Credit').get();
+  CREDITS=q.docs.map(d=>Object.assign({id:d.id},d.data())).filter(o=>o.status!=='void');
+}
+function creditGroups(){ // unpaid credit orders, grouped by customer name
+  const groups={};
+  CREDITS.filter(o=>owed(o)>0).forEach(o=>{
+    const key=String(o.custName||'').trim().toLowerCase();
+    const g=groups[key]||(groups[key]={name:o.custName||'(no name)',phone:'',orders:[],bal:0});
+    g.orders.push(o);g.bal=r2(g.bal+owed(o));
+    if(o.custPhone)g.phone=o.custPhone;
+  });
+  return Object.values(groups).sort((a,b)=>b.bal-a.bal);
+}
+const oldestTs=g=>Math.min(...g.orders.map(o=>o.ts));
+async function aCredits(){
+  $('#aContent').innerHTML='<div class="empty">Loading…</div>';
+  try{await loadCredits()}catch(e){toast(errMsg(e));CREDITS=[]}
+  if(view!=='admin'||aTab!=='credits')return;
+  CGROUPS=creditGroups();
+  const total=r2(CGROUPS.reduce((a,g)=>a+g.bal,0));
+  $('#aContent').innerHTML=`<div class="toolbar"><button class="ghost" onclick="aCredits()">Refresh</button>${exportButtons('credits')}</div>
+  <div class="cards"><div class="stat"><small>Total unpaid</small><div>${fmt(total)}</div></div>
+  <div class="stat"><small>Customers with a balance</small><div>${CGROUPS.length}</div></div></div>
+  <table><tr><th>Customer</th><th>Phone</th><th class="n">Unpaid orders</th><th>Oldest</th><th class="n">Balance</th><th></th></tr>
+  ${CGROUPS.map((g,i)=>`<tr><td>${esc(g.name)}</td><td>${esc(g.phone)}</td><td class="n">${g.orders.length}</td><td>${dstr(oldestTs(g))}</td><td class="n"><b>${fmt(g.bal)}</b></td>
+  <td class="n"><button class="ghost" onclick="viewCredit(${i})">Details</button> <button class="ok" onclick="payCredit(${i})">Receive payment</button></td></tr>`).join('')||'<tr><td colspan="6">Nobody owes you right now.</td></tr>'}</table>
+  <div style="color:var(--mut);font-size:12px;margin-top:10px">A payment goes to the oldest unpaid order first. Credit sales count as sales when they are made, but not as cash collected until they are paid.</div>`;
+}
+function viewCredit(i){
+  const g=CGROUPS[i];if(!g)return;
+  const key=g.name.trim().toLowerCase(),history=[];
+  CREDITS.filter(o=>String(o.custName||'').trim().toLowerCase()===key).forEach(o=>(o.payments||[]).forEach(p=>history.push(Object.assign({no:o.no},p))));
+  history.sort((a,b)=>b.ts-a.ts);
+  modal(`<h3>${esc(g.name)}</h3><div style="color:var(--mut)">${esc(g.phone)}</div>
+  <h4 style="margin:10px 0 4px">Unpaid orders</h4>
+  <table><tr><th>Order</th><th>Date</th><th class="n">Total</th><th class="n">Paid</th><th class="n">Balance</th><th></th></tr>
+  ${g.orders.slice().sort((a,b)=>a.ts-b.ts).map(o=>`<tr><td>${ono(o)}</td><td>${dstr(o.ts)}</td><td class="n">${fmt(o.total)}</td><td class="n">${fmt(o.paid||0)}</td><td class="n">${fmt(owed(o))}</td><td class="n"><button class="ghost" onclick="showReceipt('${o.id}')">Receipt</button></td></tr>`).join('')}</table>
+  <h4 style="margin:12px 0 4px">Payments received</h4>
+  <table><tr><th>Date</th><th>Order</th><th>Method</th><th class="n">Amount</th><th>By</th></tr>
+  ${history.map(p=>`<tr><td>${esc(p.date)} ${tstr(p.ts)}</td><td>${ono(p)}</td><td>${esc(p.method)}</td><td class="n">${fmt(p.amt)}</td><td>${esc(p.by||'')}</td></tr>`).join('')||'<tr><td colspan="5">No payments yet.</td></tr>'}</table>
+  <div class="actions"><button class="ghost" onclick="closeModal()">Close</button><button class="ok" onclick="payCredit(${i})">Receive payment</button></div>`);
+  $('#modal').classList.add('wide');
+}
+function payCredit(i){
+  const g=CGROUPS[i];if(!g)return;
+  payTarget=g;
+  modal(`<h3>Receive payment</h3><div><b>${esc(g.name)}</b> owes ${fmt(g.bal)}</div>
+  <div class="two"><div><div class="lbl">Amount</div><input id="cpA" type="number" min="0" step="0.01" value="${g.bal}"></div>
+  <div><div class="lbl">Paid by</div><select id="cpM"><option>Cash</option><option>GCash</option></select></div></div>
+  <small style="color:var(--mut)">A partial payment is fine. It goes to the oldest unpaid order first.</small>
+  <div class="actions"><button class="ghost" onclick="closeModal()">Cancel</button><button id="cpBtn" class="ok" onclick="saveCreditPay()">Save payment</button></div>`);
+}
+async function saveCreditPay(){
+  const g=payTarget;if(!g||paying)return;
+  const amount=r2(parseFloat($('#cpA').value)||0),method=$('#cpM').value;
+  if(!(amount>0)){toast('Enter an amount greater than 0');return}
+  if(amount>g.bal){toast('That is more than the balance ('+fmt(g.bal)+')');return}
+  if(!navigator.onLine){toast('No internet. A connection is needed to save the payment.');return}
+  paying=true;$('#cpBtn').disabled=true;
+  const ids=g.orders.slice().sort((a,b)=>a.ts-b.ts).map(o=>o.id),day=todayStr(),ts=Date.now();
+  try{
+    await fs.runTransaction(async tx=>{
+      const docs=await Promise.all(ids.map(id=>tx.get(fs.collection('orders').doc(id))));
+      let left=amount;
+      docs.forEach(d=>{
+        if(left<=0||!d.exists)return;
+        const o=d.data();if(o.status==='void')return;
+        const balance=r2(o.total-(o.paid||0));if(balance<=0)return;
+        const take=Math.min(balance,left);left=r2(left-take);
+        const days=(o.payDays||[]).includes(day)?o.payDays:(o.payDays||[]).concat(day);
+        tx.update(d.ref,{paid:r2((o.paid||0)+take),payments:(o.payments||[]).concat({ts,date:day,amt:r2(take),method,by:ME.name}),payDays:days});
+      });
+      if(left>0)throw new Error('The balance changed. Please refresh and try again.');
+    });
+    paying=false;closeModal();toast('Payment saved');aCredits();
+  }catch(e){paying=false;const b=$('#cpBtn');if(b)b.disabled=false;toast(errMsg(e))}
+}
+
+/* ----- export to Excel / PDF ----- */
+const LIB_URLS={xlsx:'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
+  pdf:'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+  table:'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js'};
+function loadScript(src){
+  return new Promise((ok,fail)=>{
+    const s=document.createElement('script');s.src=src;s.onload=ok;
+    s.onerror=()=>fail(new Error('Could not load the export tool. Check your internet connection.'));
+    document.head.appendChild(s);
+  });
+}
+async function needLib(type){ // loaded only when you export, so the POS stays light
+  if(type==='xlsx'&&!window.XLSX)await loadScript(LIB_URLS.xlsx);
+  if(type==='pdf'&&!(window.jspdf&&window.jspdf.jsPDF)){
+    await loadScript(LIB_URLS.pdf);
+    if(!window.jsPDF)window.jsPDF=window.jspdf.jsPDF; // the table plugin looks for this name
+    await loadScript(LIB_URLS.table);
+  }
+}
+function exportButtons(kind){
+  return `<button class="ghost" onclick="exportReport('${kind}','xlsx')">Export Excel</button><button class="ghost" onclick="exportReport('${kind}','pdf')">Export PDF</button>`;
+}
+async function exportReport(kind,type){
+  const build={dash:dashDoc,sales:salesDoc,exp:expDoc,zread:zDoc,credits:creditsDoc}[kind];
+  let doc;
+  try{doc=build()}catch(e){toast('Nothing to export yet. Wait for the page to load and try again.');return}
+  try{
+    toast('Preparing '+(type==='xlsx'?'Excel':'PDF')+' file…',1500);
+    await needLib(type);
+    if(type==='xlsx')makeXlsx(doc);else makePdf(doc);
+  }catch(e){toast(errMsg(e),4000)}
+}
+const numFmt=n=>(Number(n)||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});
+const pdfText=s=>String(s==null?'':s).replace(/[“”]/g,'"').replace(/[‘’]/g,"'").replace(/[–—−]/g,'-').replace(/₱/g,'PHP ').replace(/[^\x00-\xFF]/g,'?'); // PDF font has no peso sign
+function makeXlsx(doc){
+  const wb=XLSX.utils.book_new(),used={Summary:1};
+  const sheetName=n=>{const base=String(n).replace(/[\\\/?*\[\]:]/g,' ').slice(0,28)||'Sheet';let k=base,i=2;while(used[k])k=base+' '+(i++);used[k]=1;return k};
+  const longest=(rows,c)=>rows.reduce((m,r)=>Math.max(m,String(r[c]==null?'':r[c]).length),0);
+  // summary sheet: title, subtitle, then label/value rows
+  const labels=doc.summary.map(r=>Array.isArray(r)?[r[0],r[1]]:[String(r.h).toUpperCase()]);
+  const ws=XLSX.utils.aoa_to_sheet([[S.shop+' - '+doc.title],[doc.sub],[]].concat(labels));
+  doc.summary.forEach((r,i)=>{
+    if(!Array.isArray(r)||!r[2])return;
+    const cell=ws[XLSX.utils.encode_cell({r:i+3,c:1})];
+    if(cell&&cell.t==='n')cell.z='#,##0.00';
+  });
+  ws['!cols']=[{wch:Math.min(50,Math.max(16,longest(labels,0)+2))},{wch:20}];
+  XLSX.utils.book_append_sheet(wb,ws,'Summary');
+  doc.sections.forEach(s=>{
+    const sheet=XLSX.utils.aoa_to_sheet([s.cols].concat(s.rows));
+    (s.money||[]).forEach(c=>s.rows.forEach((_,r)=>{
+      const cell=sheet[XLSX.utils.encode_cell({r:r+1,c})];
+      if(cell&&cell.t==='n')cell.z='#,##0.00';
+    }));
+    sheet['!cols']=s.cols.map((h,c)=>({wch:Math.min(50,Math.max(String(h).length,longest(s.rows,c))+2)}));
+    if(s.rows.length)sheet['!autofilter']={ref:sheet['!ref']};
+    XLSX.utils.book_append_sheet(wb,sheet,sheetName(s.h));
+  });
+  XLSX.writeFile(wb,doc.file+'.xlsx');
+}
+function makePdf(doc){
+  const pdf=new window.jspdf.jsPDF({orientation:doc.wide?'landscape':'portrait',unit:'pt',format:'a4'});
+  if(typeof pdf.autoTable!=='function')throw new Error('The PDF tool did not load properly. Refresh the page and try again.');
+  const pageW=pdf.internal.pageSize.getWidth(),pageH=pdf.internal.pageSize.getHeight(),m=40;
+  let y=m;
+  pdf.setFont('helvetica','bold');pdf.setFontSize(16);pdf.setTextColor(111,78,55);
+  pdf.text(pdfText(S.shop+' - '+doc.title),m,y);
+  pdf.setFont('helvetica','normal');pdf.setFontSize(10);pdf.setTextColor(120,120,120);
+  pdf.text(pdfText(doc.sub+'   |   Amounts in PHP'),m,y+16);
+  y+=30;
+  if(doc.summary.length){
+    const body=doc.summary.map(r=>Array.isArray(r)
+      ?[pdfText(r[0]),pdfText(r[2]&&typeof r[1]==='number'?numFmt(r[1]):r[1])]
+      :[{content:pdfText(r.h),colSpan:2,styles:{fontStyle:'bold',fillColor:[240,232,222]}}]);
+    pdf.autoTable({startY:y,body,theme:'plain',margin:{left:m,right:m},tableWidth:Math.min(400,pageW-2*m),
+      styles:{fontSize:10,cellPadding:3,textColor:[43,32,24]},columnStyles:{1:{halign:'right'}}});
+    y=pdf.lastAutoTable.finalY+18;
+  }
+  doc.sections.forEach(s=>{
+    if(y>pageH-110){pdf.addPage();y=m}
+    pdf.setFont('helvetica','bold');pdf.setFontSize(12);pdf.setTextColor(43,32,24);
+    pdf.text(pdfText(s.h),m,y);
+    const money=s.money||[],colStyle={};
+    money.forEach(c=>{colStyle[c]={halign:'right'}});
+    Object.entries(s.widths||{}).forEach(([c,w])=>{colStyle[c]=Object.assign(colStyle[c]||{},{cellWidth:w})});
+    const body=s.rows.length
+      ?s.rows.map(r=>r.map((v,c)=>pdfText(money.includes(c)&&typeof v==='number'?numFmt(v):v)))
+      :[[{content:'No data',colSpan:s.cols.length}]];
+    pdf.autoTable({startY:y+6,head:[s.cols.map(pdfText)],body,margin:{left:m,right:m},
+      styles:{fontSize:doc.wide?8:9,cellPadding:3},headStyles:{fillColor:[111,78,55],textColor:255},
+      alternateRowStyles:{fillColor:[250,246,240]},columnStyles:colStyle,
+      didParseCell:h=>{if(h.section==='head'&&money.includes(h.column.index))h.cell.styles.halign='right'}});
+    y=pdf.lastAutoTable.finalY+22;
+  });
+  const pages=pdf.internal.getNumberOfPages(),now=Date.now();
+  for(let i=1;i<=pages;i++){
+    pdf.setPage(i);pdf.setFont('helvetica','normal');pdf.setFontSize(8);pdf.setTextColor(140,140,140);
+    pdf.text('Page '+i+' of '+pages,pageW-m,pageH-20,{align:'right'});
+    pdf.text('Printed '+dstr(now)+' '+tstr(now),m,pageH-20);
+  }
+  pdf.save(doc.file+'.pdf');
+}
+
+/* ----- export: what goes into each file ----- */
+const rangeText=()=>rf===rt?rf:rf+' to '+rt;
+const itemsText=o=>o.items.map(i=>i.qty+'x '+i.name+(i.size?' ('+i.size+')':'')).join('; ');
+function salesDoc(){
+  const A=analyze(),orders=RORDERS.slice().sort((a,b)=>a.ts-b.ts);
+  const summary=[['Date range',rangeText()],['Orders',A.orders],['Sales'+(A.vat?' (excl. VAT)':''),A.sales,1],['Average per order',r2(A.orders?A.sales/A.orders:0),1],
+    ['Total discount',A.disc,1],['Cost of goods',A.cogs,1],['Gross profit',A.gross,1],['Gross margin',pct(A.gross,A.sales)]];
+  if(A.vat)summary.push(['VAT collected',A.vat,1]);
+  if(A.fees)summary.push(['Delivery fees (not counted as sales)',A.fees,1]);
+  Object.entries(A.byPay).forEach(([k,v])=>summary.push([k+' payments',r2(v),1]));
+  if(A.credit){summary.push(['Sold on credit',A.credit,1]);summary.push(['Credit still unpaid',A.unpaid,1])}
+  if(A.unc)summary.push(['Items sold with no cost set',A.unc]);
+  const items=Object.entries(A.items).sort((a,b)=>b[1].q-a[1].q).map(([n,t])=>{
+    const full=t.unc===0;
+    return [n,t.q,t.s,t.cq?r2(t.c/t.cq):'',full?t.c:'',full?r2(t.s-t.c):'',full?pct(t.s-t.c,t.s):''];
+  });
+  const rows=orders.map(o=>{
+    const p=orderProfit(o);
+    return [ono(o),dstr(o.ts),tstr(o.ts),o.type,itemsText(o),o.custName||'',o.total,p==null?'':p,o.pay,o.pay==='Credit'&&o.status!=='void'?owed(o):'',o.cashier||'',o.status==='void'?'VOID':''];
+  });
+  return {title:'Sales Report',sub:rangeText(),file:'sales_'+rf+'_to_'+rt,wide:true,summary,sections:[
+    {h:'Items sold',cols:['Item','Sold','Sales','Cost / unit','Total cost','Profit','Margin'],rows:items,money:[2,3,4,5]},
+    {h:'Orders',cols:['Order','Date','Time','Type','Items','Customer','Total','Profit','Payment','Balance','Cashier','Status'],rows,money:[6,7,9],widths:{4:170}}]};
+}
+function dashDoc(){
+  const A=analyze(),days=dateRange(rf,rt);
+  const summary=[['Date range',rangeText()],['Sales'+(A.vat?' (after discounts, excl. VAT)':' (after discounts)'),A.sales,1],['Cost of goods',A.cogs,1],['Gross profit',A.gross,1],['Gross margin',pct(A.gross,A.sales)],
+    ['Expenses',A.exp,1],['Net profit',A.net,1],['Net margin',pct(A.net,A.sales)],['Orders',A.orders]];
+  if(A.vat)summary.push(['VAT collected (payable, not income)',A.vat,1]);
+  if(A.fees)summary.push(['Delivery fees (not counted as sales)',A.fees,1]);
+  if(A.credit){summary.push(['Sold on credit',A.credit,1]);summary.push(['Credit still unpaid',A.unpaid,1])}
+  const byDay=days.map(k=>{const d=A.days[k]||{sales:0,cogs:0,exp:0};return [k,r2(d.sales),r2(d.cogs),r2(d.exp),r2(d.sales-d.cogs-d.exp)]});
+  const cats=Object.entries(A.byCat).sort((a,b)=>b[1]-a[1]).map(([c,v])=>[c,r2(v),pct(v,A.sales)]);
+  return {title:'Dashboard Summary',sub:rangeText(),file:'dashboard_'+rf+'_to_'+rt,summary,sections:[
+    {h:'By day',cols:['Date','Sales','Cost of goods','Expenses','Net profit'],rows:byDay,money:[1,2,3,4]},
+    {h:'Expenses by category',cols:['Category','Amount','% of sales'],rows:cats,money:[1]}]};
+}
+function expDoc(){
+  const list=REXP.slice().sort((a,b)=>String(a.date).localeCompare(String(b.date))||(a.ts||0)-(b.ts||0));
+  const total=r2(list.reduce((a,e)=>a+(Number(e.amount)||0),0)),cats={};
+  list.forEach(e=>{cats[e.cat]=(cats[e.cat]||0)+(Number(e.amount)||0)});
+  return {title:'Expenses',sub:rangeText(),file:'expenses_'+rf+'_to_'+rt,
+    summary:[['Date range',rangeText()],['Total expenses',total,1],['Number of entries',list.length]],sections:[
+    {h:'By category',cols:['Category','Amount','% of total'],rows:Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(([c,v])=>[c,r2(v),pct(v,total)]),money:[1]},
+    {h:'Expenses',cols:['Date','Category','Description','Amount','Added by'],rows:list.map(e=>[e.date,e.cat,e.desc||'',Number(e.amount)||0,e.by||'']),money:[3]}]};
+}
+function zDoc(){
+  const {Z,saved,date}=ZCUR;
+  const credit=Z.credit||0,fees=Z.fees||0,col=Z.col||{},colTotal=Z.colTotal||0;
+  const cashSales=Z.byPay.Cash||0,cashIn=r2(cashSales+(col.Cash||0)),fromSales=r2(Z.total-credit);
+  const rows=[],add=(label,value,isMoney)=>rows.push([label,value,isMoney?1:0]),head=t=>rows.push({h:t});
+  add('Date',date);
+  if(saved){add('Z-counter','#'+String(saved.z).padStart(4,'0'));add('Printed by',saved.by||'');add('Saved at',dstr(saved.ts)+' '+tstr(saved.ts))}
+  if(S.tin)add('TIN',S.tin);
+  add('Orders',Z.orders);
+  if(Z.orders)add('First / last order','#'+String(Z.first).padStart(3,'0')+' / #'+String(Z.last).padStart(3,'0'));
+  head('Sales');
+  add('Gross sales',Z.gross,1);add('Less: discounts',-Z.disc,1);
+  if(Z.adj)add(Z.adj<0?'Less: VAT exemption':'Add: VAT on top',Z.adj,1);
+  if(fees)add('Add: delivery fees',fees,1);
+  if(credit||colTotal){
+    add('NET SALES',Z.total,1);
+    if(credit)add('Less: credit sales (unpaid)',-credit,1);
+    add('Collected from sales',fromSales,1);
+    if(colTotal)add('Add: credit payments received',colTotal,1);
+    add('TOTAL COLLECTED',r2(fromSales+colTotal),1);
+  }else add('NET COLLECTED',Z.total,1);
+  if(Z.vatable||Z.vat||S.vatOn){head('Tax');add('VATable sales',Z.vatable,1);add('VAT amount',Z.vat,1)}
+  if(Z.exempt)add('VAT-exempt sales',Z.exempt,1);
+  if(Z.nonvat)add('Non-VAT sales',Z.nonvat,1);
+  head('Payments');
+  Object.entries(Z.byPay).forEach(([k,v])=>add(k,v,1));
+  Object.entries(col).forEach(([k,v])=>add('Credit payment ('+k+')',v,1));
+  if(credit)add('On credit (unpaid)',credit,1);
+  add('Voided orders',Z.voids+' ('+numFmt(Z.voidAmt)+')');
+  if(saved){
+    head('Cash drawer');
+    add('Opening float',saved.float||0,1);add('Cash sales',cashSales,1);
+    if(col.Cash)add('Credit payments (cash)',col.Cash,1);
+    add('Expected cash',r2((saved.float||0)+cashIn),1);
+    if(saved.counted!=null){add('Counted cash',saved.counted,1);add('Over / (short)',r2(saved.counted-((saved.float||0)+cashIn)),1)}
+  }
+  return {title:saved?'Z-Reading':'X-Reading (preview, not saved)',sub:date,file:'zreading_'+date,summary:rows,sections:[]};
+}
+function creditsDoc(){
+  const total=r2(CGROUPS.reduce((a,g)=>a+g.bal,0)),unpaid=[];
+  CGROUPS.forEach(g=>g.orders.slice().sort((a,b)=>a.ts-b.ts).forEach(o=>unpaid.push([g.name,ono(o),dstr(o.ts),o.total,r2(o.paid||0),owed(o)])));
+  const now=Date.now();
+  return {title:'Unpaid Credits',sub:'As of '+dstr(now)+' '+tstr(now),file:'credits_'+dstr(now),
+    summary:[['Total unpaid',total,1],['Customers with a balance',CGROUPS.length]],sections:[
+    {h:'Customers',cols:['Customer','Phone','Unpaid orders','Oldest order','Balance'],rows:CGROUPS.map(g=>[g.name,g.phone,g.orders.length,dstr(oldestTs(g)),g.bal]),money:[4]},
+    {h:'Unpaid orders',cols:['Customer','Order','Date','Total','Paid','Balance'],rows:unpaid,money:[3,4,5]}]};
 }
 
 /* ----- staff ----- */
