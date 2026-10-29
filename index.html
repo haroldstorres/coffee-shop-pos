@@ -255,7 +255,7 @@ function download(name,text,type){
 
 /* ---------- defaults ---------- */
 function defaultSettings(){
-  return {shop:'Kape Corner',pwdRate:20,vatOn:false,vatRate:12,vatMode:'incl',pwdVatExempt:true,address:'',phone:'',tin:'',footer:'',logo:'',
+  return {shop:'Kape Corner',pwdRate:20,vatOn:false,vatRate:12,vatMode:'incl',pwdVatExempt:true,blockOnOut:true,address:'',phone:'',tin:'',footer:'',logo:'',
     sizes:[{n:'Small',up:0,mult:1},{n:'Medium',up:10,mult:1.25},{n:'Large',up:20,mult:1.5}],addonUse:[],
     addons:[{n:'Extra shot',p:20},{n:'Oat milk',p:30},{n:'Whipped cream',p:15},{n:'Caramel syrup',p:15}]};
 }
@@ -389,7 +389,7 @@ function startListeners(){
   },er));
   unsubs.push(fs.collection('ingredients').onSnapshot(q=>{
     ING=q.docs.map(d=>Object.assign({id:d.id},d.data()));INGLOADED=true;
-    ingBadge();
+    ingBadge();renderMenu();
     const typing=/INPUT|SELECT|TEXTAREA/.test((document.activeElement||{}).tagName||'');
     if(view==='admin'&&!modalOpen()&&!typing){if(aTab==='ing')aIng();else if(aTab==='menu')aMenu()}
   },er));
@@ -443,8 +443,8 @@ function renderMenu(){
   const q=($('#q').value||'').toLowerCase();
   const list=MENU.filter(m=>(cat==='All'||m.cat===cat)&&String(m.name).toLowerCase().includes(q));
   $('#menuGrid').innerHTML=list.length?list.map(m=>{
-    const out=m.track&&m.stock<=0;
-    return `<button class="item ${out?'out':''}" onclick="openItem('${m.id}')"><b>${esc(m.name)}</b><span>${fmt(m.price)}${m.sized?'+':''}</span>${m.track?`<small>${out?'Sold out':'Stock: '+m.stock}</small>`:`<small>${esc(m.cat)}</small>`}</button>`;
+    const out=m.track&&m.stock<=0,noIng=!!shortIngredient([{id:m.id,size:m.sized&&S.sizes[0]?S.sizes[0].n:'',addons:[],qty:1}]);
+    return `<button class="item ${out||noIng?'out':''}" onclick="openItem('${m.id}')"><b>${esc(m.name)}</b><span>${fmt(m.price)}${m.sized?'+':''}</span>${noIng?'<small>No ingredients</small>':m.track?`<small>${out?'Sold out':'Stock: '+m.stock}</small>`:`<small>${esc(m.cat)}</small>`}</button>`;
   }).join(''):'<div class="empty">No items.</div>';
 }
 function openItem(id){
@@ -491,6 +491,19 @@ function baseCost(it,size){
   if(it.cost!=null)return it.cost; // a typed-in cost always wins
   const rc=recipeCost(it);return rc==null?null:r2(rc*sizeMult(it,size));
 }
+function shortIngredient(lines){ // first ingredient that cannot cover these lines, or ''
+  if(S.blockOnOut===false||!INGLOADED)return '';
+  const need=ingNeed(lines);
+  for(const id of Object.keys(need)){
+    const g=ingById(id);
+    if(g&&need[id]>(g.stock||0))return g.name+' (left: '+(g.stock||0)+' '+g.unit+')';
+  }
+  return '';
+}
+const LOG_LIMIT=150;
+function addLog(oldLog,type,change,after,note){ // keeps the newest entries only
+  return (oldLog||[]).concat({ts:Date.now(),type,d:r2(change),after:r2(after),by:ME.name,note:note||''}).slice(-LOG_LIMIT);
+}
 function ingNeed(lines){ // total ingredient amounts needed for these cart lines
   const need={};
   const add=(id,q)=>{if(id&&q>0)need[id]=(need[id]||0)+q};
@@ -523,6 +536,8 @@ function addToCart(it,size,addons,qty,note){
     const inCart=cart.filter(c=>c.id===it.id).reduce((a,c)=>a+c.qty,0);
     if(inCart+qty>it.stock){toast('Stock left: '+it.stock+' ('+it.name+')');return false}
   }
+  const short=shortIngredient(cart.concat([{id:it.id,size,addons,qty}]));
+  if(short){toast('Not enough '+short);return false}
   const key=[it.id,size,addons.slice().sort().join('+'),note].join('|');
   const ex=cart.find(c=>c.key===key);
   if(ex)ex.qty+=qty;
@@ -536,6 +551,7 @@ function chg(i,d){
     const inCart=cart.filter(x=>x.id===c.id).reduce((a,x)=>a+x.qty,0);
     if(inCart+1>it.stock){toast('Stock left: '+it.stock);return}
   }
+  if(d>0){const short=shortIngredient(cart.concat([{id:c.id,size:c.size,addons:c.addons,qty:1}]));if(short){toast('Not enough '+short);return}}
   c.qty+=d;if(c.qty<=0)cart.splice(i,1);
   renderCart();
 }
@@ -616,7 +632,7 @@ async function placeOrder(){
   const day=todayStr();
   const need={};cart.forEach(c=>{need[c.id]=(need[c.id]||0)+c.qty});
   const trackedIds=Object.keys(need).filter(id=>{const m=MENU.find(x=>x.id===id);return m&&m.track});
-  const ineed=ingNeed(cart),ingIds=Object.keys(ineed);let alerts=[];
+  const ineed=ingNeed(cart),ingIds=Object.keys(ineed),blockOnOut=S.blockOnOut!==false;let alerts=[];
   const orderRef=fs.collection('orders').doc();
   const cref=fs.collection('counters').doc(day);
   const items=cart.map(c=>({id:c.id,name:c.name,size:c.size,addons:c.addons,note:c.note,unit:c.unit,cost:c.cost==null?null:c.cost,qty:c.qty}));
@@ -637,7 +653,8 @@ async function placeOrder(){
       idocs.forEach(d=>{
         if(!d.exists)return;
         const g=d.data(),st=g.stock||0,take=Math.min(st,ineed[d.id]),left=r2(st-take);
-        if(take>0){used[d.id]=r2(take);tx.update(d.ref,{stock:left})}
+        if(blockOnOut&&st<ineed[d.id])throw new Error('Not enough '+g.name+' (left: '+st+' '+g.unit+')');
+        if(take>0){used[d.id]=r2(take);tx.update(d.ref,{stock:left,log:addLog(g.log,'sale',-take,left,'#'+String(no).padStart(3,'0'))})}
         if(left<=0)alerts.push(g.name+' (OUT)');
         else if((g.low||0)>0&&left<=g.low)alerts.push(g.name+' ('+left+' '+g.unit+' left)');
       });
@@ -806,7 +823,7 @@ function aIng(){
   ${rows.map(g=>{const st=ingStatus(g);return `<tr><td>${esc(g.name)}</td>
   <td class="n"><span class="${st==='ok'?'':'low'}">${g.stock||0} ${esc(g.unit)}${st==='out'?' · OUT':st==='low'?' · LOW':''}</span></td>
   <td class="n">${g.low||0}</td><td class="n">${g.ucost==null?'—':'₱'+(+Number(g.ucost).toFixed(4))}</td>
-  <td class="n"><button onclick="restockIng('${g.id}')">Restock</button> <button class="ghost" onclick="editIng('${g.id}')">Edit</button> <button class="bad" onclick="delIng('${g.id}')">Delete</button></td></tr>`}).join('')||'<tr><td colspan="5">No ingredients yet. Add beans, milk, syrups, cups and so on.</td></tr>'}</table>
+  <td class="n"><button onclick="restockIng('${g.id}')">Restock</button> <button class="ghost" onclick="ingHistory('${g.id}')">History</button> <button class="ghost" onclick="editIng('${g.id}')">Edit</button> <button class="bad" onclick="delIng('${g.id}')">Delete</button></td></tr>`}).join('')||'<tr><td colspan="5">No ingredients yet. Add beans, milk, syrups, cups and so on.</td></tr>'}</table>
   <h4>Add-on usage</h4>
   <div style="color:var(--mut);font-size:13px;margin-bottom:6px">What each add-on uses up every time it is sold (for example Extra shot uses 9 g of beans).</div>
   <table><tr><th>Add-on</th><th>Ingredient</th><th class="n">Qty each</th></tr>
@@ -836,9 +853,32 @@ async function saveIng(id){
   const d={name,unit:$('#iU').value,stock:Math.max(0,r2(parseFloat($('#iS').value)||0)),low:Math.max(0,r2(parseFloat($('#iL').value)||0)),
     packPrice:pack?r2(pp):null,packSize:pack?ps:null,ucost:pack?Math.round(pp/ps*1e6)/1e6:null};
   try{
-    if(id)await fs.collection('ingredients').doc(id).update(d);else await fs.collection('ingredients').add(d);
+    if(id){
+      const ref=fs.collection('ingredients').doc(id);
+      await fs.runTransaction(async tx=>{
+        const cur=await tx.get(ref);
+        if(!cur.exists)throw new Error('This ingredient no longer exists');
+        const before=cur.data().stock||0,upd=Object.assign({},d);
+        if(d.stock!==before)upd.log=addLog(cur.data().log,'edit',d.stock-before,d.stock);
+        tx.update(ref,upd);
+      });
+    }else{
+      if(d.stock>0)d.log=addLog([],'start',d.stock,d.stock);
+      await fs.collection('ingredients').add(d);
+    }
     closeModal();
   }catch(e){toast(errMsg(e))}
+}
+function ingHistory(id){
+  const g=ingById(id);if(!g)return;
+  const names={sale:'Sold',void:'Void (returned)',restock:'Restock',edit:'Manual edit',start:'Starting stock'};
+  const list=(g.log||[]).slice().reverse();
+  modal(`<h3>${esc(g.name)}: stock history</h3>
+  <div style="color:var(--mut);margin-bottom:6px">Now: ${g.stock||0} ${esc(g.unit)}. Showing the last ${LOG_LIMIT} changes.</div>
+  <table><tr><th>Date</th><th>Type</th><th class="n">Change</th><th class="n">Balance</th><th>By</th><th>Note</th></tr>
+  ${list.map(e=>`<tr><td>${dstr(e.ts)} ${tstr(e.ts)}</td><td>${names[e.type]||esc(e.type)}</td><td class="n"><span class="${e.d<0?'neg':'pos-n'}">${e.d>0?'+':''}${e.d} ${esc(g.unit)}</span></td><td class="n">${e.after}</td><td>${esc(e.by||'')}</td><td>${esc(e.note||'')}</td></tr>`).join('')||'<tr><td colspan="6">No changes recorded yet. New changes show up here from now on.</td></tr>'}</table>
+  <div class="actions"><button class="ghost" onclick="closeModal()">Close</button></div>`);
+  $('#modal').classList.add('wide');
 }
 function restockIng(id){
   const g=ingById(id);if(!g)return;
@@ -854,7 +894,8 @@ async function doRestock(id){
     await fs.runTransaction(async tx=>{
       const ref=fs.collection('ingredients').doc(id),d=await tx.get(ref);
       if(!d.exists)throw new Error('This ingredient no longer exists');
-      tx.update(ref,{stock:Math.max(0,r2((d.data().stock||0)+q))});
+      const after=Math.max(0,r2((d.data().stock||0)+q));
+      tx.update(ref,{stock:after,log:addLog(d.data().log,'restock',after-(d.data().stock||0),after)});
     });
     closeModal();toast('Stock updated');
   }catch(e){toast(errMsg(e))}
@@ -1176,7 +1217,7 @@ async function voidOrder(id){
       const iu=od.data().ingUse||{};
       const idocs=await Promise.all(Object.keys(iu).map(k=>tx.get(fs.collection('ingredients').doc(k))));
       md.forEach(d=>{if(d.exists&&d.data().track)tx.update(d.ref,{stock:(d.data().stock||0)+back[d.id]})});
-      idocs.forEach(d=>{if(d.exists)tx.update(d.ref,{stock:r2((d.data().stock||0)+iu[d.id])})});
+      idocs.forEach(d=>{if(!d.exists)return;const back=r2((d.data().stock||0)+iu[d.id]);tx.update(d.ref,{stock:back,log:addLog(d.data().log,'void',iu[d.id],back,'#'+String(od.data().no).padStart(3,'0'))})});
       tx.update(oref,{status:'void',voidedBy:ME.name,voidedAt:Date.now()});
     });
     toast('Order voided');aReports();
@@ -1545,6 +1586,8 @@ function aSettings(){
   <div class="two"><div><div class="lbl">VAT rate (%)</div><input id="sVatRate" type="number" min="0" max="100" step="0.01" value="${S.vatRate}"></div>
   <div><div class="lbl">Menu prices</div><select id="sVatMode"><option value="incl" ${S.vatMode!=='excl'?'selected':''}>Already include VAT</option><option value="excl" ${S.vatMode==='excl'?'selected':''}>Exclude VAT (add on top)</option></select></div></div>
   <label style="display:flex;gap:8px;align-items:center;margin-top:10px"><input id="sPwdEx" type="checkbox" style="width:auto" ${S.pwdVatExempt!==false?'checked':''}> PWD/Senior sales are VAT-exempt (discount is taken on the price without VAT)</label>
+  <label style="display:flex;gap:8px;align-items:center;margin-top:12px"><input id="sBlock" type="checkbox" style="width:auto" ${S.blockOnOut!==false?'checked':''}> Block a sale when an ingredient is not enough</label>
+  <small style="color:var(--mut)">When off, the sale goes through and the stock stops at zero with an OUT alert.</small>
   <h4>Menu options</h4>
   <div class="lbl">Sizes (one per line: Name, extra price, extra cost, recipe multiplier)</div><textarea id="sSizes" rows="4">${esc(S.sizes.map(z=>z.n+','+z.up+','+(z.cost||0)+','+(z.mult||1)).join('\n'))}</textarea>
   <small style="color:var(--mut)">Example: Large,20,6,1.5 means +₱20 price, +₱6 cost, and 1.5× the recipe amounts.</small>
@@ -1613,7 +1656,7 @@ async function saveSettings(){
   const d={shop:$('#sShop').value.trim()||'Coffee Shop',pwdRate:Math.min(100,Math.max(0,parseFloat($('#sPwd').value)||0)),
     sizes,addons:parseLines($('#sAdd').value).map(x=>({n:x.n,p:x.v,cost:x.c}))};
   Object.assign(d,{address:$('#sAddr').value.trim(),phone:$('#sPhone').value.trim(),tin:$('#sTin').value.trim(),footer:$('#sFoot').value.trim(),
-    vatOn:$('#sVatOn').checked,vatRate:Math.min(100,Math.max(0,parseFloat($('#sVatRate').value)||0)),vatMode:$('#sVatMode').value,pwdVatExempt:$('#sPwdEx').checked});
+    vatOn:$('#sVatOn').checked,vatRate:Math.min(100,Math.max(0,parseFloat($('#sVatRate').value)||0)),vatMode:$('#sVatMode').value,pwdVatExempt:$('#sPwdEx').checked,blockOnOut:$('#sBlock').checked});
   if(d.vatOn&&!(d.vatRate>0)){toast('Enter a VAT rate above 0');return}
   if(pendingLogo!==undefined)d.logo=pendingLogo;
   try{await fs.collection('settings').doc('main').set(d,{merge:true});pendingLogo=undefined;toast('Saved')}catch(e){toast(errMsg(e))}
