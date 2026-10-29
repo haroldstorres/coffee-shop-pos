@@ -113,6 +113,7 @@ function toast(t,ms){const e=$('#toast');e.textContent=t;e.style.display='block'
 let fs,auth,uid=null,S={shop:'Coffee Shop',sizes:[],addons:[]},MENU=[],cart=[],cat='All',sending=false;
 const HOURS=4; // how long an unscanned order stays valid
 const LAST='cust_last_order';
+let editIdx=null,keepForm=null;
 
 async function start(){
   try{
@@ -153,7 +154,7 @@ function renderGrid(){
   }).join('')||'<div class="empty">No items.</div>';
 }
 function sheet(h){$('#sheet').className='';$('#sheet').innerHTML='<button class="sx" aria-label="Close" onclick="if(!sending)closeSheet()">✕</button>'+h;$('#ov').classList.add('on')}
-function closeSheet(){$('#ov').classList.remove('on')}
+function closeSheet(){editIdx=null;keepForm=null;$('#ov').classList.remove('on')}
 $('#ov').addEventListener('click',e=>{if(e.target.id==='ov'&&!sending)closeSheet()});
 
 function unitPrice(it,size,addons){
@@ -161,16 +162,17 @@ function unitPrice(it,size,addons){
   const ap=addons.reduce((a,n)=>a+((S.addons.find(x=>x.n===n)||{}).p||0),0);
   return r2(it.price+up+ap);
 }
-function openItem(id){
+function openItem(id,idx){ // idx given = editing a line that is already in the cart
   const it=MENU.find(m=>m.id===id);if(!it)return;
+  editIdx=idx==null?null:idx;const ed=editIdx==null?null:cart[editIdx];
   if(!it.sized){addToCart(it,'',[],1,'');toast('Added: '+it.name);return}
   sheet(`<h3>${esc(it.name)}</h3>
   <div class="lbl">Size</div>
-  <div class="chips">${S.sizes.map((z,i)=>`<label class="chip"><input type="radio" name="sz" value="${esc(z.n)}" ${i===0?'checked':''} onchange="prev('${id}')"><span>${esc(z.n)}${z.up?' +'+z.up:''}</span></label>`).join('')}</div>
-  ${S.addons.length?`<div class="lbl">Add-ons</div><div class="chips">${S.addons.map(a=>`<label class="chip"><input type="checkbox" name="ad" value="${esc(a.n)}" onchange="prev('${id}')"><span>${esc(a.n)} +${a.p}</span></label>`).join('')}</div>`:''}
-  <div class="two"><div><div class="lbl">Qty</div><input id="mq" type="number" min="1" max="20" value="1" oninput="prev('${id}')"></div>
-  <div><div class="lbl">Note</div><input id="mn" maxlength="60" placeholder="e.g. less ice"></div></div>
-  <div class="actions"><button class="ghost" onclick="closeSheet()">Cancel</button><button id="mAdd" onclick="confirmItem('${id}')">Add</button></div>`);
+  <div class="chips">${S.sizes.map((z,i)=>`<label class="chip"><input type="radio" name="sz" value="${esc(z.n)}" ${(ed?z.n===ed.size:i===0)?'checked':''} onchange="prev('${id}')"><span>${esc(z.n)}${z.up?' +'+z.up:''}</span></label>`).join('')}</div>
+  ${S.addons.length?`<div class="lbl">Add-ons</div><div class="chips">${S.addons.map(a=>`<label class="chip"><input type="checkbox" name="ad" value="${esc(a.n)}" ${ed&&ed.addons.includes(a.n)?'checked':''} onchange="prev('${id}')"><span>${esc(a.n)} +${a.p}</span></label>`).join('')}</div>`:''}
+  <div class="two"><div><div class="lbl">Qty</div><input id="mq" type="number" min="1" max="20" value="${ed?ed.qty:1}" oninput="prev('${id}')"></div>
+  <div><div class="lbl">Note</div><input id="mn" maxlength="60" placeholder="e.g. less ice" value="${ed?esc(ed.note):''}"></div></div>
+  <div class="actions"><button class="ghost" onclick="${ed?'editIdx=null;openCart()':'closeSheet()'}">Cancel</button><button id="mAdd" onclick="confirmItem('${id}')">${ed?'Save':'Add'}</button></div>`);
   prev(id);
 }
 function pick(){
@@ -178,8 +180,21 @@ function pick(){
     addons:[...document.querySelectorAll('input[name=ad]:checked')].map(x=>x.value),
     qty:Math.min(20,Math.max(1,parseInt($('#mq').value)||1)),note:($('#mn').value||'').trim().slice(0,60)};
 }
-function prev(id){const it=MENU.find(m=>m.id===id),p=pick();$('#mAdd').textContent='Add · '+fmt(unitPrice(it,p.size,p.addons)*p.qty)}
-function confirmItem(id){const it=MENU.find(m=>m.id===id),p=pick();if(addToCart(it,p.size,p.addons,p.qty,p.note)){closeSheet();toast('Added: '+it.name)}}
+function prev(id){const it=MENU.find(m=>m.id===id),p=pick();$('#mAdd').textContent=(editIdx==null?'Add':'Save')+' · '+fmt(unitPrice(it,p.size,p.addons)*p.qty)}
+function confirmItem(id){
+  const it=MENU.find(m=>m.id===id),p=pick();
+  if(editIdx!=null){ // changing a drink that is already in the cart
+    const at=editIdx,old=cart.splice(at,1)[0];
+    if(addToCart(it,p.size,p.addons,p.qty,p.note)){editIdx=null;openCart();toast('Updated: '+it.name);return}
+    cart.splice(at,0,old);renderBar();return;
+  }
+  if(addToCart(it,p.size,p.addons,p.qty,p.note)){closeSheet();toast('Added: '+it.name)}
+}
+function editLine(i){
+  const c=cart[i];if(!c)return;
+  keepForm={t:($('#oType')||{}).value,n:($('#oName')||{}).value}; // so the order type and name are not lost
+  openItem(c.id,i);
+}
 function addToCart(it,size,addons,qty,note){
   if(it.track){
     const have=cart.filter(c=>c.id===it.id).reduce((a,c)=>a+c.qty,0);
@@ -226,7 +241,7 @@ function openCart(){
   sheet(`<h3>Your order</h3>
   ${cart.map((c,i)=>`<div class="ci"><div><b>${esc(c.name)}</b>${c.size?` <small>(${esc(c.size)})</small>`:''}
     <div class="sub">${esc(c.addons.join(', '))}${c.note?(c.addons.length?' · ':'')+'“'+esc(c.note)+'”':''}</div>
-    <div class="qty"><button onclick="chg(${i},-1)">−</button><span>${c.qty}</span><button onclick="chg(${i},1)">+</button></div></div>
+    <div class="qty"><button onclick="chg(${i},-1)">−</button><span>${c.qty}</span><button onclick="chg(${i},1)">+</button>${(MENU.find(x=>x.id===c.id)||{}).sized?`<button class="ghost" style="width:auto;padding:0 12px;margin-left:6px" onclick="editLine(${i})">Edit</button>`:''}</div></div>
     <div style="text-align:right"><b>${fmt(c.unit*c.qty)}</b></div></div>`).join('')}
   <div class="note">Pay at the counter. Prices may change slightly when the cashier confirms your order.</div>
   <div class="two"><div><div class="lbl">Order type</div><select id="oType"><option>Dine-in</option><option>Take-out</option></select></div>
@@ -234,6 +249,7 @@ function openCart(){
   <div class="stickyfoot"><div class="row total"><span>Total</span><span>${fmt(subtotal())}</span></div>
   <div class="actions" style="margin-top:8px"><button class="ghost" onclick="closeSheet()">Add more</button><button id="sendBtn" style="background:var(--ok)" onclick="submitOrder()">Place order</button></div></div>`);
   $('#sheet').classList.add('cartsheet');
+  if(keepForm){if(keepForm.t)$('#oType').value=keepForm.t;if(keepForm.n)$('#oName').value=keepForm.n;keepForm=null}
 }
 function chg(i,d){
   const c=cart[i];if(!c)return;
