@@ -87,6 +87,12 @@ td.n,th.n{text-align:right}
 .receipt{font-family:"Courier New",monospace;font-size:13px;width:100%;max-width:300px;margin:0 auto}
 .receipt .c{text-align:center}.receipt hr{border:0;border-top:1px dashed #000;margin:8px 0}
 .receipt .r{display:flex;justify-content:space-between;gap:8px}
+.receipt .it{display:grid;grid-template-columns:1fr 30px 66px;gap:4px;align-items:start}
+.receipt .it span:nth-child(2){text-align:center}.receipt .it span:nth-child(3){text-align:right}
+.receipt .eq{border-top:3px double #000;margin:8px 0}
+.receipt .t{font-weight:700;font-size:15px}
+.receipt .sm{font-size:12px}
+.receipt .logo{display:block;max-width:75%;max-height:100px;margin:0 auto 6px}
 #auth{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
 #auth .box{background:#fff;border:1px solid var(--line);border-radius:16px;padding:22px;width:100%;max-width:420px}
 #auth h2{margin:0 0 4px}
@@ -213,7 +219,7 @@ function download(name,text,type){
 
 /* ---------- defaults ---------- */
 function defaultSettings(){
-  return {shop:'Kape Corner',pwdRate:20,vatOn:false,vatRate:12,vatMode:'incl',pwdVatExempt:true,address:'',tin:'',footer:'',
+  return {shop:'Kape Corner',pwdRate:20,vatOn:false,vatRate:12,vatMode:'incl',pwdVatExempt:true,address:'',phone:'',tin:'',footer:'',logo:'',
     sizes:[{n:'Small',up:0},{n:'Medium',up:10},{n:'Large',up:20}],
     addons:[{n:'Extra shot',p:20},{n:'Oat milk',p:30},{n:'Whipped cream',p:15},{n:'Caramel syrup',p:15}]};
 }
@@ -546,31 +552,36 @@ async function placeOrder(){
 /* ---------- receipt ---------- */
 function ono(o){return '#'+String(o.no).padStart(3,'0')}
 function bizHeader(){
-  return `<b>${esc(S.shop)}</b>${S.address?'<br>'+esc(S.address).replace(/\n/g,'<br>'):''}${S.tin?'<br>'+(S.vatOn?'VAT REG TIN: ':'NON-VAT REG TIN: ')+esc(S.tin):''}`;
+  return `${S.logo?`<img class="logo" src="${S.logo}" alt="">`:''}<b>${esc(S.shop)}</b>${S.address?'<br>'+esc(S.address).replace(/\n/g,'<br>'):''}${S.phone?'<br>Tel: '+esc(S.phone):''}${S.tin?'<br>'+(S.vatOn?'VAT REG TIN: ':'NON-VAT REG TIN: ')+esc(S.tin):''}`;
 }
 function showReceipt(ref){
   const o=typeof ref==='string'?(ORDERS.concat(RORDERS).find(x=>x.id===ref)):ref;
   if(!o)return;
-  const adj=o.adj||0,vr=o.vatRate||0;
+  const adj=o.adj||0,vr=o.vatRate||0,excl=o.vatOn&&o.vatMode==='excl';
+  const row=(a,b,cls)=>`<div class="r ${cls||''}"><span>${a}</span><span>${b}</span></div>`;
   modal(`<div id="receiptPrint" class="receipt">
-    <div class="c">${bizHeader()}<br>Receipt</div><hr>
-    <div class="r"><span>Order ${ono(o)}</span><span>${esc(o.type)}</span></div>
-    <div>${dstr(o.ts)} ${tstr(o.ts)}</div>
-    <div>Cashier: ${esc(o.cashier||'')}</div><hr>
-    ${o.items.map(i=>`<div class="r"><span>${i.qty} x ${esc(i.name)}${i.size?' ('+esc(i.size)+')':''}</span><span>${fmt(i.unit*i.qty)}</span></div>${i.addons.length?`<div>&nbsp;&nbsp;+ ${esc(i.addons.join(', '))}</div>`:''}${i.note?`<div>&nbsp;&nbsp;“${esc(i.note)}”</div>`:''}`).join('')}
+    <div class="c">${bizHeader()}</div><hr>
+    <div>Date: ${dstr(o.ts)} &nbsp;Time: ${tstr(o.ts)}</div>
+    <div>Order No: ${ono(o)} &nbsp;(${esc(o.type)})</div>
+    <div>Cashier: ${esc(o.cashier||'')}</div>
     <hr>
-    <div class="r"><span>Subtotal</span><span>${fmt(o.sub)}</span></div>
-    ${o.vatOn&&adj<0?`<div class="r"><span>Less: VAT exemption</span><span>− ${fmt(-adj)}</span></div>`:''}
-    ${o.disc?`<div class="r"><span>${esc(o.discLabel||'Discount')}</span><span>− ${fmt(o.disc)}</span></div>`:''}
-    ${o.vatOn&&adj>0?`<div class="r"><span>VAT ${vr}%</span><span>+ ${fmt(adj)}</span></div>`:''}
-    <div class="r"><b>TOTAL</b><b>${fmt(o.total)}</b></div>
-    <div class="r"><span>${esc(o.pay)}</span><span>${fmt(o.tendered)}</span></div>
-    ${o.pay==='Cash'?`<div class="r"><span>Change</span><span>${fmt(o.change)}</span></div>`:''}
-    ${o.vatOn?`<hr><div class="r"><span>VATable Sales</span><span>${fmt(o.vatable||0)}</span></div>
-    <div class="r"><span>VAT Amount (${vr}%)</span><span>${fmt(o.vat||0)}</span></div>
-    ${o.vatExempt?`<div class="r"><span>VAT-Exempt Sales</span><span>${fmt(o.vatExempt)}</span></div>`:''}`:''}
+    <div class="it"><span>ITEM NAME</span><span>QTY</span><span>AMOUNT</span></div>
+    <hr>
+    ${o.items.map(i=>`<div class="it"><span>${esc(i.name)}${i.size?' ('+esc(i.size)+')':''}</span><span>${i.qty}</span><span>${fmt(i.unit*i.qty)}</span></div>${i.addons.length?`<div class="sm">&nbsp;&nbsp;+ ${esc(i.addons.join(', '))}</div>`:''}${i.note?`<div class="sm">&nbsp;&nbsp;“${esc(i.note)}”</div>`:''}`).join('')}
+    <hr>
+    ${row('Subtotal',fmt(o.sub))}
+    ${o.vatOn&&adj<0?row('Less: VAT exemption','− '+fmt(-adj)):''}
+    ${o.disc?row(esc(o.discLabel||'Discount'),'− '+fmt(o.disc)):''}
+    ${excl&&adj>0?row('Total tax (VAT '+vr+'%)','+ '+fmt(adj)):''}
+    ${row('Total',fmt(o.total),'t')}
+    <hr>
+    ${row(esc(o.pay),fmt(o.tendered))}
+    ${o.pay==='Cash'?row('Change back (Cash)',fmt(o.change)):''}
+    ${o.vatOn?`<hr>${row('VATable Sales',fmt(o.vatable||0))}${row('VAT Amount ('+vr+'%)',fmt(o.vat||0))}${o.vatExempt?row('VAT-Exempt Sales',fmt(o.vatExempt)):''}`:''}
     ${o.status==='void'?'<div class="c"><b>*** VOID ***</b></div>':''}
-    <hr><div class="c">${esc(S.footer||'Thank you! Come again ☕')}</div>
+    <hr>
+    <div class="c">Thank you!<br>${esc(S.footer||'Please come again ☕').replace(/\n/g,'<br>')}</div>
+    <div class="eq"></div>
   </div>
   <div class="actions"><button class="ghost" onclick="closeModal()">Close</button><button onclick="window.print()">Print</button></div>`);
 }
@@ -982,9 +993,15 @@ function aSettings(){
   $('#aContent').innerHTML=`<div class="lbl" style="margin-top:0">Shop name</div><input id="sShop" value="${esc(S.shop)}">
   <div class="lbl">PWD / Senior discount (%)</div><input id="sPwd" type="number" min="0" max="100" value="${S.pwdRate}">
   <h4>Receipt details &amp; VAT</h4>
-  <div class="lbl" style="margin-top:0">Business address (shown on receipts)</div><textarea id="sAddr" rows="2">${esc(S.address||'')}</textarea>
+  <div class="lbl" style="margin-top:0">Receipt logo (printed at the top)</div>
+  <div id="logoPrev" style="margin:6px 0"></div>
+  <input id="sLogoFile" type="file" accept="image/*" onchange="pickLogo(this)">
+  <label style="display:flex;gap:8px;align-items:center;margin-top:8px"><input id="sLogoBW" type="checkbox" style="width:auto" checked> Convert to black &amp; white (best for thermal printers)</label>
+  <button class="ghost" style="margin-top:8px" onclick="clearLogo()">Remove logo</button>
+  <div class="lbl">Business address (shown on receipts)</div><textarea id="sAddr" rows="2">${esc(S.address||'')}</textarea>
+  <div class="lbl">Phone (optional)</div><input id="sPhone" value="${esc(S.phone||'')}" placeholder="(02) 1234 5678">
   <div class="lbl">TIN</div><input id="sTin" value="${esc(S.tin||'')}" placeholder="000-000-000-000">
-  <div class="lbl">Receipt footer message</div><input id="sFoot" value="${esc(S.footer||'')}" placeholder="Thank you! Come again ☕">
+  <div class="lbl">Receipt footer message (printed under "Thank you!", up to 3 lines)</div><textarea id="sFoot" rows="3" placeholder="Please ask our staff for an invoice.">${esc(S.footer||'')}</textarea>
   <label style="display:flex;gap:8px;align-items:center;margin-top:12px"><input id="sVatOn" type="checkbox" style="width:auto" ${S.vatOn?'checked':''}> Business is VAT-registered (enable VAT)</label>
   <div class="two"><div><div class="lbl">VAT rate (%)</div><input id="sVatRate" type="number" min="0" max="100" step="0.01" value="${S.vatRate}"></div>
   <div><div class="lbl">Menu prices</div><select id="sVatMode"><option value="incl" ${S.vatMode!=='excl'?'selected':''}>Already include VAT</option><option value="excl" ${S.vatMode==='excl'?'selected':''}>Exclude VAT (add on top)</option></select></div></div>
@@ -994,6 +1011,7 @@ function aSettings(){
   <div class="lbl">Add-ons (one per line: Name, price, cost)</div><textarea id="sAdd" rows="5">${esc(S.addons.map(a=>a.n+','+a.p+','+(a.cost||0)).join('\n'))}</textarea>
   <small style="color:var(--mut)">Example: Large,20,6 means +₱20 price and +₱6 cost. The third number is optional.</small>
   <div class="actions" style="justify-content:flex-start"><button onclick="saveSettings()">Save settings</button></div>`;
+  pendingLogo=undefined;logoPrev();
 }
 function parseLines(t){
   const num=x=>{const v=parseFloat(x);return isNaN(v)?0:Math.max(0,v)};
@@ -1004,15 +1022,51 @@ function parseLines(t){
     return {n:p[0],v:0,c:0};
   }).filter(x=>x.n);
 }
+let pendingLogo; // undefined = unchanged, '' = remove, data URL = new logo
+function logoPrev(){
+  const v=pendingLogo!==undefined?pendingLogo:S.logo,el=$('#logoPrev');
+  if(el)el.innerHTML=v?`<img src="${v}" alt="" style="max-width:200px;max-height:90px;background:#fff;border:1px solid var(--line);padding:4px"><div style="color:var(--mut);font-size:12px">${pendingLogo!==undefined?'Not saved yet. Press Save settings.':'Current logo'}</div>`:'<small style="color:var(--mut)">No logo set</small>';
+}
+function pickLogo(inp){
+  const f=inp.files&&inp.files[0];if(!f)return;
+  if(!f.type.startsWith('image/')){toast('Please choose an image file');return}
+  if(f.size>5*1024*1024){toast('Image is too large (max 5 MB)');return}
+  const rd=new FileReader();
+  rd.onerror=()=>toast('Could not read that file');
+  rd.onload=()=>{
+    const img=new Image();
+    img.onerror=()=>toast('That image could not be opened');
+    img.onload=()=>{
+      try{
+        let w=Math.min(240,img.width),h=Math.round(img.height*w/img.width);
+        if(h>120){h=120;w=Math.round(img.width*h/img.height)}
+        const c=document.createElement('canvas');c.width=w;c.height=h;
+        const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,w,h);x.drawImage(img,0,0,w,h);
+        if($('#sLogoBW').checked){
+          const d=x.getImageData(0,0,w,h),p=d.data;
+          for(let i=0;i<p.length;i+=4){const g=.299*p[i]+.587*p[i+1]+.114*p[i+2],v=g<170?0:255;p[i]=p[i+1]=p[i+2]=v}
+          x.putImageData(d,0,0);
+        }
+        const url=c.toDataURL('image/png');
+        if(url.length>600000){toast('That image is too detailed. Try a simpler logo.');return}
+        pendingLogo=url;logoPrev();toast('Logo ready. Press Save settings.');
+      }catch(e){toast('Could not process the image')}
+    };
+    img.src=rd.result;
+  };
+  rd.readAsDataURL(f);
+}
+function clearLogo(){pendingLogo='';const f=$('#sLogoFile');if(f)f.value='';logoPrev()}
 async function saveSettings(){
   const sizes=parseLines($('#sSizes').value).map(x=>({n:x.n,up:x.v,cost:x.c}));
   if(!sizes.length){toast('At least one size is required');return}
   const d={shop:$('#sShop').value.trim()||'Coffee Shop',pwdRate:Math.min(100,Math.max(0,parseFloat($('#sPwd').value)||0)),
     sizes,addons:parseLines($('#sAdd').value).map(x=>({n:x.n,p:x.v,cost:x.c}))};
-  Object.assign(d,{address:$('#sAddr').value.trim(),tin:$('#sTin').value.trim(),footer:$('#sFoot').value.trim(),
+  Object.assign(d,{address:$('#sAddr').value.trim(),phone:$('#sPhone').value.trim(),tin:$('#sTin').value.trim(),footer:$('#sFoot').value.trim(),
     vatOn:$('#sVatOn').checked,vatRate:Math.min(100,Math.max(0,parseFloat($('#sVatRate').value)||0)),vatMode:$('#sVatMode').value,pwdVatExempt:$('#sPwdEx').checked});
   if(d.vatOn&&!(d.vatRate>0)){toast('Enter a VAT rate above 0');return}
-  try{await fs.collection('settings').doc('main').set(d,{merge:true});toast('Saved')}catch(e){toast(errMsg(e))}
+  if(pendingLogo!==undefined)d.logo=pendingLogo;
+  try{await fs.collection('settings').doc('main').set(d,{merge:true});pendingLogo=undefined;toast('Saved')}catch(e){toast(errMsg(e))}
 }
 
 function renderAll(){renderMenu();renderCart();renderQueue();netBadge()}
