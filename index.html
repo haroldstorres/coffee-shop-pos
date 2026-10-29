@@ -54,15 +54,24 @@ main{padding:0 22px 22px}
 .pos{display:grid;grid-template-columns:1fr 380px;gap:14px;align-items:start}
 @media(max-width:900px){.pos{grid-template-columns:1fr}}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
-.cats{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
-.cats button{background:#fff;color:var(--brand);border:1px solid var(--line);padding:6px 12px}
-.cats button.on{background:var(--brand);color:#fff}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
-.item{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;text-align:left;color:var(--ink);display:flex;flex-direction:column;gap:4px;min-height:84px}
-.item:hover{border-color:var(--brand2)}
-.item b{font-size:15px}.item span{color:var(--brand2);font-weight:600}
-.item small{color:var(--mut)}
+.cats{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.cats button{background:#efe7dc;color:#4a3a2e;border:0;padding:9px 20px;border-radius:999px;font-size:14px}
+.cats button:hover{background:#e6dccf}
+.cats button.on{background:#2a1d16;color:#fff}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:14px}
+.item{background:#fffdf9;border:1px solid var(--line);border-radius:14px;padding:0;text-align:left;color:var(--ink);display:flex;flex-direction:column;overflow:hidden;position:relative;transition:box-shadow .15s,border-color .15s}
+.item:hover{border-color:#c9744a;box-shadow:0 4px 14px rgba(70,40,20,.14)}
+.item .ph{width:100%;aspect-ratio:1.3/1;background:linear-gradient(135deg,#e8d8c4,#c9a583);display:flex;align-items:center;justify-content:center;font-size:44px;overflow:hidden}
+.item .ph img{width:100%;height:100%;object-fit:cover;display:block}
+.item .tag{position:absolute;top:8px;right:8px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:8px;color:#fff}
+.item .tag.hot{background:#c98a3a}.item .tag.iced{background:#5b7d99}
+.item .nm{padding:10px 12px 0;font-size:15px;font-weight:500}
+.item .pr{padding:4px 12px 0;color:var(--ink);font-weight:700}
+.item small{padding:2px 12px 11px;color:var(--mut);font-size:12px}
 .item.out{opacity:.45}
+.ph-up{display:flex;gap:10px;align-items:center;margin:4px 0}
+.ph-up .pv{width:84px;height:64px;border-radius:10px;background:linear-gradient(135deg,#e8d8c4,#c9a583);display:flex;align-items:center;justify-content:center;font-size:28px;overflow:hidden;flex:none}
+.ph-up .pv img{width:100%;height:100%;object-fit:cover}
 .search{margin-bottom:10px}
 .ci{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px dashed var(--line)}
 .ci .sub{color:var(--mut);font-size:12px}
@@ -510,7 +519,8 @@ function renderMenu(){
   const list=MENU.filter(m=>(cat==='All'||m.cat===cat)&&String(m.name).toLowerCase().includes(q));
   $('#menuGrid').innerHTML=list.length?list.map(m=>{
     const out=m.track&&m.stock<=0,noIng=!!shortIngredient([{id:m.id,size:m.sized&&S.sizes[0]?S.sizes[0].n:'',addons:[],qty:1}]);
-    return `<button class="item ${out||noIng?'out':''}" onclick="openItem('${m.id}')"><b>${esc(m.name)}</b><span>${fmt(m.price)}${m.sized?'+':''}</span>${noIng?'<small>No ingredients</small>':m.track?`<small>${out?'Sold out':'Stock: '+m.stock}</small>`:`<small>${esc(m.cat)}</small>`}</button>`;
+    const tg=m.temp==='Hot'?'hot':m.temp==='Iced'?'iced':'';
+    return `<button class="item ${out||noIng?'out':''}" onclick="openItem('${m.id}')"><div class="ph">${m.photo?`<img src="${m.photo}" alt="" loading="lazy">`:(m.sized?'☕':'🍰')}</div>${tg?`<span class="tag ${tg}">${m.temp}</span>`:''}<span class="nm">${esc(m.name)}</span><span class="pr">${fmt(m.price)}${m.sized?'+':''}</span>${noIng?'<small>No ingredients</small>':m.track?`<small>${out?'Sold out':'Stock: '+m.stock}</small>`:`<small>${esc(m.cat)}</small>`}</button>`;
   }).join(''):'<div class="empty">No items.</div>';
 }
 function openItem(id){
@@ -838,6 +848,10 @@ function editItem(id){
   if(!m)return;
   modal(`<h3>${id?'Edit':'New'} item</h3>
   <div class="lbl">Name</div><input id="fN" value="${esc(m.name)}">
+  <div class="lbl">Photo (optional)</div>
+  <div class="ph-up"><div class="pv" id="phPrev">${m.photo?`<img src="${m.photo}" alt="">`:'☕'}</div>
+  <div style="flex:1"><input type="file" accept="image/*" onchange="pickPhoto(this)"><button class="ghost" style="margin-top:6px;padding:5px 10px" onclick="clearPhoto()">Remove photo</button></div></div>
+  <div class="two"><div><div class="lbl">Tag on card</div><select id="fTm"><option value="">None</option><option ${m.temp==='Hot'?'selected':''}>Hot</option><option ${m.temp==='Iced'?'selected':''}>Iced</option></select></div><div></div></div>
   <div class="two"><div><div class="lbl">Category</div><input id="fC" list="catList" value="${esc(m.cat)}"><datalist id="catList">${catList().filter(c=>c!=='All').map(c=>`<option value="${esc(c)}">`).join('')}</datalist></div>
   <div><div class="lbl">Price (base)</div><input id="fP" type="number" min="0" step="0.01" value="${m.price}"></div></div>
   <div class="lbl">Cost per item (leave blank to work it out from the recipe)</div><input id="fCo" type="number" min="0" step="0.01" placeholder="e.g. 28.50" value="${m.cost==null?'':m.cost}">
@@ -850,8 +864,33 @@ function editItem(id){
   <label style="display:block;margin-top:6px"><input id="fT" type="checkbox" style="width:auto" ${m.track?'checked':''}> Track stock</label>
   <div class="lbl">Stock</div><input id="fK" type="number" min="0" step="1" value="${m.stock}">
   <div class="actions"><button class="ghost" onclick="closeModal()">Cancel</button><button onclick="saveItem(${id?`'${id}'`:'null'})">Save</button></div>`);
-  setDraft('item',id);
+  pendingPhoto=undefined;setDraft('item',id);
 }
+let pendingPhoto; // undefined = unchanged, '' = remove, data URL = new photo
+function pickPhoto(inp){
+  const f=inp.files&&inp.files[0];if(!f)return;
+  if(!f.type.startsWith('image/')){toast('Please choose an image file');return}
+  if(f.size>8*1024*1024){toast('Image is too large (max 8 MB)');return}
+  const rd=new FileReader();
+  rd.onerror=()=>toast('Could not read that file');
+  rd.onload=()=>{
+    const img=new Image();
+    img.onerror=()=>toast('That image could not be opened');
+    img.onload=()=>{
+      try{
+        const W=360,H=280,c=document.createElement('canvas');c.width=W;c.height=H;
+        const x=c.getContext('2d'),k=Math.max(W/img.width,H/img.height),w=img.width*k,h=img.height*k;
+        x.fillStyle='#fff';x.fillRect(0,0,W,H);x.drawImage(img,(W-w)/2,(H-h)/2,w,h); // crop to fill
+        const url=c.toDataURL('image/jpeg',.8);
+        if(url.length>180000){toast('Image is too detailed. Try another photo.');return}
+        pendingPhoto=url;$('#phPrev').innerHTML=`<img src="${url}" alt="">`;
+      }catch(e){toast('Could not process the image')}
+    };
+    img.src=rd.result;
+  };
+  rd.readAsDataURL(f);
+}
+function clearPhoto(){pendingPhoto='';const p=$('#phPrev');if(p)p.textContent='☕'}
 function recipeRowHTML(r){
   return `<div class="two rrow" style="margin-top:6px;align-items:center"><select class="rIng">${ING.map(g=>`<option value="${g.id}" ${g.id===r.ing?'selected':''}>${esc(g.name)} (${esc(g.unit)})</option>`).join('')}</select>
   <div style="display:flex;gap:6px"><input class="rQty" type="number" min="0" step="0.01" placeholder="Qty" value="${r.qty||''}"><button class="bad" onclick="this.closest('.rrow').remove()">✕</button></div></div>`;
@@ -862,7 +901,8 @@ function addRecipeRow(){
 }
 async function saveItem(id){
   const name=$('#fN').value.trim();if(!name){toast('Enter a name');return}
-  const d={name,cat:$('#fC').value.trim()||'Others',price:Math.max(0,r2(parseFloat($('#fP').value)||0)),cost:$('#fCo').value.trim()===''?null:Math.max(0,r2(parseFloat($('#fCo').value)||0)),sized:$('#fS').checked,track:$('#fT').checked,stock:Math.max(0,parseInt($('#fK').value)||0)};
+  const d={name,cat:$('#fC').value.trim()||'Others',price:Math.max(0,r2(parseFloat($('#fP').value)||0)),cost:$('#fCo').value.trim()===''?null:Math.max(0,r2(parseFloat($('#fCo').value)||0)),sized:$('#fS').checked,track:$('#fT').checked,stock:Math.max(0,parseInt($('#fK').value)||0),temp:$('#fTm').value};
+  if(pendingPhoto!==undefined)d.photo=pendingPhoto;
   const rec={};
   document.querySelectorAll('#rList .rrow').forEach(r=>{
     const k=r.querySelector('.rIng').value,q=r2(parseFloat(r.querySelector('.rQty').value)||0);
