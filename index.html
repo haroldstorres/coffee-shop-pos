@@ -137,9 +137,12 @@ main{padding:0 22px 22px}
 .sltabs button{padding:3px 10px;border-radius:6px;font-size:12px;background:transparent;color:var(--mut)}
 .sltabs button.on{background:var(--card);color:var(--ink);font-weight:600}
 .dmore{margin:18px 0 6px;font-size:16px}
-.bsg{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:4px 22px}
-.bsh{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);padding:2px 4px 4px;border-bottom:2px solid var(--line)}
-.bs{display:flex;justify-content:space-between;gap:10px;padding:7px 4px;border-bottom:1px solid var(--line);font-size:14px}
+.bsg{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:4px 22px}
+.bsh{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);padding:0 4px 1px;border-bottom:1px solid var(--line)}
+.bsp{padding:8px 12px 6px}.bsp h4{margin:0 0 4px;font-size:14px}
+.bsp .sltabs{margin-top:-2px}
+.bsg{gap:2px 18px!important}
+.bs{display:flex;justify-content:space-between;gap:10px;padding:2px 4px;border-bottom:1px solid var(--line);font-size:13px;line-height:1.35}
 .bs span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bs span:last-child{font-variant-numeric:tabular-nums}
 .bs.sl span:last-child{color:var(--mut)}
@@ -1783,7 +1786,7 @@ async function aDash(silent){
     <div class="dpanel ac" style="--ac:#2f6fb3"><h4>Where the sales went</h4>${donut(ringParts,A.sales>0?{t:pct(A.net,A.sales),s:'net profit'}:null)}
       ${A.net<0&&A.orders?`<div class="warnbox" style="margin:8px 0 0;padding:6px 10px;font-size:13px">Costs and expenses are higher than sales by ${fmt(-A.net)} in this period.</div>`:''}</div>
   </div>
-  <div class="dpanel ac" style="--ac:#6f4e37"><h4>Best sellers - ${rangeWord()} <small style="color:var(--mut);font-weight:400">top 5 per category</small><span class="sltabs"><button class="on" id="slT" onclick="swSell(1)">Top</button><button id="slS" onclick="swSell(2)">Slowest</button></span></h4>
+  <div class="dpanel ac bsp" style="--ac:#6f4e37"><h4>Best sellers - ${rangeWord()} <small style="color:var(--mut);font-weight:400">top 5 per category</small><span class="sltabs"><button class="on" id="slT" onclick="swSell(1)">Top</button><button id="slS" onclick="swSell(2)">Slowest</button></span></h4>
     <div id="sellTop" class="bsg">${bestCols||none('No sales in this period.')}</div>
     <div id="sellSlow" class="bsg" style="display:none">${slowCols||none('No menu items yet.')}</div></div>
   <div class="dg2">
