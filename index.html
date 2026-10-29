@@ -675,14 +675,15 @@ function chg(i,d){
   renderCart();
 }
 /* ---------- scan a customer's order QR ---------- */
-let loadedPending=null,scanStream=null,scanRaf=0,scanBusy=false;
+let loadedPending=null,scanStream=null,scanRaf=0,scanBusy=false,scanFacing='user'; // 'user' = front (default), 'environment' = rear
 function stopScan(){cancelAnimationFrame(scanRaf);scanRaf=0;if(scanStream){scanStream.getTracks().forEach(t=>t.stop());scanStream=null}}
 function openScan(){
   if(!ME||!can.pos.includes(ME.role))return;
   if(cart.length){toast('Complete or hold the current order first');return}
   scanBusy=false;
   modal(`<h3>Scan customer order</h3>
-  <div class="scanbox"><video id="scanVid" playsinline muted></video></div>
+  <div class="scanbox" style="position:relative"><video id="scanVid" playsinline muted></video>
+  <button id="camFlip" class="ghost" title="Switch camera" aria-label="Switch camera" style="display:none;position:absolute;top:8px;right:8px;padding:8px;border-radius:999px;line-height:0" onclick="flipCam()"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V7a2 2 0 0 1 2-2h2l1.5-2h5L16 5h2a2 2 0 0 1 2 2v2"/><path d="M20 15v2a2 2 0 0 1-2 2h-2l-1.5 2h-5L8 19H6a2 2 0 0 1-2-2v-2"/><path d="M9 12a3 3 0 0 1 5.2-2M15 12a3 3 0 0 1-5.2 2"/><path d="M14.5 8v2h-2M9.5 16v-2h2"/></svg></button></div>
   <div class="scanmsg" id="scanMsg">Starting camera…</div>
   <div class="lbl">Or type the code</div>
   <div style="display:flex;gap:8px"><input id="scanCode" placeholder="e.g. K7QM2P" maxlength="12" autocapitalize="characters" autocomplete="off" style="text-transform:uppercase" onkeydown="if(event.key==='Enter')submitScanCode()"><button onclick="submitScanCode()">Load</button></div>
@@ -690,14 +691,20 @@ function openScan(){
   if(window.matchMedia&&matchMedia('(pointer:fine)').matches){const i=$('#scanCode');if(i)i.focus()} // a handheld scanner types into this box
   startScan();
 }
+function flipCam(){
+  scanFacing=scanFacing==='environment'?'user':'environment';
+  stopScan();scanBusy=false;
+  const m=$('#scanMsg');if(m)m.textContent='Switching camera…';
+  startScan();
+}
 function submitScanCode(){const v=($('#scanCode').value||'').trim();if(!v)return;closeModal();loadPending(v)}
 async function startScan(){
   const msg=$('#scanMsg'),vid=$('#scanVid');
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){msg.textContent='The camera is not available here. Type the code below.';return}
   try{
-    const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
+    const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:scanFacing}},audio:false});
     if(!modalOpen()||!$('#scanVid')){stream.getTracks().forEach(t=>t.stop());return} // closed while asking permission
-    scanStream=stream;vid.srcObject=stream;await vid.play();vid.style.display='block';
+    scanStream=stream;vid.srcObject=stream;await vid.play();vid.style.display='block';const fb=$('#camFlip');if(fb)fb.style.display='';
     msg.textContent="Point the camera at the customer's QR code";
     let det=null;
     if('BarcodeDetector' in window){try{det=new BarcodeDetector({formats:['qr_code']})}catch(e){}}
@@ -719,6 +726,7 @@ async function startScan(){
     };
     scanRaf=requestAnimationFrame(loop);
   }catch(e){
+    const fb=$('#camFlip');if(fb&&navigator.mediaDevices)fb.style.display=''; // lets the cashier try the other camera
     const m=$('#scanMsg');if(m)m.textContent='Cannot use the camera ('+(e&&e.name==='NotAllowedError'?'permission denied':(e&&e.message)||'not available')+'). Type the code below.';
   }
 }
@@ -791,7 +799,10 @@ function renderOnline(){
     +(old?`<div style="margin-top:10px;color:var(--mut);font-size:13px">${old} expired order(s) not scanned. <button class="ghost" style="padding:4px 10px" onclick="cleanPending(false)">Clear expired</button></div>`:'');
 }
 function loadOnline(code){
-  if(cart.length){toast('Complete or hold the current order first');return}
+  if(cart.length){
+    if(!confirm('Put the current order on hold and load this online order?'))return;
+    holdOrder(); // the held order can be resumed from the Held button
+  }
   closeModal();loadPending(code);
 }
 async function cancelOnline(id){
