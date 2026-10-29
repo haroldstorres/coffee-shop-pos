@@ -87,6 +87,15 @@ main{padding:0 22px 22px}
 .qty button{width:30px;height:30px;padding:0;background:#fffdf9;color:#2a1d16;border:1px solid var(--line);border-radius:8px;font-size:16px}
 .qty span{min-width:44px;height:30px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:8px;background:#fff}
 .amt{min-width:70px;text-align:right;font-weight:700;font-size:16px}
+.poster{text-align:center;background:#fff;border:1px solid var(--line);border-radius:12px;padding:18px}
+.poster img.qr{width:260px;max-width:70%;image-rendering:pixelated}
+.poster h2{margin:6px 0;font-size:28px}
+.poster .logo{max-width:180px;max-height:90px;object-fit:contain}
+.scanbtn{display:flex;align-items:center;gap:8px;background:#2a1d16;color:#fff;border-radius:12px;padding:11px 16px;font-weight:600;white-space:nowrap}
+.scanbtn svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+@media(max-width:900px){.scanbtn span{display:none}.scanbtn{padding:11px 12px}}
+.scanbox video{display:none;width:100%;max-height:320px;background:#000;border-radius:12px;object-fit:cover}
+.scanmsg{color:var(--mut);font-size:13px;margin:8px 0}
 .actbar{display:grid;grid-template-columns:1fr 1.5fr;gap:10px;margin-top:16px}
 .actbar button{display:flex;align-items:center;justify-content:center;gap:8px;padding:15px 10px;font-size:16px;font-weight:600;border-radius:12px}
 .actbar svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
@@ -167,6 +176,8 @@ code{background:#f1e9df;padding:1px 5px;border-radius:5px}
   body *{visibility:hidden}
   #receiptPrint,#receiptPrint *{visibility:visible}
   #receiptPrint{position:absolute;left:0;top:0;width:58mm;max-width:none}
+  #posterPrint,#posterPrint *{visibility:visible}
+  #posterPrint{position:absolute;left:0;top:0;width:100%;padding:20mm 10mm;border:0!important}
 }
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
@@ -199,6 +210,7 @@ code{background:#f1e9df;padding:1px 5px;border-radius:5px}
   <div class="top">
     <div class="sbox" id="topSearch"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="q" placeholder="Search menu items..." oninput="renderMenu()"></div>
     <h2 id="topTitle" style="display:none"></h2>
+    <button id="scanBtn" class="scanbtn" onclick="openScan()"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="6.5" height="6.5" rx="1"/><rect x="14" y="3.5" width="6.5" height="6.5" rx="1"/><rect x="3.5" y="14" width="6.5" height="6.5" rx="1"/><path d="M14 14h3v3M20.5 14v.01M14 20.5h3.5M20.5 17.5v3"/></svg><span>Scan order</span></button>
     <div class="clk"><span class="d"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg><i id="clkD" style="font-style:normal"></i></span><span><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg><i id="clkT" style="font-style:normal"></i></span></div>
   </div>
   <main>
@@ -292,7 +304,7 @@ const todayStr=()=>dstr(Date.now());
 const tstr=ts=>{const d=new Date(ts);return pad(d.getHours())+':'+pad(d.getMinutes())};
 function toast(t,ms){const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',ms||3000)}
 let draftKind=null,draftId=null,INGLOADED=false,MENULOADED=false;
-function modal(h){$('#modal').classList.remove('wide');draftKind=null;try{localStorage.removeItem('pos_draft')}catch(e){}$('#modal').innerHTML=h;$('#overlay').classList.add('on')}
+function modal(h){stopScan();$('#modal').classList.remove('wide');draftKind=null;try{localStorage.removeItem('pos_draft')}catch(e){}$('#modal').innerHTML=h;$('#overlay').classList.add('on')}
 /* unsaved item / ingredient forms survive a page refresh */
 function setDraft(kind,id){draftKind=kind;draftId=id;saveDraft()}
 function saveDraft(){
@@ -314,7 +326,7 @@ function restoreDraft(n){
   if(d.kind==='item'&&d.rows&&$('#rList'))$('#rList').innerHTML=d.rows.filter(r=>ingById(r.ing)).map(recipeRowHTML).join('');
   saveDraft();
 }
-function closeModal(){draftKind=null;try{localStorage.removeItem('pos_draft')}catch(e){}$('#overlay').classList.remove('on');if(view==='admin'){if(aTab==='menu')aMenu();else if(aTab==='ing')aIng()}}
+function closeModal(){stopScan();draftKind=null;try{localStorage.removeItem('pos_draft')}catch(e){}$('#overlay').classList.remove('on');if(view==='admin'){if(aTab==='menu')aMenu();else if(aTab==='ing')aIng()}}
 function modalOpen(){return $('#overlay').classList.contains('on')}
 function errMsg(e){
   const c=(e&&e.code)||'';
@@ -330,7 +342,7 @@ function download(name,text,type){
 
 /* ---------- defaults ---------- */
 function defaultSettings(){
-  return {shop:'Kape Corner',pwdRate:20,vatOn:false,vatRate:12,vatMode:'incl',pwdVatExempt:true,blockOnOut:true,address:'',phone:'',tin:'',footer:'',logo:'',sideLogo:'',
+  return {shop:'Kape Corner',pwdRate:20,vatOn:false,vatRate:12,vatMode:'incl',pwdVatExempt:true,blockOnOut:true,address:'',phone:'',tin:'',footer:'',logo:'',sideLogo:'',orderUrl:'',
     sizes:[{n:'Small',up:0,mult:1},{n:'Medium',up:10,mult:1.25},{n:'Large',up:20,mult:1.5}],addonUse:[],
     addons:[{n:'Extra shot',p:20},{n:'Oat milk',p:30},{n:'Whipped cream',p:15},{n:'Caramel syrup',p:15}]};
 }
@@ -520,6 +532,7 @@ function markNav(){
   Object.keys(NAVMAP).forEach(k=>{const b=$('#nav-'+k);if(b)b.classList.toggle('on',k===on)});
   const T={bar:'Orders',inv:'Inventory',rep:'Reports',set:'Settings'};
   $('#topSearch').style.display=view==='pos'?'':'none';
+  $('#scanBtn').style.display=view==='pos'?'':'none';
   $('#topTitle').style.display=view==='pos'?'none':'block';
   $('#topTitle').textContent=T[on]||'';
 }
@@ -657,6 +670,83 @@ function chg(i,d){
   c.qty+=d;if(c.qty<=0)cart.splice(i,1);
   renderCart();
 }
+/* ---------- scan a customer's order QR ---------- */
+let loadedPending=null,scanStream=null,scanRaf=0,scanBusy=false;
+function stopScan(){cancelAnimationFrame(scanRaf);scanRaf=0;if(scanStream){scanStream.getTracks().forEach(t=>t.stop());scanStream=null}}
+function openScan(){
+  if(!ME||!can.pos.includes(ME.role))return;
+  if(cart.length){toast('Complete or hold the current order first');return}
+  scanBusy=false;
+  modal(`<h3>Scan customer order</h3>
+  <div class="scanbox"><video id="scanVid" playsinline muted></video></div>
+  <div class="scanmsg" id="scanMsg">Starting camera…</div>
+  <div class="lbl">Or type the code</div>
+  <div style="display:flex;gap:8px"><input id="scanCode" placeholder="e.g. K7QM2P" maxlength="12" autocapitalize="characters" autocomplete="off" style="text-transform:uppercase" onkeydown="if(event.key==='Enter')submitScanCode()"><button onclick="submitScanCode()">Load</button></div>
+  <div class="actions"><button class="ghost" onclick="closeModal()">Close</button></div>`);
+  if(window.matchMedia&&matchMedia('(pointer:fine)').matches){const i=$('#scanCode');if(i)i.focus()} // a handheld scanner types into this box
+  startScan();
+}
+function submitScanCode(){const v=($('#scanCode').value||'').trim();if(!v)return;closeModal();loadPending(v)}
+async function startScan(){
+  const msg=$('#scanMsg'),vid=$('#scanVid');
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){msg.textContent='The camera is not available here. Type the code below.';return}
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
+    if(!modalOpen()||!$('#scanVid')){stream.getTracks().forEach(t=>t.stop());return} // closed while asking permission
+    scanStream=stream;vid.srcObject=stream;await vid.play();vid.style.display='block';
+    msg.textContent="Point the camera at the customer's QR code";
+    let det=null;
+    if('BarcodeDetector' in window){try{det=new BarcodeDetector({formats:['qr_code']})}catch(e){}}
+    if(!det)await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js');
+    const cv=document.createElement('canvas'),cx=cv.getContext('2d',{willReadFrequently:true});
+    let last=0;
+    const loop=async t=>{
+      if(!scanStream||!$('#scanVid'))return;
+      scanRaf=requestAnimationFrame(loop);
+      if(t-last<200||scanBusy||vid.readyState<2)return;
+      last=t;scanBusy=true;
+      try{
+        let text='';
+        if(det){const r=await det.detect(vid);if(r.length)text=r[0].rawValue}
+        else if(vid.videoWidth){cv.width=vid.videoWidth;cv.height=vid.videoHeight;cx.drawImage(vid,0,0);const im=cx.getImageData(0,0,cv.width,cv.height),r=window.jsQR&&jsQR(im.data,im.width,im.height);if(r)text=r.data}
+        if(text){closeModal();loadPending(text)}
+      }catch(e){}
+      scanBusy=false;
+    };
+    scanRaf=requestAnimationFrame(loop);
+  }catch(e){
+    const m=$('#scanMsg');if(m)m.textContent='Cannot use the camera ('+(e&&e.name==='NotAllowedError'?'permission denied':(e&&e.message)||'not available')+'). Type the code below.';
+  }
+}
+async function loadPending(raw){
+  const code=String(raw||'').trim().toUpperCase().replace(/^POS:/,'').replace(/[^A-Z0-9]/g,'');
+  if(!code)return;
+  if(cart.length){toast('Complete or hold the current order first');return}
+  if(!navigator.onLine){toast('No internet. A connection is needed to load the order.');return}
+  try{
+    const d=await fs.collection('pending').doc(code).get();
+    if(!d.exists){toast('Order '+code+' was not found');return}
+    const p=d.data();
+    if(p.status!=='new'){toast('Order '+code+' was already used');return}
+    if((p.exp||0)<Date.now()){toast('Order '+code+' has expired. Ask the customer to order again.',4000);return}
+    const skipped=[];let added=0;
+    (p.items||[]).forEach(x=>{
+      const it=MENU.find(m=>m.id===x.id);
+      if(!it){skipped.push(x.name);return}
+      // prices are worked out again from the menu here; the phone's prices are ignored
+      const size=it.sized?((S.sizes.find(z=>z.n===x.size)||S.sizes[0]||{}).n||''):'';
+      const addons=it.sized?(x.addons||[]).filter(n=>S.addons.some(a=>a.n===n)):[];
+      const qty=Math.max(1,Math.min(20,parseInt(x.qty)||1));
+      if(addToCart(it,size,addons,qty,String(x.note||'').slice(0,60)))added++;else skipped.push(x.name);
+    });
+    if(!added){toast('None of the items could be added: '+skipped.join(', '),5000);return}
+    loadedPending={code,name:p.name||''};
+    $('#otype').value=p.type==='Take-out'?'Take-out':'Dine-in';
+    renderCart();
+    toast(skipped.length?'Loaded. Not added (sold out or removed): '+skipped.join(', '):'Order '+code+' loaded'+(p.name?' for '+p.name:''),skipped.length?6000:2500);
+  }catch(e){toast(errMsg(e))}
+}
+
 /* ---------- hold / resume orders (kept on this device) ---------- */
 function getHeld(){try{return JSON.parse(localStorage.getItem('pos_held'))||[]}catch(e){return []}}
 function setHeld(a){try{localStorage.setItem('pos_held',JSON.stringify(a.slice(-20)))}catch(e){toast('Could not save the held order')}}
@@ -664,9 +754,9 @@ function heldBadge(){const n=getHeld().length,b=$('#heldBtn');if(b){b.style.disp
 function holdOrder(){
   if(!cart.length)return;
   const h={id:Date.now(),ts:Date.now(),cart:cart,otype:$('#otype').value,disc:$('#disc').value,customPct:$('#customPct').value,pay:$('#pay').value,
-    name:$('#cName').value,phone:$('#cPhone').value,addr:$('#cAddr').value,fee:$('#dFee').value,by:ME?ME.name:''};
+    name:$('#cName').value,phone:$('#cPhone').value,addr:$('#cAddr').value,fee:$('#dFee').value,by:ME?ME.name:'',pend:loadedPending||null};
   const all=getHeld();all.push(h);setHeld(all);
-  cart=[];$('#tender').value='';$('#disc').value='none';$('#customPct').value='';$('#otype').value='Dine-in';$('#pay').value='Cash';
+  loadedPending=null;cart=[];$('#tender').value='';$('#disc').value='none';$('#customPct').value='';$('#otype').value='Dine-in';$('#pay').value='Cash';
   resetCustomer();renderCart();toast('Order put on hold');
 }
 function showHeld(){
@@ -683,6 +773,7 @@ function resumeHeld(id){
   cart=h.cart.filter(c=>MENU.some(m=>m.id===c.id)); // skip items removed from the menu
   $('#otype').value=h.otype||'Dine-in';$('#disc').value=h.disc||'none';$('#customPct').value=h.customPct||'';$('#pay').value=h.pay||'Cash';
   $('#cName').value=h.name||'';$('#cPhone').value=h.phone||'';$('#cAddr').value=h.addr||'';$('#dFee').value=h.fee||'';
+  loadedPending=cart.length?(h.pend||null):null;
   setHeld(all.filter(x=>x.id!==id));closeModal();renderCart();
   if(cart.length<h.cart.length)toast('Some items are no longer on the menu and were skipped',4000);
 }
@@ -692,7 +783,7 @@ function dropHeld(id){
 }
 function rmLine(i){cart.splice(i,1);renderCart()}
 function resetCustomer(){['#cName','#cPhone','#cAddr','#dFee'].forEach(s=>{$(s).value=''})}
-function clearCart(){cart=[];$('#tender').value='';resetCustomer();renderCart()}
+function clearCart(){loadedPending=null;cart=[];$('#tender').value='';resetCustomer();renderCart()}
 function onPayChange(){renderTotals();if($('#pay').value==='Credit')loadCustNames()}
 async function loadCustNames(){ // suggest names of past credit customers
   if(Date.now()-custNamesAt<60000)return;
@@ -730,12 +821,14 @@ function calc(){
 }
 function renderCart(){
   const el=$('#cartList');
-  el.innerHTML=cart.length?cart.map((c,i)=>{
+  if(!cart.length)loadedPending=null;
+  const pb=loadedPending?`<div class="warnbox" style="background:#eef6f0;border-color:#b9d8c4;color:#1f4d33">Customer order <b>${esc(loadedPending.code)}</b>${loadedPending.name?' · '+esc(loadedPending.name):''}</div>`:'';
+  el.innerHTML=pb+(cart.length?cart.map((c,i)=>{
     const m=MENU.find(x=>x.id===c.id)||{},line=[m.temp,c.size].filter(Boolean).join(' • '),extra=esc(c.addons.join(', '))+(c.note?(c.addons.length?' · ':'')+'“'+esc(c.note)+'”':'');
     return `<div class="ci"><div class="th">${m.photo?`<img src="${m.photo}" alt="">`:(m.sized?'☕':'🍰')}</div>
     <div class="mid"><b>${esc(c.name)}</b>${line?`<div class="sub">${esc(line)}</div>`:''}${extra?`<div class="sub">${extra}</div>`:''}
     <div class="qty"><button onclick="chg(${i},-1)">−</button><span>${c.qty}</span><button onclick="chg(${i},1)">+</button></div></div>
-    <div class="rt"><button class="x" title="Remove" onclick="rmLine(${i})">✕</button><div class="amt">${fmt(c.unit*c.qty)}</div></div></div>`}).join(''):'<div class="empty">No items yet. Pick from the menu.</div>';
+    <div class="rt"><button class="x" title="Remove" onclick="rmLine(${i})">✕</button><div class="amt">${fmt(c.unit*c.qty)}</div></div></div>`}).join(''):'<div class="empty">No items yet. Pick from the menu.</div>');
   renderTotals();
 }
 function renderTotals(){
@@ -776,6 +869,7 @@ async function placeOrder(){
   const trackedIds=Object.keys(need).filter(id=>{const m=MENU.find(x=>x.id===id);return m&&m.track});
   const ineed=ingNeed(cart),ingIds=Object.keys(ineed),blockOnOut=S.blockOnOut!==false;let alerts=[];
   const orderRef=fs.collection('orders').doc();
+  const pcode=loadedPending?loadedPending.code:''; // customer self-order this sale came from
   const cref=fs.collection('counters').doc(day);
   const items=cart.map(c=>({id:c.id,name:c.name,size:c.size,addons:c.addons,note:c.note,unit:c.unit,cost:c.cost==null?null:c.cost,qty:c.qty}));
   try{
@@ -801,12 +895,13 @@ async function placeOrder(){
         else if((g.low||0)>0&&left<=g.low)alerts.push(g.name+' ('+left+' '+g.unit+' left)');
       });
       const o={no,day,ts:Date.now(),type,items,sub:t.sub,discLabel:t.label,disc:t.disc,adj:t.adj,vatOn:t.vOn,vatRate:t.vr,vatMode:t.incl?'incl':'excl',vatable:t.vatable,vat:t.vat,vatExempt:t.exempt,total:t.total,pay,
-        tendered:cash?tend:(onCredit?0:t.total),change:cash?r2(tend-t.total):0,status:'preparing',ingUse:used,cashier:ME.name,cashierUid:ME.uid,
+        tendered:cash?tend:(onCredit?0:t.total),change:cash?r2(tend-t.total):0,status:'preparing',ingUse:used,cashier:ME.name,cashierUid:ME.uid,pendCode:pcode,
         fee:t.fee,custName:onCredit||isDelivery?custName:'',custPhone:onCredit||isDelivery?custPhone:'',custAddr:isDelivery?custAddr:''};
       if(onCredit)Object.assign(o,{paid:0,payments:[],payDays:[]});
       tx.set(orderRef,o);
       return Object.assign({id:orderRef.id},o);
     });
+    if(loadedPending){const lp=loadedPending;loadedPending=null;fs.collection('pending').doc(lp.code).update({status:'preparing',usedAt:Date.now(),orderNo:order.no}).catch(()=>{})}
     cart=[];$('#tender').value='';$('#disc').value='none';$('#customPct').value='';
     resetCustomer();
     if(onCredit)$('#pay').value='Cash';
@@ -876,7 +971,11 @@ function renderQueue(){
   $('#cPrep').textContent=prep.length;$('#cReady').textContent=rdy.length;
 }
 async function setStatus(id,s){
-  try{await fs.collection('orders').doc(id).update({status:s})}catch(e){toast(errMsg(e))}
+  try{
+    await fs.collection('orders').doc(id).update({status:s});
+    const o=ORDERS.find(x=>x.id===id); // let the customer's phone know (best effort)
+    if(o&&o.pendCode)fs.collection('pending').doc(o.pendCode).update({status:s}).catch(()=>{});
+  }catch(e){toast(errMsg(e))}
 }
 
 /* =====================================================================
@@ -1392,6 +1491,7 @@ async function voidOrder(id){
       idocs.forEach(d=>{if(!d.exists)return;const back=r2((d.data().stock||0)+iu[d.id]);tx.update(d.ref,{stock:back,log:addLog(d.data().log,'void',iu[d.id],back,'#'+String(od.data().no).padStart(3,'0'))})});
       tx.update(oref,{status:'void',voidedBy:ME.name,voidedAt:Date.now()});
     });
+    if(o.pendCode)fs.collection('pending').doc(o.pendCode).update({status:'cancelled'}).catch(()=>{});
     toast('Order voided');aReports();
   }catch(e){toast(errMsg(e))}
 }
@@ -1744,6 +1844,11 @@ async function resetPw(i){
 function aSettings(){
   $('#aContent').innerHTML=`<div class="lbl" style="margin-top:0">Shop name</div><input id="sShop" value="${esc(S.shop)}">
   <div class="lbl">PWD / Senior discount (%)</div><input id="sPwd" type="number" min="0" max="100" value="${S.pwdRate}">
+  <h4>Customer ordering (QR for the wall)</h4>
+  <div class="lbl" style="margin-top:0">Customer page address (where order.html is uploaded)</div>
+  <input id="sOrdUrl" value="${esc(orderUrl())}" placeholder="https://yourshop.web.app/order.html">
+  <small style="color:var(--mut)">Customers scan the QR to open this page and order from their phone.</small>
+  <div class="actions" style="justify-content:flex-start"><button onclick="showWallQR()">Show / print QR poster</button></div>
   <h4>Sidebar logo</h4>
   <div class="lbl" style="margin-top:0">Logo shown at the top of the sidebar (PNG with transparent background works best)</div>
   <div id="sideLogoPrev" style="margin:6px 0"></div>
@@ -1791,6 +1896,22 @@ function parseLines(t){
     if(p.length===2)return {n:p[0],v:num(p[1]),c:0};
     return {n:p[0],v:0,c:0};
   }).filter(x=>x.n);
+}
+function orderUrl(){return S.orderUrl||(location.href.split('#')[0].split('?')[0].replace(/[^\/]*$/,'')+'order.html')}
+async function showWallQR(){
+  const url=(($('#sOrdUrl')||{}).value||orderUrl()).trim();
+  if(!/^https?:\/\//i.test(url)){toast('Enter the full address starting with https://');return}
+  try{
+    if(!window.qrcode)await loadScript('https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js');
+    const q=qrcode(0,'M');q.addData(url);q.make();
+    const img=q.createDataURL(10,2);
+    modal(`<div id="posterPrint" class="poster">${S.sideLogo?`<img class="logo" src="${S.sideLogo}" alt="">`:''}
+      <h2>${esc(S.shop)}</h2><div style="font-size:20px;font-weight:600;margin-bottom:8px">Scan to order</div>
+      <img class="qr" src="${img}" alt="QR code">
+      <div style="margin-top:10px;color:#5b4a3d">Pick your drinks on your phone, then show your QR code at the counter.</div>
+      <div style="margin-top:8px;font-size:11px;color:#8a7a6a;word-break:break-all">${esc(url)}</div></div>
+    <div class="actions"><button class="ghost" onclick="closeModal()">Close</button><button onclick="window.print()">Print</button></div>`);
+  }catch(e){toast(errMsg(e),4000)}
 }
 let pendingSide; // undefined = unchanged, '' = default icon, data URL = new sidebar logo
 function sideLogoPrev(){
@@ -1861,7 +1982,7 @@ async function saveSettings(){
   if(!sizes.length){toast('At least one size is required');return}
   const d={shop:$('#sShop').value.trim()||'Coffee Shop',pwdRate:Math.min(100,Math.max(0,parseFloat($('#sPwd').value)||0)),
     sizes,addons:parseLines($('#sAdd').value).map(x=>({n:x.n,p:x.v,cost:x.c}))};
-  Object.assign(d,{address:$('#sAddr').value.trim(),phone:$('#sPhone').value.trim(),tin:$('#sTin').value.trim(),footer:$('#sFoot').value.trim(),
+  Object.assign(d,{orderUrl:($('#sOrdUrl')||{value:''}).value.trim(),address:$('#sAddr').value.trim(),phone:$('#sPhone').value.trim(),tin:$('#sTin').value.trim(),footer:$('#sFoot').value.trim(),
     vatOn:$('#sVatOn').checked,vatRate:Math.min(100,Math.max(0,parseFloat($('#sVatRate').value)||0)),vatMode:$('#sVatMode').value,pwdVatExempt:$('#sPwdEx').checked,blockOnOut:$('#sBlock').checked});
   if(d.vatOn&&!(d.vatRate>0)){toast('Enter a VAT rate above 0');return}
   if(pendingLogo!==undefined)d.logo=pendingLogo;
