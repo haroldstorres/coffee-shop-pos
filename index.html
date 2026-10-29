@@ -74,14 +74,28 @@ main{padding:0 22px 22px}
 .ph-up .pv{width:84px;height:64px;border-radius:10px;background:linear-gradient(135deg,#e8d8c4,#c9a583);display:flex;align-items:center;justify-content:center;font-size:28px;overflow:hidden;flex:none}
 .ph-up .pv img{width:100%;height:100%;object-fit:cover}
 .search{margin-bottom:10px}
-.ci{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px dashed var(--line)}
-.ci .sub{color:var(--mut);font-size:12px}
-.qty{display:flex;align-items:center;gap:6px}
-.qty button{padding:2px 9px;background:#fff;color:var(--brand);border:1px solid var(--line)}
-.amt{min-width:70px;text-align:right;font-weight:600}
+.ci{display:grid;grid-template-columns:64px 1fr auto;gap:12px;align-items:stretch;padding:14px 0;border-bottom:1px solid var(--line)}
+.ci .th{width:64px;height:64px;border-radius:10px;background:linear-gradient(135deg,#e8d8c4,#c9a583);display:flex;align-items:center;justify-content:center;font-size:26px;overflow:hidden}
+.ci .th img{width:100%;height:100%;object-fit:cover;display:block}
+.ci .mid{display:flex;flex-direction:column;gap:3px;min-width:0}
+.ci .mid b{font-weight:600}
+.ci .sub{color:var(--mut);font-size:12px;line-height:1.35}
+.ci .rt{display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between}
+.ci .x{background:transparent;color:#8a7a6a;padding:0 2px;font-size:16px;line-height:1}
+.ci .x:hover{color:var(--bad)}
+.qty{display:flex;align-items:center;gap:6px;margin-top:6px}
+.qty button{width:30px;height:30px;padding:0;background:#fffdf9;color:#2a1d16;border:1px solid var(--line);border-radius:8px;font-size:16px}
+.qty span{min-width:44px;height:30px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:8px;background:#fff}
+.amt{min-width:70px;text-align:right;font-weight:700;font-size:16px}
+.ohead{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.ohead h3{margin:0;font-size:20px}
+.ohead button{display:flex;align-items:center;gap:6px;background:transparent;color:#2a1d16;padding:6px 4px;font-weight:600}
+.ohead svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .empty{color:var(--mut);text-align:center;padding:22px 0}
-.row{display:flex;justify-content:space-between;margin:5px 0}
-.row.total{font-size:20px;font-weight:700;border-top:2px solid var(--ink);padding-top:8px;margin-top:8px}
+.row{display:flex;justify-content:space-between;margin:8px 0;color:#5b4a3d}
+.row>span:last-child,.row>b{color:var(--ink);font-weight:500}
+.row.total{font-size:26px;font-weight:700;color:var(--ink);border-top:1px solid var(--line);padding-top:14px;margin-top:12px}
+.row.total>span:last-child{font-weight:700}
 .lbl{font-size:12px;color:var(--mut);margin:10px 0 4px;text-transform:uppercase;letter-spacing:.04em}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .quick{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
@@ -186,11 +200,8 @@ code{background:#f1e9df;padding:1px 5px;border-radius:5px}
           <div class="grid" id="menuGrid"></div>
         </div>
         <div class="card">
-          <h3 style="margin:0 0 6px">Current Order</h3>
-          <div class="two">
-            <select id="otype" onchange="renderTotals()"><option>Dine-in</option><option>Take-out</option><option>Delivery</option></select>
-            <button class="ghost" onclick="clearCart()">Clear all</button>
-          </div>
+          <div class="ohead"><h3>Current Order</h3><button onclick="clearCart()"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-12M9 7V4h6v3"/></svg>Clear</button></div>
+          <select id="otype" onchange="renderTotals()"><option>Dine-in</option><option>Take-out</option><option>Delivery</option></select>
           <div id="cartList"></div>
           <div id="custBox" style="display:none">
             <div class="lbl">Customer</div>
@@ -634,6 +645,7 @@ function chg(i,d){
   c.qty+=d;if(c.qty<=0)cart.splice(i,1);
   renderCart();
 }
+function rmLine(i){cart.splice(i,1);renderCart()}
 function resetCustomer(){['#cName','#cPhone','#cAddr','#dFee'].forEach(s=>{$(s).value=''})}
 function clearCart(){cart=[];$('#tender').value='';resetCustomer();renderCart()}
 function onPayChange(){renderTotals();if($('#pay').value==='Credit')loadCustNames()}
@@ -673,8 +685,12 @@ function calc(){
 }
 function renderCart(){
   const el=$('#cartList');
-  el.innerHTML=cart.length?cart.map((c,i)=>`<div class="ci"><div><b>${esc(c.name)}</b>${c.size?` <small>(${esc(c.size)})</small>`:''}<div class="sub">${esc(c.addons.join(', '))}${c.note?(c.addons.length?' · ':'')+'“'+esc(c.note)+'”':''}</div></div>
-  <div class="qty"><button onclick="chg(${i},-1)">−</button><span>${c.qty}</span><button onclick="chg(${i},1)">+</button></div><div class="amt">${fmt(c.unit*c.qty)}</div></div>`).join(''):'<div class="empty">No items yet. Pick from the menu.</div>';
+  el.innerHTML=cart.length?cart.map((c,i)=>{
+    const m=MENU.find(x=>x.id===c.id)||{},line=[m.temp,c.size].filter(Boolean).join(' • '),extra=esc(c.addons.join(', '))+(c.note?(c.addons.length?' · ':'')+'“'+esc(c.note)+'”':'');
+    return `<div class="ci"><div class="th">${m.photo?`<img src="${m.photo}" alt="">`:(m.sized?'☕':'🍰')}</div>
+    <div class="mid"><b>${esc(c.name)}</b>${line?`<div class="sub">${esc(line)}</div>`:''}${extra?`<div class="sub">${extra}</div>`:''}
+    <div class="qty"><button onclick="chg(${i},-1)">−</button><span>${c.qty}</span><button onclick="chg(${i},1)">+</button></div></div>
+    <div class="rt"><button class="x" title="Remove" onclick="rmLine(${i})">✕</button><div class="amt">${fmt(c.unit*c.qty)}</div></div></div>`}).join(''):'<div class="empty">No items yet. Pick from the menu.</div>';
   renderTotals();
 }
 function renderTotals(){
