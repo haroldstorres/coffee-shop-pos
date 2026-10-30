@@ -1076,7 +1076,9 @@ async function loadPending(raw){
     });
     if(!added){toast('Cannot load this order. '+skipped.join('; '),7000);return}
     loadedPending={code,name:p.name||''};
-    $('#otype').value=p.type==='Take-out'?'Take-out':'Dine-in';
+    const orderType=['Take-out','Delivery'].includes(p.type)?p.type:'Dine-in';
+    $('#otype').value=orderType;
+    if(orderType==='Delivery'){$('#cName').value=p.name||'';$('#cPhone').value=p.phone||'';$('#cAddr').value=p.addr||''} // the cashier adds the delivery fee
     renderCart();
     toast(skipped.length?'Loaded. Not added: '+skipped.join('; '):'Order '+code+' loaded'+(p.name?' for '+p.name:''),skipped.length?6000:2500);
   }catch(e){toast(errMsg(e))}
@@ -1092,7 +1094,7 @@ function startPending(){
   let seen=false;
   unsubs.push(fs.collection('pending').where('status','==','new').onSnapshot(q=>{
     PENDING=q.docs.map(d=>Object.assign({id:d.id},d.data()));
-    if(seen)q.docChanges().forEach(c=>{if(c.type==='added'&&!c.doc.metadata.hasPendingWrites){const p=c.doc.data();toast('New online order '+c.doc.id+(p.name?' · '+p.name:''),4000)}});
+    if(seen)q.docChanges().forEach(c=>{if(c.type==='added'&&!c.doc.metadata.hasPendingWrites){const p=c.doc.data();toast((p.type==='Delivery'?'New DELIVERY order ':'New online order ')+c.doc.id+(p.name?' · '+p.name:''),4000)}});
     seen=true;
     onlBadge();
     if(modalOpen()&&$('#onlList'))renderOnline();
@@ -1114,11 +1116,18 @@ function showOnline(){
   $('#modal').classList.add('wide');
   renderOnline();
 }
-function renderOnline(){
+function onlineRow(p){
+  const delivery=p.type==='Delivery';
+  return `<div class="held-row"><div><b>${esc(p.code)}</b> · ${esc(p.type)} · ${tstr(p.ts)}${p.name?' · '+esc(p.name):''} · about ${fmt(p.sub)}
+    <small>${esc((p.items||[]).map(i=>i.qty+'× '+i.name+(i.size?' ('+i.size+')':'')).join(', '))}</small>
+    ${delivery?`<small style="display:block">📞 ${esc(p.phone||'')} · 📍 ${esc(p.addr||'')}</small>`:''}</div>
+    <div style="display:flex;gap:6px"><button onclick="loadOnline('${esc(p.id)}')">Load</button><button class="bad" onclick="cancelOnline('${esc(p.id)}')">Cancel</button></div></div>`;
+}
+function renderOnline(){ // delivery orders are listed apart from dine-in and take-out
   const list=livePending(),old=PENDING.length-list.length;
-  $('#onlList').innerHTML=(list.map(p=>`<div class="held-row"><div><b>${esc(p.code)}</b> · ${esc(p.type)} · ${tstr(p.ts)}${p.name?' · '+esc(p.name):''} · about ${fmt(p.sub)}
-    <small>${esc((p.items||[]).map(i=>i.qty+'× '+i.name+(i.size?' ('+i.size+')':'')).join(', '))}</small></div>
-    <div style="display:flex;gap:6px"><button onclick="loadOnline('${esc(p.id)}')">Load</button><button class="bad" onclick="cancelOnline('${esc(p.id)}')">Cancel</button></div></div>`).join('')||'<div class="empty">No new online orders.</div>')
+  const deliveryList=list.filter(p=>p.type==='Delivery'),otherList=list.filter(p=>p.type!=='Delivery');
+  const group=(title,rows)=>rows.length?`<h4 style="margin:12px 0 6px">${title} (${rows.length})</h4>`+rows.map(onlineRow).join(''):'';
+  $('#onlList').innerHTML=(group('🛵 Delivery',deliveryList)+group('🍽️ Dine-in / Take-out',otherList)||'<div class="empty">No new online orders.</div>')
     +(old?`<div style="margin-top:10px;color:var(--mut);font-size:13px">${old} expired order(s) not scanned. <button class="ghost" style="padding:4px 10px" onclick="cleanPending(false)">Clear expired</button></div>`:'');
 }
 function loadOnline(code){
