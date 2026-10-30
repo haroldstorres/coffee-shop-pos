@@ -229,11 +229,11 @@ main{padding:0 22px 22px}
 .menu button.sub.on{background:rgba(255,255,255,.1);color:#fff}
 #adminBody .subtabs{display:none} /* the sub-tabs now live in the sidebar */
 @media(max-width:900px){.menu button.sub{padding:7px 8px 7px 34px;font-size:13px}}
-.cartcard{position:sticky;top:74px;height:calc(100vh - 96px);min-height:420px;display:flex;flex-direction:column;overflow-y:auto}
+.cartcard{position:sticky;top:74px;max-height:calc(100vh - 96px);display:flex;flex-direction:column;overflow-y:auto}
 .cartcard>.ohead,.cartcard>#otype,.cartcard>.cfoot{flex:none}
-.cscroll{flex:1 1 0;min-height:140px;overflow-y:auto;overscroll-behavior:contain;margin:8px -6px 0 0;padding-right:6px}
+.cscroll{flex:1 1 auto;min-height:140px;overflow-y:auto;overscroll-behavior:contain;margin:8px -6px 0 0;padding-right:6px}
 .cfoot{padding-top:2px}
-@media(max-width:900px){.cartcard{position:static;height:auto;min-height:0;overflow:visible}.cscroll{overflow:visible;margin-right:0;padding-right:0}}
+@media(max-width:900px){.cartcard{position:static;max-height:none;overflow:visible}.cscroll{overflow:visible;margin-right:0;padding-right:0}}
 .actbar{display:grid;grid-template-columns:1fr 1.5fr;gap:10px;margin-top:16px}
 .actbar button{display:flex;align-items:center;justify-content:center;gap:8px;padding:15px 10px;font-size:16px;font-weight:600;border-radius:12px}
 .actbar svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
