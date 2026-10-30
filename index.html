@@ -310,6 +310,11 @@ td.n,th.n{text-align:right}
 .limtrk.full i{background:var(--warn)}
 #overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:20;padding:14px}
 #overlay.on{display:flex}
+#cfm{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:25;padding:14px}
+#cfm.on{display:flex}
+#cfmBox{background:#fff;border-radius:16px;padding:20px;width:100%;max-width:360px;box-shadow:0 12px 40px rgba(0,0,0,.25)}
+#cfmBox h3{margin:0 0 8px}
+#cfmBox p{margin:0;color:var(--mut);white-space:pre-line}
 #modal{background:#fff;border-radius:16px;padding:18px;width:100%;max-width:440px;max-height:92vh;overflow:auto}
 #modal h3{margin:0 0 8px}
 .stabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
@@ -515,6 +520,7 @@ code{background:#f1e9df;padding:1px 5px;border-radius:5px}
 </div>
 
 <div id="overlay"><div id="modal"></div></div>
+<div id="cfm" role="dialog" aria-modal="true"><div id="cfmBox"></div></div>
 <div id="toast"></div>
 
 <script>
@@ -566,6 +572,28 @@ function restoreDraft(n){
   saveDraft();
 }
 function closeModal(){stopScan();draftKind=null;try{localStorage.removeItem('pos_draft')}catch(e){}$('#overlay').classList.remove('on');if(view==='admin'){if(aTab==='menu')aMenu();else if(aTab==='ing')aIng()}}
+/* ---------- our own confirm card (instead of the browser's confirm box) ---------- */
+let confirmDone=null;
+function askConfirm(message,opts){ // resolves true on OK, false on Cancel, Esc or a tap outside the card
+  opts=opts||{};
+  if(confirmDone)confirmDone(false); // only one card at a time
+  return new Promise(resolve=>{
+    $('#cfmBox').innerHTML=`<h3>${esc(opts.title||'Are you sure?')}</h3><p>${esc(message)}</p>
+      <div class="actions"><button class="ghost" id="cfmNo">${esc(opts.noText||'Cancel')}</button><button id="cfmYes" class="${opts.danger?'bad':''}">${esc(opts.yesText||'OK')}</button></div>`;
+    const onKey=e=>{if(e.key==='Escape')finish(false)};
+    const finish=answer=>{
+      confirmDone=null;$('#cfm').classList.remove('on');
+      document.removeEventListener('keydown',onKey);resolve(answer);
+    };
+    document.addEventListener('keydown',onKey);
+    $('#cfmYes').onclick=()=>finish(true);
+    $('#cfmNo').onclick=()=>finish(false);
+    $('#cfm').onclick=e=>{if(e.target.id==='cfm')finish(false)};
+    confirmDone=finish;
+    $('#cfm').classList.add('on');
+    $(opts.danger?'#cfmNo':'#cfmYes').focus(); // risky actions start on Cancel
+  });
+}
 function modalOpen(){return $('#overlay').classList.contains('on')}
 function errMsg(e){
   const c=(e&&e.code)||'';
@@ -1137,15 +1165,15 @@ function renderOnline(){
   $('#onlList').innerHTML=(list.map(onlineRow).join('')||`<div class="empty">${onlKind==='delivery'?'No new delivery orders.':'No new online orders.'}</div>`)
     +(old?`<div style="margin-top:10px;color:var(--mut);font-size:13px">${old} expired order(s) not scanned. <button class="ghost" style="padding:4px 10px" onclick="cleanPending(false)">Clear expired</button></div>`:'');
 }
-function loadOnline(code){
+async function loadOnline(code){
   if(cart.length){
-    if(!confirm('Put the current order on hold and load this online order?'))return;
+    if(!await askConfirm('Put the current order on hold and load this online order?',{title:'Hold current order?',yesText:'Hold and load'}))return;
     holdOrder(); // the held order can be resumed from the Held button
   }
   closeModal();loadPending(code);
 }
 async function cancelOnline(id){
-  if(!confirm('Cancel this online order? The customer will see it as cancelled.'))return;
+  if(!await askConfirm('The customer will see it as cancelled.',{title:'Cancel this online order?',yesText:'Cancel order',noText:'Keep',danger:true}))return;
   try{await fs.collection('pending').doc(id).update({status:'cancelled'})}catch(e){toast(errMsg(e))}
 }
 
@@ -1179,8 +1207,8 @@ function resumeHeld(id){
   setHeld(all.filter(x=>x.id!==id));closeModal();renderCart();
   if(cart.length<h.cart.length)toast('Some items are no longer on the menu and were skipped',4000);
 }
-function dropHeld(id){
-  if(!confirm('Delete this held order?'))return;
+async function dropHeld(id){
+  if(!await askConfirm('It will be removed from the Held list.',{title:'Delete this held order?',yesText:'Delete',danger:true}))return;
   setHeld(getHeld().filter(x=>x.id!==id));showHeld();heldBadge();
 }
 function rmLine(i){cart.splice(i,1);renderCart()}
@@ -1576,7 +1604,7 @@ async function saveItem(id){
 }
 async function delItem(id){
   const m=MENU.find(x=>x.id===id);
-  if(!m||!confirm('Delete "'+m.name+'"? (Past orders stay in reports.)'))return;
+  if(!m||!await askConfirm('Past orders stay in reports.',{title:'Delete "'+m.name+'"?',yesText:'Delete',danger:true}))return;
   try{const b=fs.batch();b.delete(fs.collection('menu').doc(id));bump(b,'items',-1);await b.commit()}catch(e){toast(errMsg(e))}
 }
 
@@ -1670,7 +1698,7 @@ async function delIng(id){
   const g=ingById(id);if(!g)return;
   const used=MENU.filter(m=>(m.recipe||[]).some(r=>r.ing===id)).map(m=>m.name).concat((S.addonUse||[]).filter(u=>u.ing===id).map(u=>u.n));
   if(used.length){toast('Still used by: '+used.join(', ')+'. Remove it from there first.',5000);return}
-  if(!confirm('Delete "'+g.name+'"?'))return;
+  if(!await askConfirm('This cannot be undone.',{title:'Delete "'+g.name+'"?',yesText:'Delete',danger:true}))return;
   try{await fs.collection('ingredients').doc(id).delete()}catch(e){toast(errMsg(e))}
 }
 async function saveAddonUse(){
@@ -2106,7 +2134,7 @@ async function aZ(){
 }
 async function saveZ(){
   const date=zDate,fl=r2(parseFloat($('#zF').value)||0),cc=$('#zC').value.trim()===''?null:r2(parseFloat($('#zC').value)||0);
-  if(!confirm('Save the Z-Reading for '+date+'? It cannot be edited or deleted afterwards.'))return;
+  if(!await askConfirm('It cannot be edited or deleted afterwards.',{title:'Save the Z-Reading for '+date+'?',yesText:'Save'}))return;
   try{
     const zData=await zLoad(date);
     const Z=zCompute(zData.orders,zData.pays);
@@ -2166,7 +2194,7 @@ async function setExpRec(id,v){
   aExpenses();
 }
 async function delExpense(id){
-  if(!confirm('Delete this expense?'))return;
+  if(!await askConfirm('This cannot be undone.',{title:'Delete this expense?',yesText:'Delete',danger:true}))return;
   try{await fs.collection('expenses').doc(id).delete();aExpenses()}catch(e){toast(errMsg(e))}
 }
 
@@ -2198,7 +2226,7 @@ async function aReports(silent){
 }
 async function voidOrder(id){
   const o=RORDERS.find(x=>x.id===id);
-  if(!o||!confirm('Void order '+ono(o)+'? Stock and ingredients will be restored.'))return;
+  if(!o||!await askConfirm('Stock and ingredients will be restored.',{title:'Void order '+ono(o)+'?',yesText:'Void order',noText:'Keep',danger:true}))return;
   try{
     await fs.runTransaction(async tx=>{
       const oref=fs.collection('orders').doc(id);
