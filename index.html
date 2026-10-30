@@ -67,6 +67,11 @@ main{padding:0 22px 22px}
 .item .ph img{width:100%;height:100%;object-fit:cover;display:block}
 .item .tag{position:absolute;top:8px;right:8px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:8px;color:#fff}
 .item .tag.hot{background:#c98a3a}.item .tag.iced{background:#5b7d99}
+.item.isbest{border-color:#d4a73a;box-shadow:0 0 0 1px rgba(212,167,58,.45),0 4px 14px rgba(212,167,58,.28)}
+.item .best{position:absolute;top:8px;left:8px;z-index:1;overflow:hidden;font-size:11px;font-weight:700;padding:3px 10px;border-radius:8px;color:#4a3300;background:linear-gradient(135deg,#f6d36b,#e0a526);box-shadow:0 2px 6px rgba(0,0,0,.25)}
+.item .best::after{content:"";position:absolute;top:0;left:-60%;width:40%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.75),transparent);transform:skewX(-20deg);animation:bshine 1.6s .5s 1}
+@keyframes bshine{from{left:-60%}to{left:130%}}
+@media(prefers-reduced-motion:reduce){.item .best::after{animation:none}}
 .item .nm{padding:10px 12px 0;font-size:15px;font-weight:500}
 .item .pr{padding:4px 12px 0;color:var(--ink);font-weight:700}
 .item small{padding:2px 12px 11px;color:var(--mut);font-size:12px}
@@ -880,11 +885,11 @@ function renderMenu(){
   const cl=catList();if(!cl.includes(cat))cat='All';
   $('#cats').innerHTML=cl.map((c,i)=>`<button class="${c===cat?'on':''}" onclick="setCat(${i})">${esc(c)}</button>`).join('');
   const q=($('#q').value||'').toLowerCase();
-  const list=MENU.filter(m=>(cat==='All'||m.cat===cat)&&String(m.name).toLowerCase().includes(q));
+  const list=MENU.filter(m=>(cat==='All'||m.cat===cat)&&String(m.name).toLowerCase().includes(q)).sort((a,b)=>(!!b.best)-(!!a.best)); // best sellers first
   $('#menuGrid').innerHTML=list.length?list.map(m=>{
     const out=m.track&&m.stock<=0,noIng=!!shortIngredient([{id:m.id,size:m.sized&&S.sizes[0]?S.sizes[0].n:'',addons:[],qty:1}]);
     const tg=m.temp==='Hot'?'hot':m.temp==='Iced'?'iced':'';
-    return `<button class="item ${out||noIng?'out':''}" onclick="openItem('${m.id}')"><div class="ph">${m.photo?`<img src="${m.photo}" alt="" loading="lazy">`:(m.sized?'☕':'🍰')}</div>${tg?`<span class="tag ${tg}">${m.temp}</span>`:''}<span class="nm">${esc(m.name)}</span><span class="pr">${fmt(m.price)}${m.sized?'+':''}</span>${noIng?'<small>No ingredients</small>':m.track?`<small>${out?'Sold out':'Stock: '+m.stock}</small>`:`<small>${esc(m.cat)}</small>`}</button>`;
+    return `<button class="item ${out||noIng?'out':''}${m.best?' isbest':''}" onclick="openItem('${m.id}')"><div class="ph">${m.photo?`<img src="${m.photo}" alt="" loading="lazy">`:(m.sized?'☕':'🍰')}</div>${m.best?'<span class="best">🔥 Best Seller</span>':''}${tg?`<span class="tag ${tg}">${m.temp}</span>`:''}<span class="nm">${esc(m.name)}</span><span class="pr">${fmt(m.price)}${m.sized?'+':''}</span>${noIng?'<small>No ingredients</small>':m.track?`<small>${out?'Sold out':'Stock: '+m.stock}</small>`:`<small>${esc(m.cat)}</small>`}</button>`;
   }).join(''):'<div class="empty">No items.</div>';
 }
 let iQty=1,curG=[],curId='';
@@ -1566,9 +1571,9 @@ function ingBanner(){
   ${aTab==='ing'?'':'· <a href="#" onclick="aTab=\'ing\';renderAdmin();return false">Open Ingredients</a>'}</div>`;
 }
 function aMenu(){
-  $('#aContent').innerHTML=`<div class="toolbar" style="align-items:center"><button ${limBlocked('items')?'disabled':''} onclick="editItem(null)">+ New item</button>${limCounter('items')}</div>${limNote('items')}
+  $('#aContent').innerHTML=`<div class="toolbar" style="align-items:center"><button ${limBlocked('items')?'disabled':''} onclick="editItem(null)">+ New item</button><button class="ghost" onclick="updateBest()" title="Marks the top 5 items sold in the last 30 days">🔥 Update best sellers</button>${limCounter('items')}</div>${limNote('items')}
   <table><tr><th>Item</th><th>Category</th><th class="n">Price</th><th class="n">Cost</th><th class="n">Margin</th><th class="n">Stock</th><th></th></tr>
-  ${MENU.map(m=>`<tr><td>${esc(m.name)}${m.sized?' <span class="badge">size</span>':''}</td><td>${esc(m.cat)}</td><td class="n">${fmt(m.price)}</td>
+  ${MENU.map(m=>`<tr><td>${m.best?'🔥 ':''}${esc(m.name)}${m.sized?' <span class="badge">size</span>':''}</td><td>${esc(m.cat)}</td><td class="n">${fmt(m.price)}</td>
   <td class="n">${(()=>{const c=baseCost(m,null);return c==null?'<span class="low">not set</span>':fmt(c)+(m.cost==null?' <small>(auto)</small>':'')})()}</td>
   <td class="n">${(()=>{const c=baseCost(m,null);return c==null||!(m.price>0)?'—':((m.price-c)/m.price*100).toFixed(1)+'%'})()}</td>
   <td class="n">${m.track?`<span class="${m.stock<=3?'low':''}">${m.stock}</span>`:'—'}</td>
@@ -1584,6 +1589,7 @@ function editItem(id){
   <div class="ph-up"><div class="pv" id="phPrev">${m.photo?`<img src="${m.photo}" alt="">`:'☕'}</div>
   <div style="flex:1"><input type="file" accept="image/*" onchange="pickPhoto(this)"><button class="ghost" style="margin-top:6px;padding:5px 10px" onclick="clearPhoto()">Remove photo</button></div></div>
   <div class="two"><div><div class="lbl">Tag on card</div><select id="fTm"><option value="">None</option><option ${m.temp==='Hot'?'selected':''}>Hot</option><option ${m.temp==='Iced'?'selected':''}>Iced</option></select></div><div></div></div>
+  <label style="display:block;margin-top:10px"><input id="fB" type="checkbox" style="width:auto" ${m.best?'checked':''}> 🔥 Best seller (shows a badge on the card)</label>
   <div class="two"><div><div class="lbl">Category</div><input id="fC" list="catList" value="${esc(m.cat)}"><datalist id="catList">${catList().filter(c=>c!=='All').map(c=>`<option value="${esc(c)}">`).join('')}</datalist></div>
   <div><div class="lbl">Price (base)</div><input id="fP" type="number" min="0" step="0.01" value="${m.price}"></div></div>
   <div class="lbl">Cost per item (leave blank to work it out from the recipe)</div><input id="fCo" type="number" min="0" step="0.01" placeholder="e.g. 28.50" value="${m.cost==null?'':m.cost}">
@@ -1636,7 +1642,7 @@ function addRecipeRow(){
 }
 async function saveItem(id){
   const name=$('#fN').value.trim();if(!name){toast('Enter a name');return}
-  const d={name,cat:$('#fC').value.trim()||'Others',price:Math.max(0,r2(parseFloat($('#fP').value)||0)),cost:$('#fCo').value.trim()===''?null:Math.max(0,r2(parseFloat($('#fCo').value)||0)),sized:$('#fS').checked,track:$('#fT').checked,stock:Math.max(0,parseInt($('#fK').value)||0),temp:$('#fTm').value,groups:[...document.querySelectorAll('#modal .fG:checked')].map(x=>x.value)};
+  const d={name,cat:$('#fC').value.trim()||'Others',price:Math.max(0,r2(parseFloat($('#fP').value)||0)),cost:$('#fCo').value.trim()===''?null:Math.max(0,r2(parseFloat($('#fCo').value)||0)),sized:$('#fS').checked,track:$('#fT').checked,stock:Math.max(0,parseInt($('#fK').value)||0),temp:$('#fTm').value,best:$('#fB').checked,groups:[...document.querySelectorAll('#modal .fG:checked')].map(x=>x.value)};
   if(pendingPhoto!==undefined)d.photo=pendingPhoto;
   const rec={};
   document.querySelectorAll('#rList .rrow').forEach(r=>{
@@ -1651,6 +1657,21 @@ async function saveItem(id){
       const b=fs.batch();b.set(fs.collection('menu').doc(),d);bump(b,'items',1);await b.commit();
     }
     closeModal();
+  }catch(e){toast(errMsg(e))}
+}
+async function updateBest(){ // the top 5 items sold in the last 30 days get the Best Seller badge
+  const t=todayStr(),f=dstr(Date.now()-29*864e5);
+  if(!await askConfirm('The top 5 items sold from '+f+' to '+t+' will get the Best Seller badge. The badge is removed from all other items, including ones you marked by hand.',{title:'Update best sellers?',yesText:'Update'}))return;
+  try{
+    const q=await fs.collection('orders').where('day','>=',f).where('day','<=',t).get();
+    const sold={};
+    q.docs.forEach(d=>{const o=d.data();if(o.status==='void')return;(o.items||[]).forEach(i=>{sold[i.id]=(sold[i.id]||0)+i.qty})});
+    const top=Object.entries(sold).filter(([id])=>MENU.some(m=>m.id===id)).sort((a,b)=>b[1]-a[1]).slice(0,5).map(x=>x[0]);
+    if(!top.length){toast('No sales in the last 30 days yet');return}
+    const b=fs.batch();let n=0;
+    MENU.forEach(m=>{const want=top.includes(m.id);if(!!m.best!==want){b.update(fs.collection('menu').doc(m.id),{best:want});n++}});
+    if(n)await b.commit();
+    toast('Best sellers: '+top.map(id=>MENU.find(m=>m.id===id).name).join(', '),7000);
   }catch(e){toast(errMsg(e))}
 }
 async function delItem(id){
