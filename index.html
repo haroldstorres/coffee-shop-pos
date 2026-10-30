@@ -119,6 +119,14 @@ main{padding:0 22px 22px}
 .dg2e .dpanel{min-width:0;overflow-x:auto}
 .dcol{display:flex;flex-direction:column;gap:12px;min-width:0}
 .dcol>.dpanel{margin:0;flex:1}
+.dpair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+.dpair>.dpanel{margin:0;min-width:0;padding:12px 12px}
+.dpair .dn2{flex-direction:column;align-items:flex-start;gap:6px;flex-wrap:nowrap}
+.dpair .dn2 svg{width:92px;height:92px}
+.dpair .dn2 ul{min-width:0;width:100%;font-size:12px}
+.dpair .dn2 li{flex-wrap:wrap;gap:2px 6px}
+.dpair .dn2 li span{flex:1 1 auto}
+.dpair h4{font-size:14px}
 .mini{position:relative;border:1px solid var(--line);border-left:4px solid var(--ac);border-radius:12px;padding:12px 14px}
 .mini b{display:block;font-size:22px;line-height:1.3;margin-top:2px}
 .mini .mdot{position:absolute;top:12px;right:12px;width:10px;height:10px;border-radius:50%;background:var(--ac)}
@@ -1846,13 +1854,13 @@ async function aDash(silent){
   <div class="dg2">
     ${hourPanel()}
     <div class="dcol">
+      <div class="dpair">
+        <div class="dpanel ac" style="--ac:#2f6fb3"><h4>Where the sales went</h4>${donut(ringParts,A.sales>0?{t:pct(A.net,A.sales),s:'net profit'}:null)}
+          ${A.net<0&&A.orders?`<div class="warnbox" style="margin:8px 0 0;padding:6px 10px;font-size:13px">Costs and expenses are higher than sales by ${fmt(-A.net)} in this period.</div>`:''}</div>
+        <div class="dpanel ac" style="--ac:#1f7a7a"><h4>Payment mix</h4>${donut(payParts)}</div>
+      </div>
       <div class="dpanel ac" style="--ac:#c47f17"><h4>Needs attention${attRows.length?' <small style="color:var(--mut);font-weight:400">'+attRows.length+'</small>':''}</h4>${attRows.join('')||'<div style="color:var(--ok);padding:6px 0">Nothing needs attention right now.</div>'}</div>
     </div>
-  </div>
-  <div class="dg2 dg2e">
-    <div class="dpanel ac" style="--ac:#2f6fb3"><h4>Where the sales went</h4>${donut(ringParts,A.sales>0?{t:pct(A.net,A.sales),s:'net profit'}:null)}
-      ${A.net<0&&A.orders?`<div class="warnbox" style="margin:8px 0 0;padding:6px 10px;font-size:13px">Costs and expenses are higher than sales by ${fmt(-A.net)} in this period.</div>`:''}</div>
-    <div class="dpanel ac" style="--ac:#1f7a7a"><h4>Payment mix</h4>${donut(payParts)}</div>
   </div>
   <div class="dpanel ac bsp" style="--ac:#6f4e37"><h4>Best sellers - ${rangeWord()} <small style="color:var(--mut);font-weight:400">top 5 per category</small><span class="sltabs"><button class="on" id="slT" onclick="swSell(1)">Top</button><button id="slS" onclick="swSell(2)">Slowest</button></span></h4>
     <div id="sellTop" class="bsg">${bestCols||none('No sales in this period.')}</div>
