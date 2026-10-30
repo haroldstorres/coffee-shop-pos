@@ -442,6 +442,7 @@ code{background:#f1e9df;padding:1px 5px;border-radius:5px}
     <h2 id="topTitle" style="display:none"></h2>
     <button id="scanBtn" class="scanbtn" onclick="openScan()"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="6.5" height="6.5" rx="1"/><rect x="14" y="3.5" width="6.5" height="6.5" rx="1"/><rect x="3.5" y="14" width="6.5" height="6.5" rx="1"/><path d="M14 14h3v3M20.5 14v.01M14 20.5h3.5M20.5 17.5v3"/></svg><span>Scan order</span></button>
     <button id="onlBtn" class="scanbtn" onclick="showOnline()"><svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18.5h2"/></svg><span>Online</span><i id="onlN" class="onlbadge" style="display:none">0</i></button>
+    <button id="drwBtn" class="scanbtn" style="display:none" onclick="openDrawer(true)"><svg viewBox="0 0 24 24"><rect x="3" y="9" width="18" height="10" rx="2"/><path d="M6 9V6h12v3M10 14h4"/></svg><span>Open drawer</span></button>
     <div class="clk"><span class="d"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg><i id="clkD" style="font-style:normal"></i></span><span><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg><i id="clkT" style="font-style:normal"></i></span></div>
   </div>
   <main>
@@ -816,6 +817,7 @@ function markNav(){
   $('#topSearch').style.display=view==='pos'?'':'none';
   $('#scanBtn').style.display=view==='pos'?'':'none';
   $('#onlBtn').style.display=view==='pos'?'':'none';
+  $('#drwBtn').style.display=(view==='pos'&&ME&&ME.role==='admin'&&drawerCfg().on)?'':'none'; // admin only
   $('#topTitle').style.display=view==='pos'?'none':'block';
   $('#topTitle').textContent=T[on]||'';
   document.querySelectorAll('.menu .sub').forEach(b=>b.classList.toggle('on',view==='admin'&&b.dataset.t===aTab));
@@ -1292,6 +1294,7 @@ async function placeOrder(){
     if(isDelivery)$('#otype').value='Dine-in';
     placing=false;renderCart();
     showPaid(order);
+    if(order.pay==='Cash')openDrawer();
     if(alerts.length)toast('Low stock: '+alerts.join(', '),6000);
   }catch(e){
     placing=false;renderTotals();
@@ -1326,6 +1329,50 @@ function paidReceipt(print){
   if(!LASTPAID)return;
   showReceipt(LASTPAID);
   if(print)setTimeout(()=>window.print(),250);
+}
+
+/* ---------- cash drawer (saved on this device only) ---------- */
+const DRAWER_KEY='pos_drawer';
+const DRAWER_KICK=[0x1B,0x70,0x00,0x19,0xFA,0x1B,0x70,0x01,0x19,0xFA]; // ESC p for pin 2 and pin 5
+function drawerCfg(){
+  try{return Object.assign({on:false,mode:'rawbt'},JSON.parse(localStorage.getItem(DRAWER_KEY))||{})}
+  catch(e){return {on:false,mode:'rawbt'}}
+}
+function setDrawer(change){
+  try{localStorage.setItem(DRAWER_KEY,JSON.stringify(Object.assign(drawerCfg(),change)))}
+  catch(e){toast('Could not save the drawer setting');return}
+  toast('Saved on this device',1200);markNav();
+}
+async function openDrawer(manual){ // manual = Test or Open drawer button, works even when auto-open is off
+  const cfg=drawerCfg();
+  if(!cfg.on&&!manual)return false;
+  try{
+    if(cfg.mode==='serial'){
+      if(!navigator.serial){toast('Web Serial is not available here. Use Chrome on a PC.');return false}
+      let port=(await navigator.serial.getPorts())[0];
+      if(!port)port=await navigator.serial.requestPort();
+      await port.open({baudRate:9600});
+      const writer=port.writable.getWriter();
+      await writer.write(new Uint8Array(DRAWER_KICK));
+      writer.releaseLock();await port.close();
+    }else{
+      // RawBT app on Android; hidden iframe so the POS page is not replaced if the app is missing
+      const frame=document.createElement('iframe');
+      frame.style.display='none';
+      frame.src='rawbt:base64,'+btoa(String.fromCharCode(...DRAWER_KICK));
+      document.body.appendChild(frame);
+      setTimeout(()=>frame.remove(),3000);
+    }
+    return true;
+  }catch(e){toast('Could not open the drawer: '+((e&&e.message)||e));return false}
+}
+async function pickDrawerPort(){ // Web Serial only: forget old ports, then choose the printer again
+  if(!navigator.serial){toast('Web Serial is not available here. Use Chrome on a PC.');return}
+  try{
+    for(const oldPort of await navigator.serial.getPorts()){if(oldPort.forget)await oldPort.forget()}
+    await navigator.serial.requestPort();
+    toast('Printer port saved');
+  }catch(e){if(!e||e.name!=='NotFoundError')toast('Could not choose the port: '+((e&&e.message)||e))}
 }
 
 /* ---------- receipt ---------- */
@@ -2241,6 +2288,7 @@ async function saveCreditPay(){
       if(left>0)throw new Error('The balance changed. Please refresh and try again.');
     });
     paying=false;closeModal();toast('Payment saved');aCredits();
+    if(method==='Cash')openDrawer();
   }catch(e){paying=false;const b=$('#cpBtn');if(b)b.disabled=false;toast(errMsg(e))}
 }
 
@@ -2523,7 +2571,7 @@ function aSettings(){
     addons:S.addons.map(a=>({id:newUid(),n:a.n,p:a.p||0,cost:a.cost||0,_o:a.n}))};
   SET.groups=(S.groups||[]).map(g=>({id:newUid(),n:g.n,req:!!g.req,max:g.max||1,_o:g.n,
     opts:(g.opts||[]).map(n=>(SET.addons.find(a=>a.n===n)||{}).id).filter(Boolean)}));
-  const tabs=[['shop','Shop'],['sales','Sales'],['receipt','Receipt &amp; VAT'],['menu','Menu options'],['online','Online ordering']];
+  const tabs=[['shop','Shop'],['sales','Sales'],['receipt','Receipt &amp; VAT'],['menu','Menu options'],['online','Online ordering'],['drawer','Cash drawer']];
   $('#aContent').innerHTML=`<div class="stabs">${tabs.map(t=>`<button data-s="${t[0]}" onclick="setSection('${t[0]}')">${t[1]}</button>`).join('')}</div>
 
   <div class="ssec" data-s="shop">
@@ -2584,6 +2632,15 @@ function aSettings(){
     <div class="scard"><h4>Customer page</h4><div class="hint">Customers scan the QR to open this page and order from their phone.</div>
       <div class="f"><small>Page address (where order.html is uploaded)</small><input id="sOrdUrl" value="${esc(orderUrl())}" placeholder="https://yourshop.web.app/order.html"></div>
       <div class="actions" style="justify-content:flex-start"><button onclick="showWallQR()">Show / print QR poster</button></div></div>
+  </div>
+
+  <div class="ssec" data-s="drawer">
+    <div class="shd"><b>Cash drawer</b><small>Set this up on the device that is connected to the printer. These two settings are saved on this device right away.</small></div>
+    <div class="scard"><h4>Open on cash payments</h4><div class="hint">The drawer opens after a Cash checkout and after a credit payment paid in cash. It does not open for other payment types.</div>
+      <label style="display:block"><input id="sDrwOn" type="checkbox" style="width:auto" ${drawerCfg().on?'checked':''} onchange="setDrawer({on:this.checked})"> Open the drawer on this device</label></div>
+    <div class="scard"><h4>How this device connects to the printer</h4><div class="hint">Android tablet: install the RawBT app and pick your printer there. Windows PC: use Web Serial in Chrome and choose the printer port.</div>
+      <select id="sDrwMode" onchange="setDrawer({mode:this.value})"><option value="rawbt" ${drawerCfg().mode==='rawbt'?'selected':''}>RawBT app (Android)</option><option value="serial" ${drawerCfg().mode==='serial'?'selected':''}>Web Serial (Chrome on PC)</option></select>
+      <div class="actions" style="justify-content:flex-start;margin-top:8px"><button class="ghost" onclick="pickDrawerPort()">Choose printer port</button><button onclick="openDrawer(true)">Test drawer</button></div></div>
   </div>
 
   <div class="sbar"><button onclick="saveSettings()">Save settings</button><small>Changes in all sections are saved together.</small></div>`;
