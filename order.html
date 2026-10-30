@@ -369,10 +369,31 @@ function chg(i,d){
 /* ---------- submit ---------- */
 const ALPHA='ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 function newCode(){let s='';const a=new Uint32Array(6);crypto.getRandomValues(a);a.forEach(n=>s+=ALPHA[n%ALPHA.length]);return s}
+async function stockStillOk(){ // menu was loaded when the page opened, so check the stock again before sending
+  try{
+    const mq=await fs.collection('menu').get({source:'server'});
+    MENU=mq.docs.map(d=>Object.assign({id:d.id},d.data())).sort((a,b)=>String(a.cat).localeCompare(b.cat)||String(a.name).localeCompare(b.name));
+  }catch(e){return true} // cannot refresh, the cashier still checks at the counter
+  const short=[],seen=new Set();
+  cart.forEach(c=>{
+    if(seen.has(c.id))return;seen.add(c.id);
+    const it=MENU.find(m=>m.id===c.id),wanted=cart.filter(x=>x.id===c.id).reduce((a,x)=>a+x.qty,0);
+    if(!it)short.push(c.name+' (no longer available)');
+    else if(it.track&&wanted>it.stock)short.push(c.name+(it.stock>0?' (only '+it.stock+' left)':' (sold out)'));
+  });
+  if(!short.length)return true;
+  toast('Not enough stock: '+short.join(', ')+'. Please update your cart.',6000);
+  return false;
+}
 async function submitOrder(){
   if(sending||!cart.length)return;
   if(!navigator.onLine){toast('No internet connection');return}
   sending=true;$('#sendBtn').disabled=true;$('#sendBtn').textContent='Sending…';
+  if(!await stockStillOk()){
+    sending=false;const b=$('#sendBtn');if(b){b.disabled=false;b.textContent='Place order'}
+    if($('#grid'))renderGrid();
+    return;
+  }
   const now=Date.now();
   const data={ts:now,exp:now+HOURS*3600*1000,uid,status:'new',type:$('#oType').value,name:($('#oName').value||'').trim().slice(0,30),
     items:cart.map(c=>({id:c.id,name:c.name,size:c.size,addons:c.addons,note:c.note,qty:c.qty,unit:c.unit})),sub:subtotal()};
