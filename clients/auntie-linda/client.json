@@ -11,10 +11,10 @@
     "appId": "1:485338364722:web:c1630917add550f715b52b"
   },
   "colors": {
-    "dark": "#5b2318",
-    "brand": "#c2610c",
-    "accent": "#f57505",
-    "active": "#7d3322",
+    "dark": "#2a1d16",
+    "brand": "#6f4e37",
+    "accent": "#a47148",
+    "active": "#6b4a36",
     "iconBg": "#ffffff"
   },
   "logo": "logo.png",
