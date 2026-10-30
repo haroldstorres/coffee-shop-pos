@@ -263,6 +263,20 @@ main{padding:0 22px 22px}
 .pdc{margin-top:6px;padding:10px 14px;border-radius:10px;background:#dff2e5;color:#1f4a37;display:flex;justify-content:space-between;align-items:center;font-size:14px}
 .pdc b{font-size:24px}
 .pdc.cr{background:#fff4e0;color:#7a4b00}
+#modal.paiddark{background:#0d0d0d;border:1px solid #2a2a2a;color:#f5f5f5}
+#modal.paiddark .pdck{background:#2f7d4f}
+#modal.paiddark .pdck.cr{background:#c47f17}
+#modal.paiddark h3{color:#f5f5f5}
+#modal.paiddark .pds{color:#a3a3a3}
+#modal.paiddark .pdt{color:#fff}
+#modal.paiddark .pdr{border-top-color:#2e2e2e;color:#a3a3a3}
+#modal.paiddark .pdr b{color:#f5f5f5}
+#modal.paiddark .pdc{background:rgba(47,125,79,.22);color:#cfe9d9}
+#modal.paiddark .pdc b{color:#8fe0b0}
+#modal.paiddark .pdc.cr{background:rgba(196,127,23,.2);color:#f1d29a}
+#modal.paiddark .pdc.cr b{color:#ffc766}
+#modal.paiddark .pdbt .ghost{background:transparent;color:#e6e6e6;border:1px solid #3a3a3a}
+#modal.paiddark .pdbt .pdn{background:#2f7d4f}
 .pdbt{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
 .pdbt button{padding:13px 8px;font-size:15px;border-radius:12px}
 .pdbt .pdn{grid-column:1/-1;background:#2f5d4a;color:#fff;font-weight:600;padding:15px;font-size:16px}
@@ -325,9 +339,9 @@ td.n,th.n{text-align:right}
 .limtrk{height:6px;width:110px;border-radius:999px;background:var(--line);overflow:hidden;display:inline-block}
 .limtrk i{display:block;height:100%;background:var(--ok);border-radius:999px}
 .limtrk.full i{background:var(--warn)}
-#overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:20;padding:14px}
+#overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center;z-index:20;padding:14px}
 #overlay.on{display:flex}
-#cfm{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:25;padding:14px}
+#cfm{position:fixed;inset:0;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center;z-index:25;padding:14px}
 #cfm.on{display:flex}
 #cfmBox{background:#fff;border-radius:16px;padding:20px;width:100%;max-width:360px;box-shadow:0 12px 40px rgba(0,0,0,.25)}
 #cfmBox h3{margin:0 0 8px}
@@ -397,9 +411,21 @@ td.n,th.n{text-align:right}
 .receipt .t{font-weight:700;font-size:15px}
 .receipt .sm{font-size:12px}
 .receipt .logo{display:block;max-width:75%;max-height:100px;margin:0 auto 6px}
-#auth{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
-#auth .box{background:#fff;border:1px solid var(--line);border-radius:16px;padding:22px;width:100%;max-width:420px}
+#auth{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;position:relative;overflow:hidden}
+#auth::before{content:"";position:absolute;top:50%;left:50%;width:min(85vmin,620px);height:min(85vmin,620px);transform:translate(-50%,-50%);background:url(icons/order-any-512.png) center/cover no-repeat;border-radius:50%;opacity:.2;pointer-events:none} /* watermark: the shop logo, faint, behind the card */
+#auth .box{position:relative;z-index:1;background:rgba(255,255,255,.12);-webkit-backdrop-filter:blur(2px) saturate(120%);backdrop-filter:blur(2px) saturate(120%);border:1px solid rgba(255,255,255,.55);border-radius:18px;padding:28px 24px;width:100%;max-width:400px;box-shadow:0 12px 32px rgba(0,0,0,.1),inset 0 1px 0 rgba(255,255,255,.6)} /* glass card: the watermark shows through */
+#auth .box input{background:rgba(255,255,255,.4);border-color:rgba(0,0,0,.14)}
+#auth .box input:-webkit-autofill{-webkit-box-shadow:0 0 0 100px rgba(255,255,255,.45) inset;-webkit-text-fill-color:var(--ink)}
 #auth h2{margin:0 0 4px}
+#auth .ahead{text-align:center;margin-bottom:8px}
+#auth .ahead img{display:block;width:88px;height:88px;border-radius:50%;object-fit:cover;margin:0 auto 12px}
+#auth .ahead h2{font-size:22px;margin:0}
+#auth .ahead p{color:var(--mut);font-size:14px;margin:4px 0 0}
+#auth input{padding:12px}
+#auth .pw{position:relative}
+#auth .pw input{padding-right:70px}
+#auth .pw button{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;color:var(--brand);padding:6px 10px;font-size:13px}
+#auth .go{width:100%;margin-top:14px;padding:12px;font-size:16px}
 #auth ol{padding-left:18px;line-height:1.6}
 .err{color:var(--bad);margin:8px 0;font-size:14px}
 code{background:#f1e9df;padding:1px 5px;border-radius:5px}
@@ -556,7 +582,7 @@ const todayStr=()=>dstr(Date.now());
 const tstr=ts=>{const d=new Date(ts);return pad(d.getHours())+':'+pad(d.getMinutes())};
 function toast(t,ms){const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',ms||3000)}
 let draftKind=null,draftId=null,INGLOADED=false,MENULOADED=false;
-function modal(h){stopScan();$('#modal').classList.remove('wide','itemsheet');draftKind=null;try{localStorage.removeItem('pos_draft')}catch(e){}$('#modal').innerHTML=h;$('#overlay').classList.add('on')}
+function modal(h){stopScan();$('#modal').classList.remove('wide','itemsheet','paiddark');draftKind=null;try{localStorage.removeItem('pos_draft')}catch(e){}$('#modal').innerHTML=h;$('#overlay').classList.add('on')}
 /* unsaved item / ingredient forms survive a page refresh */
 function setDraft(kind,id){draftKind=kind;draftId=id;saveDraft()}
 function saveDraft(){
@@ -675,7 +701,13 @@ const can={pos:['admin','cashier'],bar:['admin','cashier','barista'],admin:['adm
 /* =====================================================================
    AUTH SCREENS
    ===================================================================== */
+function authHead(sub){ // shop logo + name from config.js, so the login looks right before anyone signs in
+  const C=(typeof SHOP_CONFIG!=='undefined'&&SHOP_CONFIG)||{};
+  return `<div class="ahead"><img src="icons/order-any-192.png" alt="" onerror="this.style.display='none'"><h2>${esc(C.name||'Coffee Shop')}</h2><p>${esc(sub)}</p></div>`;
+}
+function togglePw(){const i=$('#liPass'),b=$('#pwBtn'),show=i.type==='password';i.type=show?'text':'password';b.textContent=show?'Hide':'Show'}
 function renderAuth(mode,msg){
+  try{if(typeof SHOP_CONFIG!=='undefined'&&SHOP_CONFIG.posName)document.title=SHOP_CONFIG.posName}catch(e){}
   $('#app').style.display='none';
   const a=$('#auth');a.style.display='flex';
   const err=msg?`<div class="err">${esc(msg)}</div>`:'';
@@ -688,17 +720,17 @@ function renderAuth(mode,msg){
     <li>Project settings → Your apps → Web app → copy the config and paste it into <code>FIREBASE_CONFIG</code> at the top of the script in <code>index.html</code></li>
     <li>Deploy (Firebase Hosting or GitHub Pages) or open the page, then do the first-time setup</li></ol></div>`;
   }else if(mode==='setup'){
-    a.innerHTML=`<div class="box"><h2>First-time setup</h2><p style="color:var(--mut);margin-top:0">Create the Admin account. Do this right after deploying.</p>
+    a.innerHTML=`<div class="box">${authHead('First-time setup')}<p style="color:var(--mut);text-align:center;margin:8px 0 0">Create the Admin account. Do this right after deploying.</p>
     <div class="lbl">Shop name</div><input id="suShop" placeholder="e.g. Kape Corner">
     <div class="lbl">Your name</div><input id="suName">
     <div class="lbl">Email</div><input id="suEmail" type="email">
     <div class="lbl">Password (min 6)</div><input id="suPass" type="password" onkeydown="if(event.key==='Enter')doSetup()">
     ${err}<button style="width:100%;margin-top:12px" onclick="doSetup()">Create Admin</button></div>`;
   }else{
-    a.innerHTML=`<div class="box"><h2>☕ Login</h2><p style="color:var(--mut);margin-top:0">Coffee Shop POS</p>
-    <div class="lbl">Email</div><input id="liEmail" type="email" onkeydown="if(event.key==='Enter')$('#liPass').focus()">
-    <div class="lbl">Password</div><input id="liPass" type="password" onkeydown="if(event.key==='Enter')doLogin()">
-    ${err}<button id="liBtn" style="width:100%;margin-top:12px" onclick="doLogin()">Sign in</button></div>`;
+    a.innerHTML=`<div class="box">${authHead('Staff sign-in')}
+    <div class="lbl">Email</div><input id="liEmail" type="email" autocomplete="username" onkeydown="if(event.key==='Enter')$('#liPass').focus()">
+    <div class="lbl">Password</div><div class="pw"><input id="liPass" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"><button type="button" id="pwBtn" onclick="togglePw()">Show</button></div>
+    ${err}<button id="liBtn" class="go" onclick="doLogin()">Sign in</button></div>`;
   }
 }
 async function doLogin(){
@@ -1434,6 +1466,7 @@ function showPaid(o){
       <button id="pdNew" class="pdn" onclick="closeModal()">New order</button>
     </div>
   </div>`);
+  $('#modal').classList.add('paiddark'); // black card for the payment popup
   setTimeout(()=>{const b=$('#pdNew');if(b)b.focus()},50);
 }
 function paidReceipt(print){
