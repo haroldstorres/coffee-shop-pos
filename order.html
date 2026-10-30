@@ -238,11 +238,12 @@ function openItem(id,idx){ // idx given = editing a line that is already in the 
   editIdx=idx==null?null:idx;const ed=editIdx==null?null:cart[editIdx];
   if(!it.sized){addToCart(it,'',[],1,'');toast('Added: '+it.name);return}
   const gs=groupsFor(it);curG=gs;curId=id;iQty=ed?ed.qty:1;
+  const defaultSize=(S.sizes.find(z=>/^small$/i.test(z.n))||S.sizes[0]||{}).n; // Small is pre-selected
   const badge=g=>g.req?(g.max===1?'Pick 1':'Pick up to '+g.max):(g.max>=g.opts.length?'Optional':'Optional, max '+g.max);
   sheet(`<div class="ihero">${it.photo?`<img src="${it.photo}" alt="">`:'☕'}</div>
   <div class="itop"><div class="r"><b>${esc(it.name)}</b><b>${fmt(it.price)}</b></div><small>${esc([it.cat,it.temp].filter(Boolean).join(' · '))}${it.cat||it.temp?' · ':''}base price</small></div>
   ${gs.map((g,gi)=>{const rd=g.req&&g.max===1;return `<div class="ig" id="ig${gi}"><div class="igh"><b>${esc(g.n)}</b><span class="bd ${g.req?'req':''}">${badge(g)}</span></div>
-  ${g.opts.map(o=>{const on=ed&&(gi===0?ed.size===o.n:ed.addons.includes(o.n));
+  ${g.opts.map(o=>{const on=gi===0?(ed?ed.size===o.n:o.n===defaultSize):(ed&&ed.addons.includes(o.n));
     return `<label class="io"><input type="${rd?'radio':'checkbox'}" name="g${gi}" data-gi="${gi}" value="${esc(o.n)}" ${on?'checked':''} onchange="onOpt(this)"><span class="mk ${rd?'rd':'cb'}"></span><span class="il">${esc(o.n)}</span><span class="ip">${o.p?'+'+o.p:''}</span></label>`}).join('')}</div>`}).join('')}
   <div class="ig"><div class="igh"><b>Note to barista</b><span class="bd">Optional</span></div><textarea id="mn" maxlength="60" placeholder="e.g. less ice (subject to the shop's discretion)">${ed?esc(ed.note):''}</textarea></div>
   <div class="iqty"><button class="mn" aria-label="Less" onclick="iq(-1)">−</button><b id="iqv">${iQty}</b><button class="pl" aria-label="More" onclick="iq(1)">+</button></div>
