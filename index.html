@@ -115,6 +115,8 @@ main{padding:0 22px 22px}
 .dg3{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr);gap:12px;margin-bottom:12px;align-items:stretch}
 .dgm{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start}
 .dg1>.dpanel,.dg2>.dpanel,.dg3>.dpanel,.dgm>.dpanel{margin-bottom:0}
+.dg2e{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.dg2e .dpanel{min-width:0;overflow-x:auto}
 .dcol{display:flex;flex-direction:column;gap:12px;min-width:0}
 .dcol>.dpanel{margin:0}
 .mini{position:relative;border:1px solid var(--line);border-left:4px solid var(--ac);border-radius:12px;padding:12px 14px}
@@ -138,9 +140,11 @@ main{padding:0 22px 22px}
 .bs span:last-child{font-variant-numeric:tabular-nums}
 .bs.sl span:last-child{color:var(--mut)}
 /* ---- flat dashboard cards ---- */
-.dpanel,.dpanel.ac,.mini,.dh .k{background:var(--card);border:1px solid var(--line);border-left:1px solid var(--line);border-radius:12px;box-shadow:none}
+.dpanel,.dpanel.ac,.mini,.dh .k{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--ac,var(--brand));border-radius:8px;box-shadow:none}
+.mini{position:relative}
 .dpanel{padding:14px 16px}
-.dh .k::after,.mini .mdot{display:none}
+.dh .k::after{display:none}
+.mini .mdot{position:absolute;top:12px;right:12px;width:10px;height:10px;border-radius:50%;background:var(--ac)}
 .dh .k small{padding-right:0;font-weight:600}
 .g4{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:12px}
 .g4>.mini{display:flex;flex-direction:column;justify-content:center}
@@ -164,8 +168,8 @@ main{padding:0 22px 22px}
 .mini{padding:12px 14px}
 .mini b{display:block;font-size:22px;font-weight:600;line-height:1.3;margin-top:2px}
 .at2 .ic{background:transparent}
-.dpanel{background:linear-gradient(135deg,color-mix(in srgb,var(--ac,var(--brand)) 8%,var(--card)),var(--card) 80%)}
-.dpanel.ac,.hero3,.tgt,.mini,.dh .k{background:linear-gradient(135deg,color-mix(in srgb,var(--ac,var(--brand)) 18%,var(--card)),var(--card) 80%)}
+.dpanel{background:linear-gradient(135deg,color-mix(in srgb,var(--ac,var(--brand)) 9%,var(--card)),var(--card) 85%)}
+.dpanel.ac,.hero3,.tgt,.mini,.dh .k{background:linear-gradient(135deg,color-mix(in srgb,var(--ac,var(--brand)) 16%,var(--card)),var(--card) 85%)}
 @media(max-width:1000px){.dg1,.dg2,.dg3,.dgm{grid-template-columns:1fr!important}}
 .dmain{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:10px;align-items:start}
 .hb{display:grid;grid-template-columns:minmax(60px,1fr) 1.4fr auto;gap:8px;align-items:center;padding:4px 0;font-size:13px}
@@ -351,6 +355,7 @@ code{background:#f1e9df;padding:1px 5px;border-radius:5px}
 .ro .av2{width:36px;height:36px;border-radius:50%;background:color-mix(in srgb,var(--brand) 18%,var(--card));display:flex;align-items:center;justify-content:center;font-size:17px}
 .ro small{display:block;color:var(--mut);font-size:12px}
 .ro .am{font-weight:700;color:var(--ok)}
+.pill{display:inline-block;font-size:12px;font-weight:600;padding:1px 9px;border-radius:999px;background:color-mix(in srgb,var(--ok) 16%,transparent);color:var(--ok);vertical-align:1px}
 .dn2{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
 .dn2 ul{list-style:none;margin:0;padding:0;font-size:13px;flex:1;min-width:150px}
 .dn2 li{display:flex;align-items:center;gap:6px;padding:3px 0}
@@ -1704,12 +1709,14 @@ function hourPanel(){
   const used=c.map((n,i)=>n?i:-1).filter(i=>i>=0);
   const a=Math.min(Number(S.openHour)||8,...used),b=Math.max((Number(S.closeHour)||20)-1,...used);
   const mx=Math.max(...h),pk=h.indexOf(mx);
-  const W=900,H=170,L=10,R=10,T=18,B=24,n=b-a+1,gw=(W-L-R)/n,bw=Math.min(40,gw*.7);
+  const W=900,H=190,L=10,R=10,T=26,B=24,n=b-a+1,gw=(W-L-R)/n,bw=Math.min(40,gw*.7);
   let g=`<line x1="${L}" x2="${W-R}" y1="${H-B}" y2="${H-B}" style="stroke:var(--line)"/>`;
   for(let i=a;i<=b;i++){
     const cx=L+gw*(i-a)+gw/2,bh=mx>0?(H-T-B)*h[i]/mx:0;
-    g+=`<rect x="${cx-bw/2}" y="${H-B-bh}" width="${bw}" height="${Math.max(h[i]>0?2:0,bh)}" rx="3" fill="${i===pk?'#6f4e37':'#d9cbb9'}"><title>${hrFull(i)}: ${fmt(h[i])} · ${c[i]} order(s)</title></rect>`;
-    if(h[i]>0)g+=`<text x="${cx}" y="${H-B-bh-4}" font-size="11" text-anchor="middle" style="fill:var(--ink)">${compact(h[i])}</text>`;
+    g+=`<rect x="${cx-bw/2}" y="${T}" width="${bw}" height="${H-T-B}" rx="4" style="fill:var(--ink);opacity:.06"/>`;
+    g+=`<rect x="${cx-bw/2}" y="${H-B-bh}" width="${bw}" height="${Math.max(h[i]>0?2:0,bh)}" rx="4" fill="${i===pk?'#1f7a7a':'#7fbdbd'}"><title>${hrFull(i)}: ${fmt(h[i])} · ${c[i]} order(s)</title></rect>`;
+    if(h[i]>0&&i===pk)g+=`<rect x="${cx-24}" y="${H-B-bh-21}" width="48" height="16" rx="8" fill="#3b2f63"/><text x="${cx}" y="${H-B-bh-9.5}" font-size="11" text-anchor="middle" fill="#fff">${compact(h[i])}</text>`;
+    else if(h[i]>0)g+=`<text x="${cx}" y="${H-B-bh-4}" font-size="11" text-anchor="middle" style="fill:var(--ink)">${compact(h[i])}</text>`;
     g+=`<text x="${cx}" y="${H-8}" font-size="11" text-anchor="middle" style="fill:var(--mut)">${hrLabel(i)}</text>`;
   }
   return `<div class="dpanel ac" style="--ac:#7b5ea7"><h4>${title}</h4><div style="font-size:13px;color:var(--mut)">Peak hour: <b style="color:var(--ink)">${hrFull(pk)}</b> · ${fmt(h[pk])} · ${c[pk]} order(s)</div>
@@ -1797,7 +1804,7 @@ async function aDash(silent){
   const recent=RORDERS.filter(o=>o.status!=='void').sort((a,b)=>b.ts-a.ts).slice(0,6);
   const lowI=ING.filter(g=>ingStatus(g)!=='ok').sort((a,b)=>(a.stock||0)-(b.stock||0)),lowM=MENU.filter(m=>m.track&&m.stock<=3);
   const yc=YEARC&&YEARC.y===new Date().getFullYear()&&Date.now()-YEARC.ts<120000?YEARC:null;
-  const M=(ac,lab,val,extra)=>`<div class="mini" style="--ac:${ac||'#6f4e37'}"><small>${lab}</small><b>${val}</b>${extra||''}</div>`;
+  const M=(ac,lab,val,extra)=>`<div class="mini" style="--ac:${ac||'#6f4e37'}"><i class="mdot"></i><small>${lab}</small><b>${val}</b>${extra||''}</div>`;
   const restKp=kp.filter((x,i)=>![0,1,2,3,5,6].includes(i));
   const ringParts=[{n:'Cost of goods',v:A.cogs,c:'#c47f17'},{n:'Expenses',v:A.exp,c:'#b3392f'},{n:'Net profit',v:Math.max(0,A.net),c:'#2f7d4f'}];
   const catOf=n=>{const m=MENU.find(x=>x.name===n);return m?(m.cat||'Others'):'Others'};
@@ -1848,14 +1855,16 @@ async function aDash(silent){
     <div id="sellTop" class="bsg">${bestCols||none('No sales in this period.')}</div>
     <div id="sellSlow" class="bsg" style="display:none">${slowCols||none('No menu items yet.')}</div></div>
   <div class="dg2" style="grid-template-columns:minmax(0,1fr)">
-    <div class="dpanel ac" style="--ac:#2f7d4f"><h4>Recent orders</h4>${recent.map(o=>`<div class="ro"><span class="av2">${TYPEICO[o.type]||'☕'}</span><div><b>${esc(o.custName||o.type)}</b><small>${ono(o)} · ${dstr(o.ts)===todayStr()?'':dstr(o.ts)+' '}${tstr(o.ts)} · ${esc(o.pay)}</small></div><span class="am">${fmt(o.total)}</span></div>`).join('')||none('No orders in this period.')}</div>
+    <div class="dpanel ac" style="--ac:#2f7d4f"><h4>Recent orders</h4>${recent.map(o=>`<div class="ro"><span class="av2">${TYPEICO[o.type]||'☕'}</span><div><b>${esc(o.custName||o.type)}</b> <span class="pill">${esc(o.pay)}</span><small>${ono(o)} · ${dstr(o.ts)===todayStr()?'':dstr(o.ts)+' '}${tstr(o.ts)}</small></div><span class="am">${fmt(o.total)}</span></div>`).join('')||none('No orders in this period.')}</div>
   </div>
 
   <h3 class="dmore">More details</h3>
   <div class="dh">${restKp.join('')}</div>
+  <div class="dg2 dg2e">
   <div class="dpanel"><h4>Sales, cost and expenses by day</h4>${chartSVG(A)}
     ${Math.round((new Date(rt+'T12:00:00')-new Date(rf+'T12:00:00'))/864e5)+1>93?'<div class="warnbox">The chart shows the first 93 days only. The totals above cover the whole range.</div>':''}</div>
   <div class="dpanel"><h4>Monthly sales this year</h4><div id="yearBox">${yc?yearBars(yc):'<div class="empty" style="padding:10px 0">Loading…</div>'}</div></div>
+  </div>
   <div class="dgm">
     <div class="dpanel"><h4>Payment mix</h4>${donut(payParts)}</div>
     <div class="dpanel"><h4>Dine-in, take-out and delivery</h4>${typeTot>0?`<div class="split">${types.map(([k,t])=>`<i style="width:${t.s/typeTot*100}%;background:${TYPECOL[k]||'#8a7a6a'}" title="${esc(k)} ${fmt(t.s)}"></i>`).join('')}</div>
