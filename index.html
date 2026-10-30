@@ -229,6 +229,11 @@ main{padding:0 22px 22px}
 .menu button.sub.on{background:rgba(255,255,255,.1);color:#fff}
 #adminBody .subtabs{display:none} /* the sub-tabs now live in the sidebar */
 @media(max-width:900px){.menu button.sub{padding:7px 8px 7px 34px;font-size:13px}}
+.cartcard{position:sticky;top:74px;height:calc(100vh - 96px);min-height:420px;display:flex;flex-direction:column;overflow-y:auto}
+.cartcard>.ohead,.cartcard>#otype,.cartcard>.cfoot{flex:none}
+.cscroll{flex:1 1 0;min-height:140px;overflow-y:auto;overscroll-behavior:contain;margin:8px -6px 0 0;padding-right:6px}
+.cfoot{padding-top:2px}
+@media(max-width:900px){.cartcard{position:static;height:auto;min-height:0;overflow:visible}.cscroll{overflow:visible;margin-right:0;padding-right:0}}
 .actbar{display:grid;grid-template-columns:1fr 1.5fr;gap:10px;margin-top:16px}
 .actbar button{display:flex;align-items:center;justify-content:center;gap:8px;padding:15px 10px;font-size:16px;font-weight:600;border-radius:12px}
 .actbar svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
@@ -431,9 +436,10 @@ code{background:#f1e9df;padding:1px 5px;border-radius:5px}
           <div class="cats" id="cats"></div>
           <div class="grid" id="menuGrid"></div>
         </div>
-        <div class="card">
+        <div class="card cartcard">
           <div class="ohead"><h3>Current Order</h3><button id="heldBtn" class="heldbtn" style="display:none" onclick="showHeld()"></button><button onclick="clearCart()"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-12M9 7V4h6v3"/></svg>Clear</button></div>
           <select id="otype" onchange="renderTotals()"><option>Dine-in</option><option>Take-out</option><option>Delivery</option></select>
+          <div class="cscroll">
           <div id="cartList"></div>
           <div id="custBox" style="display:none">
             <div class="lbl">Customer</div>
@@ -455,6 +461,8 @@ code{background:#f1e9df;padding:1px 5px;border-radius:5px}
           <div class="row"><span>Discount</span><span id="tDisc"></span></div>
           <div class="row" id="rVatAdd" style="display:none"><span id="lVatAdd">VAT</span><span id="tVatAdd"></span></div>
           <div class="row" id="rFee" style="display:none"><span>Delivery fee</span><span id="tFee"></span></div>
+          </div>
+          <div class="cfoot">
           <div class="row total"><span>Total</span><span id="tTotal"></span></div>
           <div class="row" id="rVatInc" style="display:none;color:var(--mut);font-size:13px"><span id="lVatInc">VAT included</span><span id="tVatInc"></span></div>
           <div class="lbl">Payment</div>
@@ -468,6 +476,7 @@ code{background:#f1e9df;padding:1px 5px;border-radius:5px}
           <div class="actbar">
             <button id="holdBtn" class="hold" onclick="holdOrder()"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M8 3v4M16 3v4M9.5 15l2 2 3.5-3.5"/></svg>Hold</button>
             <button id="placeBtn" class="checkout" onclick="placeOrder()"></button>
+          </div>
           </div>
         </div>
       </div>
