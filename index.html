@@ -110,10 +110,13 @@ main{padding:0 22px 22px}
 .dpanel h4{margin:0 0 6px;font-size:15px}
 .dpanel .chartbox{border:0;padding:0;margin:0}
 
-.dg2{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:12px;margin-bottom:12px;align-items:stretch}
+.dg1{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:12px;margin-bottom:12px;align-items:stretch}
+.dg2{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:12px;margin-bottom:12px;align-items:stretch}
 .dg3{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr);gap:12px;margin-bottom:12px;align-items:stretch}
 .dgm{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start}
-.dg2>.dpanel,.dg3>.dpanel,.dgm>.dpanel{margin-bottom:0}
+.dg1>.dpanel,.dg2>.dpanel,.dg3>.dpanel,.dgm>.dpanel{margin-bottom:0}
+.dcol{display:flex;flex-direction:column;gap:12px;min-width:0}
+.dcol>.dpanel{margin:0}
 .mini{position:relative;border:1px solid var(--line);border-left:4px solid var(--ac);border-radius:12px;padding:12px 14px}
 .mini b{display:block;font-size:22px;line-height:1.3;margin-top:2px}
 .mini .mdot{position:absolute;top:12px;right:12px;width:10px;height:10px;border-radius:50%;background:var(--ac)}
@@ -139,8 +142,17 @@ main{padding:0 22px 22px}
 .dpanel{padding:14px 16px}
 .dh .k::after,.mini .mdot{display:none}
 .dh .k small{padding-right:0;font-weight:600}
-.g4{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:12px}
-.pcard{margin:10px 0 12px}
+.g4{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:12px}
+.g4>.mini{display:flex;flex-direction:column;justify-content:center}
+.tgt{margin:10px 0 12px}
+.hero3 .bigp{font-size:34px;font-weight:700;line-height:1.2;margin:2px 0 8px}
+.hero3 .bigp.neg{color:var(--bad)}
+.hero3 small{display:block;color:var(--mut);font-size:13px}
+.hero3 em{display:block;font-style:normal;color:var(--mut);font-size:12px}
+.hero3 em.up{color:var(--ok);font-weight:600}.hero3 em.dn{color:var(--bad);font-weight:600}
+.hero3 .hsep{border-top:1px solid var(--line);margin:14px 0 10px}
+.pbar{height:8px;border-radius:999px;background:color-mix(in srgb,var(--ink) 10%,transparent);overflow:hidden;margin:0 0 6px}
+.pbar i{display:block;height:100%;background:var(--ac);border-radius:999px}
 .pro{display:flex;flex-wrap:wrap;gap:14px 0}
 .pro>div{padding:0 22px;border-left:1px solid var(--line);min-width:150px}
 .pro>div:first-child{padding-left:0;border-left:0}
@@ -149,15 +161,12 @@ main{padding:0 22px 22px}
 .pro em,.mini em{display:block;font-style:normal;color:var(--mut);font-size:12px}
 .pro em.up,.mini em.up{color:var(--ok);font-weight:600}
 .pro em.dn,.mini em.dn{color:var(--bad);font-weight:600}
-.pcard .bigp{font-size:32px;font-weight:700;line-height:1.2;margin:2px 0}
-.pcard .bigp.neg{color:var(--bad)}
-.pcard .hsep{border-top:1px solid var(--line);margin:12px 0 8px}
 .mini{padding:12px 14px}
 .mini b{display:block;font-size:22px;font-weight:600;line-height:1.3;margin-top:2px}
 .at2 .ic{background:transparent}
 .dpanel{background:linear-gradient(135deg,color-mix(in srgb,var(--ac,var(--brand)) 8%,var(--card)),var(--card) 80%)}
-.dpanel.ac,.pcard,.mini,.dh .k{background:linear-gradient(135deg,color-mix(in srgb,var(--ac,var(--brand)) 18%,var(--card)),var(--card) 80%)}
-@media(max-width:1000px){.dg2,.dg3,.dgm{grid-template-columns:1fr!important}}
+.dpanel.ac,.hero3,.tgt,.mini,.dh .k{background:linear-gradient(135deg,color-mix(in srgb,var(--ac,var(--brand)) 18%,var(--card)),var(--card) 80%)}
+@media(max-width:1000px){.dg1,.dg2,.dg3,.dgm{grid-template-columns:1fr!important}}
 .dmain{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:10px;align-items:start}
 .hb{display:grid;grid-template-columns:minmax(60px,1fr) 1.4fr auto;gap:8px;align-items:center;padding:4px 0;font-size:13px}
 .hb .tr{background:#efe7dc;border-radius:999px;height:8px;overflow:hidden}
@@ -1808,26 +1817,32 @@ async function aDash(silent){
   if(A.unc)attRows.push(att('#c47f17','🏷️',A.unc+' item(s) have no cost set','Profit looks higher than it is until the cost is set','Set costs','subTo(\'menu\')'));
   if(A.unpaid>0)attRows.push(att('#c47f17','📒',fmt(A.unpaid)+' unpaid credit','In this period','Open','subTo(\'credits\')'));
   $('#aContent').innerHTML=rangeBar('aDash',exportButtons('dash'))+`
-  <div class="dpanel pcard" style="--ac:${A.net<0?'#b3392f':'#2f7d4f'}">
-    <div class="pro">
-      <div><small>Net profit</small><div class="bigp ${A.net<0?'neg':''}">${fmt(A.net)}</div>
-        <em>${A.orders?pct(A.net,A.sales)+' of sales':'No sales in this period'}</em>${dlt(A.net,P&&P.net)}</div>
-      <div><small>Gross profit · ${pct(A.gross,A.sales)}${A.unc?' ⚠':''}</small><b>${money(A.gross)}</b>${A.unc?'<em>Some costs are not set yet</em>':''}</div>
-      ${Object.entries(A.byPay).map(([k,v])=>`<div><small>${esc(k)}</small><b>${fmt(r2(v))}</b></div>`).join('')}
+  <div class="dpanel tgt" style="--ac:#2f6fb3">${targetPanel(A,true)}</div>
+  <div class="dg1">
+    <div class="dpanel hero3" style="--ac:${A.net<0?'#b3392f':'#2f7d4f'}">
+      <small>Net profit</small><div class="bigp ${A.net<0?'neg':''}">${fmt(A.net)}</div>
+      <div class="pbar"><i style="width:${A.sales>0?Math.max(0,Math.min(100,A.net/A.sales*100)):0}%"></i></div>
+      <em>${A.orders?pct(A.net,A.sales)+' of sales':'No sales in this period'}</em>${dlt(A.net,P&&P.net)}
+      <div class="hsep"></div>
+      <div class="pro">
+        <div><small>Gross profit · ${pct(A.gross,A.sales)}${A.unc?' ⚠':''}</small><b>${money(A.gross)}</b>${A.unc?'<em>Some costs are not set yet</em>':''}</div>
+        ${Object.entries(A.byPay).map(([k,v])=>`<div><small>${esc(k)}</small><b>${fmt(r2(v))}</b></div>`).join('')}
+      </div>
     </div>
-    <div class="hsep"></div>${targetPanel(A,true)}
+    <div class="g4">
+      ${M('#6f4e37','Sales'+(A.vat?' (excl. VAT)':''),fmt(A.sales),dlt(A.sales,P&&P.sales))}
+      ${M('#2f6fb3','Orders',A.orders,dlt(A.orders,P&&P.orders))}
+      ${M('#7b5ea7','Average / order',fmt(avg),dlt(avg,pavg))}
+      ${M('#b3392f','Expenses',fmt(A.exp),dlt(A.exp,P&&P.exp,true))}
+    </div>
   </div>
-  <div class="g4">
-    ${M('#6f4e37','Sales'+(A.vat?' (excl. VAT)':''),fmt(A.sales),dlt(A.sales,P&&P.sales))}
-    ${M('#2f6fb3','Orders',A.orders,dlt(A.orders,P&&P.orders))}
-    ${M('#7b5ea7','Average / order',fmt(avg),dlt(avg,pavg))}
-    ${M('#b3392f','Expenses',fmt(A.exp),dlt(A.exp,P&&P.exp,true))}
-  </div>
-  <div class="dg3">
+  <div class="dg2">
     ${hourPanel()}
-    <div class="dpanel ac" style="--ac:#2f6fb3"><h4>Where the sales went</h4>${donut(ringParts,A.sales>0?{t:pct(A.net,A.sales),s:'net profit'}:null)}
-      ${A.net<0&&A.orders?`<div class="warnbox" style="margin:8px 0 0;padding:6px 10px;font-size:13px">Costs and expenses are higher than sales by ${fmt(-A.net)} in this period.</div>`:''}</div>
-    <div class="dpanel ac" style="--ac:#c47f17"><h4>Needs attention${attRows.length?' <small style="color:var(--mut);font-weight:400">'+attRows.length+'</small>':''}</h4>${attRows.join('')||'<div style="color:var(--ok);padding:6px 0">Nothing needs attention right now.</div>'}</div>
+    <div class="dcol">
+      <div class="dpanel ac" style="--ac:#2f6fb3"><h4>Where the sales went</h4>${donut(ringParts,A.sales>0?{t:pct(A.net,A.sales),s:'net profit'}:null)}
+        ${A.net<0&&A.orders?`<div class="warnbox" style="margin:8px 0 0;padding:6px 10px;font-size:13px">Costs and expenses are higher than sales by ${fmt(-A.net)} in this period.</div>`:''}</div>
+      <div class="dpanel ac" style="--ac:#c47f17"><h4>Needs attention${attRows.length?' <small style="color:var(--mut);font-weight:400">'+attRows.length+'</small>':''}</h4>${attRows.join('')||'<div style="color:var(--ok);padding:6px 0">Nothing needs attention right now.</div>'}</div>
+    </div>
   </div>
   <div class="dpanel ac bsp" style="--ac:#6f4e37"><h4>Best sellers - ${rangeWord()} <small style="color:var(--mut);font-weight:400">top 5 per category</small><span class="sltabs"><button class="on" id="slT" onclick="swSell(1)">Top</button><button id="slS" onclick="swSell(2)">Slowest</button></span></h4>
     <div id="sellTop" class="bsg">${bestCols||none('No sales in this period.')}</div>
