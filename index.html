@@ -965,13 +965,17 @@ function confirmItem(id){
   const p=pickState();
   if(addToCart(it,p.size,p.addons,p.qty,p.note))closeModal();
 }
-function addToCart(it,size,addons,qty,note){
+function stockProblem(it,size,addons,qty){ // reason this line cannot be added, or ''
   if(it.track){
     const inCart=cart.filter(c=>c.id===it.id).reduce((a,c)=>a+c.qty,0);
-    if(inCart+qty>it.stock){toast('Stock left: '+it.stock+' ('+it.name+')');return false}
+    if(inCart+qty>it.stock)return 'Stock left: '+it.stock+' ('+it.name+')';
   }
   const short=shortIngredient(cart.concat([{id:it.id,size,addons,qty}]));
-  if(short){toast('Not enough '+short);return false}
+  return short?'Not enough '+short:'';
+}
+function addToCart(it,size,addons,qty,note){
+  const why=stockProblem(it,size,addons,qty);
+  if(why){toast(why);return false}
   const key=[it.id,size,addons.slice().sort().join('+'),note].join('|');
   const ex=cart.find(c=>c.key===key);
   if(ex)ex.qty+=qty;
@@ -1059,18 +1063,20 @@ async function loadPending(raw){
     const skipped=[];let added=0;
     (p.items||[]).forEach(x=>{
       const it=MENU.find(m=>m.id===x.id);
-      if(!it){skipped.push(x.name);return}
+      if(!it){skipped.push(x.name+' (removed from menu)');return}
       // prices are worked out again from the menu here; the phone's prices are ignored
       const size=it.sized?((S.sizes.find(z=>z.n===x.size)||S.sizes[0]||{}).n||''):'';
       const addons=it.sized?(x.addons||[]).filter(n=>S.addons.some(a=>a.n===n)):[];
       const qty=Math.max(1,Math.min(20,parseInt(x.qty)||1));
+      const why=stockProblem(it,size,addons,qty);
+      if(why){skipped.push(why);return}
       if(addToCart(it,size,addons,qty,String(x.note||'').slice(0,60)))added++;else skipped.push(x.name);
     });
-    if(!added){toast('None of the items could be added: '+skipped.join(', '),5000);return}
+    if(!added){toast('Cannot load this order. '+skipped.join('; '),7000);return}
     loadedPending={code,name:p.name||''};
     $('#otype').value=p.type==='Take-out'?'Take-out':'Dine-in';
     renderCart();
-    toast(skipped.length?'Loaded. Not added (sold out or removed): '+skipped.join(', '):'Order '+code+' loaded'+(p.name?' for '+p.name:''),skipped.length?6000:2500);
+    toast(skipped.length?'Loaded. Not added: '+skipped.join('; '):'Order '+code+' loaded'+(p.name?' for '+p.name:''),skipped.length?6000:2500);
   }catch(e){toast(errMsg(e))}
 }
 
