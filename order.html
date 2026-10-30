@@ -161,7 +161,7 @@ function toast(t,ms){const e=$('#toast');e.textContent=t;e.style.display='block'
 let fs,auth,uid=null,S={shop:'Coffee Shop',sizes:[],addons:[]},MENU=[],cart=[],cat='All',sending=false;
 const HOURS=4; // how long an unscanned order stays valid
 const LAST='cust_last_order';
-let editIdx=null,keepForm=null;
+let editIdx=null,keepForm=null,delForm={phone:'',addr:''}; // delForm keeps the delivery details when the cart redraws
 
 async function start(){
   try{
@@ -334,12 +334,21 @@ function openCart(){
     <div class="rt"><div class="pr">${fmt(c.unit*c.qty)}</div>
     <select class="qsel" aria-label="Quantity" onchange="setQty(${i},this.value)">${Array.from({length:20},(_,k)=>`<option value="${k+1}" ${c.qty===k+1?'selected':''}>${k+1}</option>`).join('')}<option value="0">Remove</option></select></div></div>`}).join('')}
   <div class="note">Pay at the counter. Prices may change slightly when the cashier confirms your order.</div>
-  <div class="two"><div><div class="lbl">Order type</div><select id="oType"><option>Dine-in</option><option>Take-out</option></select></div>
-  <div><div class="lbl">Your name (optional)</div><input id="oName" maxlength="30" placeholder="e.g. Ana"></div></div>
+  <div class="two"><div><div class="lbl">Order type</div><select id="oType" onchange="onTypeChange()"><option>Dine-in</option><option>Take-out</option><option>Delivery</option></select></div>
+  <div><div class="lbl" id="oNameLbl">Your name (optional)</div><input id="oName" maxlength="30" placeholder="e.g. Ana"></div></div>
+  <div id="delBox" style="display:none"><div class="lbl">Phone number</div><input id="oPhone" type="tel" maxlength="20" placeholder="e.g. 0917 123 4567" value="${esc(delForm.phone)}" oninput="delForm.phone=this.value">
+  <div class="lbl">Delivery address</div><textarea id="oAddr" rows="2" maxlength="200" placeholder="House no., street, barangay, landmark" oninput="delForm.addr=this.value">${esc(delForm.addr)}</textarea>
+  <div class="note">The shop will confirm the delivery fee. It is not included in the total above.</div></div>
   <div class="stickyfoot"><div class="row total"><span>Total</span><span>${fmt(subtotal())}</span></div>
   <div class="actions" style="margin-top:8px"><button class="ghost" onclick="closeSheet()">Add more</button><button id="sendBtn" style="background:var(--ok)" onclick="submitOrder()">Place order</button></div></div>`);
   $('#sheet').classList.add('cartsheet');
   if(keepForm){if(keepForm.t)$('#oType').value=keepForm.t;if(keepForm.n)$('#oName').value=keepForm.n;keepForm=null}
+  onTypeChange();
+}
+function onTypeChange(){ // delivery needs a name, phone and address
+  const delivery=($('#oType')||{}).value==='Delivery';
+  $('#delBox').style.display=delivery?'block':'none';
+  $('#oNameLbl').textContent=delivery?'Your name':'Your name (optional)';
 }
 function setQty(i,v){
   const c=cart[i];if(!c)return;
@@ -363,7 +372,7 @@ function chg(i,d){
   }
   c.qty+=d;if(c.qty<=0)cart.splice(i,1);
   renderBar();
-  if(cart.length){const t=($('#oType')||{}).value,n=($('#oName')||{}).value;openCart();if(t)$('#oType').value=t;if(n)$('#oName').value=n}else closeSheet();
+  if(cart.length){const t=($('#oType')||{}).value,n=($('#oName')||{}).value;openCart();if(t)$('#oType').value=t;if(n)$('#oName').value=n;onTypeChange()}else closeSheet();
 }
 
 /* ---------- submit ---------- */
@@ -388,6 +397,11 @@ async function stockStillOk(){ // menu was loaded when the page opened, so check
 async function submitOrder(){
   if(sending||!cart.length)return;
   if(!navigator.onLine){toast('No internet connection');return}
+  if($('#oType').value==='Delivery'){
+    if(!($('#oName').value||'').trim()){toast('Please enter your name for delivery');return}
+    if(!(delForm.phone||'').trim()){toast('Please enter your phone number for delivery');return}
+    if(!(delForm.addr||'').trim()){toast('Please enter your delivery address');return}
+  }
   sending=true;$('#sendBtn').disabled=true;$('#sendBtn').textContent='Sending…';
   if(!await stockStillOk()){
     sending=false;const b=$('#sendBtn');if(b){b.disabled=false;b.textContent='Place order'}
@@ -397,6 +411,7 @@ async function submitOrder(){
   const now=Date.now();
   const data={ts:now,exp:now+HOURS*3600*1000,uid,status:'new',type:$('#oType').value,name:($('#oName').value||'').trim().slice(0,30),
     items:cart.map(c=>({id:c.id,name:c.name,size:c.size,addons:c.addons,note:c.note,qty:c.qty,unit:c.unit})),sub:subtotal()};
+  if(data.type==='Delivery'){data.phone=delForm.phone.trim().slice(0,20);data.addr=delForm.addr.trim().slice(0,200)}
   try{
     let code=null,err=null;
     for(let i=0;i<5&&!code;i++){
@@ -405,7 +420,7 @@ async function submitOrder(){
       catch(e){err=e;if(e.code!=='permission-denied')break} // permission-denied can also mean the code already exists, so try another
     }
     if(!code)throw err||new Error('Could not place the order');
-    const rec={code,ts:now,exp:data.exp,count:count(),total:data.sub};
+    const rec={code,ts:now,exp:data.exp,count:count(),total:data.sub,type:data.type};
     try{localStorage.setItem(LAST,JSON.stringify(rec))}catch(e){}
     cart=[];renderBar();sending=false;closeSheet();showDone(rec);
   }catch(e){
@@ -445,6 +460,10 @@ function applyStatus(p){
     ready:['✅','Your order is ready!',no?'Order '+no+'. Please pick it up at the counter.':'Please pick it up at the counter.','ready'],
     served:['😊','Enjoy! Thank you for ordering','','done'],
     cancelled:['⚠️','This order was cancelled','Please see the cashier.','bad']};
+  if(p.type==='Delivery'){
+    M.new=['⏳','Waiting for the shop to confirm','We will contact you about the delivery fee.','new'];
+    M.ready=['✅','Your order is ready for delivery','It will be sent to your address soon.','ready'];
+  }
   const m=M[st]||M.new,box=$('#stat');
   if(!box)return;
   box.className='stat '+m[3];
