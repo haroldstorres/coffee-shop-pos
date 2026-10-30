@@ -1805,7 +1805,7 @@ async function aDash(silent){
   const lowI=ING.filter(g=>ingStatus(g)!=='ok').sort((a,b)=>(a.stock||0)-(b.stock||0)),lowM=MENU.filter(m=>m.track&&m.stock<=3);
   const yc=YEARC&&YEARC.y===new Date().getFullYear()&&Date.now()-YEARC.ts<120000?YEARC:null;
   const M=(ac,lab,val,extra)=>`<div class="mini" style="--ac:${ac||'#6f4e37'}"><i class="mdot"></i><small>${lab}</small><b>${val}</b>${extra||''}</div>`;
-  const restKp=kp.filter((x,i)=>![0,1,2,3,5,6].includes(i));
+  const restKp=kp.filter((x,i)=>![0,1,2,3,4,5,6].includes(i));
   const ringParts=[{n:'Cost of goods',v:A.cogs,c:'#c47f17'},{n:'Expenses',v:A.exp,c:'#b3392f'},{n:'Net profit',v:Math.max(0,A.net),c:'#2f7d4f'}];
   const catOf=n=>{const m=MENU.find(x=>x.name===n);return m?(m.cat||'Others'):'Others'};
   const byC={},slowC={};
@@ -1862,7 +1862,7 @@ async function aDash(silent){
   </div>
 
   <h3 class="dmore">More details</h3>
-  <div class="dh">${restKp.join('')}</div>
+  ${restKp.length?`<div class="dh">${restKp.join('')}</div>`:''}
   <div class="dg2 dg2e">
   <div class="dpanel"><h4>Sales, cost and expenses by day</h4>${chartSVG(A)}
     ${Math.round((new Date(rt+'T12:00:00')-new Date(rf+'T12:00:00'))/864e5)+1>93?'<div class="warnbox">The chart shows the first 93 days only. The totals above cover the whole range.</div>':''}</div>
