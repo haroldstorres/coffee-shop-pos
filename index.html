@@ -790,8 +790,17 @@ async function showEntry(){
   catch(e){renderAuth('login','Could not check setup: '+errMsg(e))}
 }
 async function bootUser(u){
+  if(u.isAnonymous){await auth.signOut();return} // leftover session from the order page
   try{
-    const snap=await fs.collection('users').doc(u.uid).get();
+    let snap;
+    try{snap=await fs.collection('users').doc(u.uid).get()}
+    catch(e){
+      if(e.code!=='permission-denied')throw e;
+      // token can lag right after login, retry once before giving up
+      await u.getIdToken(true);
+      await new Promise(r=>setTimeout(r,500));
+      snap=await fs.collection('users').doc(u.uid).get();
+    }
     if(!snap.exists||snap.data().active!==true){
       await auth.signOut();
       renderAuth('login',snap.exists?'This account is disabled. Please contact the admin.':'This account has no access.');
