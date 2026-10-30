@@ -129,6 +129,8 @@ main{padding:14px;max-width:760px;margin:0 auto}
 .ibar{position:sticky;bottom:0;background:#fff;border-top:1px solid var(--line);padding:10px 18px 96px;box-shadow:0 -6px 14px rgba(42,29,22,.08)}
 .ibar .actions{margin-top:0}
 .ibar #mAdd{display:flex;justify-content:space-between;font-weight:600;font-size:16px;padding:14px 16px;background:var(--ok)}
+.closedbar{background:#b3392f;color:#fff;padding:12px 16px;text-align:center;font-weight:600;display:none}
+.closedbar small{display:block;font-weight:400;opacity:.9;margin-top:2px}
 .imsg{color:var(--bad);font-size:13px;text-align:center;margin-top:6px;min-height:16px}
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
@@ -138,6 +140,7 @@ main{padding:14px;max-width:760px;margin:0 auto}
 </head>
 <body>
 <header><div id="logo"></div><div><b id="shop">Order</b><small>Order here, then show your QR at the counter</small></div></header>
+<div class="closedbar" id="closedBar">Sorry, we are closed right now.<small>You can look at the menu, but new orders cannot be placed until we open.</small></div>
 <main id="main"><div class="empty">Loading menu…</div></main>
 <nav class="tabs" id="tabs">
   <button id="tab-menu" class="on" onclick="goMenu()"><svg viewBox="0 0 24 24"><path d="M5 8h12v5a6 6 0 0 1-12 0z"/><path d="M17 9h1.5a2.5 2.5 0 0 1 0 5H17"/><path d="M9 3c-1 1 1 2 0 3M13 3c-1 1 1 2 0 3"/></svg><span>Menu</span></button>
@@ -185,9 +188,28 @@ async function start(){
     loadCart();
     const last=loadLast();
     if(last)showDone(last);else render();
+    watchStore();
   }catch(e){
     $('#main').innerHTML='<div class="empty">Cannot load the menu right now.<br><small>'+esc(e.message||e.code||'')+'</small></div>';
   }
+}
+
+/* ---------- store open / closed ---------- */
+const isClosed=()=>S.storeOpen===false;
+let wasClosed=null;
+function storeUI(){
+  const closed=isClosed();
+  const bar=$('#closedBar');
+  if(bar)bar.style.display=closed&&!$('#stat')?'block':'none'; // not shown on the "order sent" screen
+  const n=$('#closedNote');if(n)n.style.display=closed?'block':'none';
+  const b=$('#sendBtn');if(b&&!sending)b.disabled=closed;
+  if(wasClosed===false&&closed)toast('Sorry, the store has just closed. New orders cannot be placed.',7000); // open -> closed while the page is open
+  if(wasClosed===true&&!closed)toast('We are open! You can place your order now.',4000);
+  wasClosed=closed;
+}
+function watchStore(){ // the page updates by itself when the cashier opens or closes the store
+  storeUI();
+  try{fs.collection('settings').doc('main').onSnapshot(d=>{if(d.exists){S.storeOpen=d.data().storeOpen;S.deliveryFeeAdd=d.data().deliveryFeeAdd}storeUI()},()=>{})}catch(e){}
 }
 
 /* ---------- menu ---------- */
@@ -195,7 +217,7 @@ function catList(){return ['All',...new Set(MENU.map(m=>m.cat))]}
 function render(){
   $('#main').innerHTML=`<input class="search" id="q" placeholder="Search menu..." oninput="renderGrid()">
   <div class="cats" id="cats"></div><div class="grid" id="grid"></div>`;
-  renderGrid();renderBar();setTab('menu');
+  renderGrid();renderBar();setTab('menu');storeUI();
 }
 function renderGrid(){
   const cl=catList();if(!cl.includes(cat))cat='All';
@@ -345,11 +367,11 @@ function openCart(){
   <div id="delBox" style="display:none"><div class="lbl">Phone number</div><input id="oPhone" type="tel" maxlength="20" placeholder="e.g. 0917 123 4567" value="${esc(delForm.phone)}" oninput="delForm.phone=this.value">
   <div class="lbl">Delivery address</div><textarea id="oAddr" rows="2" maxlength="200" placeholder="House no., street, barangay, landmark" oninput="delForm.addr=this.value">${esc(delForm.addr)}</textarea>
   <div class="note">${S.deliveryFeeAdd===false?'No delivery fee will be added to your total.':(Number(S.deliveryFee)>0?'Delivery fee is usually '+fmt(S.deliveryFee)+'. ':'')+'The shop will confirm the delivery fee. It is not included in the total above.'}</div></div>
-  <div class="stickyfoot"><div class="row total"><span>Total</span><span>${fmt(subtotal())}</span></div>
+  <div class="stickyfoot"><div class="note" id="closedNote" style="display:none;background:#fbe5e1;border-color:#e8b4ad;color:#7a1f17;margin:0 0 8px">We are closed right now. You cannot place an order until we open.</div><div class="row total"><span>Total</span><span>${fmt(subtotal())}</span></div>
   <div class="actions" style="margin-top:8px"><button class="ghost" onclick="closeSheet()">Add more</button><button id="sendBtn" style="background:var(--ok)" onclick="submitOrder()">Place order</button></div></div>`);
   $('#sheet').classList.add('cartsheet');
   if(keepForm){if(keepForm.t)$('#oType').value=keepForm.t;if(keepForm.n)$('#oName').value=keepForm.n;keepForm=null}
-  onTypeChange();
+  onTypeChange();storeUI();
 }
 function onTypeChange(){ // delivery needs a name, phone and address
   const delivery=($('#oType')||{}).value==='Delivery';
@@ -403,6 +425,8 @@ async function stockStillOk(){ // menu was loaded when the page opened, so check
 async function submitOrder(){
   if(sending||!cart.length)return;
   if(!navigator.onLine){toast('No internet connection');return}
+  try{const st=await fs.collection('settings').doc('main').get({source:'server'});if(st.exists){S.storeOpen=st.data().storeOpen;S.deliveryFeeAdd=st.data().deliveryFeeAdd}}catch(e){} // check again right before sending
+  if(isClosed()){storeUI();toast('Sorry, we are closed. Your order was not sent.',6000);return}
   if($('#oType').value==='Delivery'){
     if(!($('#oName').value||'').trim()){toast('Please enter your name for delivery');return}
     if(!(delForm.phone||'').trim()){toast('Please enter your phone number for delivery');return}
@@ -493,7 +517,7 @@ function showDone(rec){
   <div class="code">${esc(rec.code)}</div><div style="color:var(--mut)">${rec.count} item(s) · about ${fmt(rec.total)}</div>
   <div class="note">Keep this page open. If the QR does not scan, tell the cashier your code.</div></div>
   <button class="ghost" onclick="newOrder()">Start a new order</button></div>`;
-  watch(rec.code);
+  watch(rec.code);storeUI();
 }
 /* ---------- our own confirm card (instead of the browser's confirm box) ---------- */
 let confirmDone=null;
