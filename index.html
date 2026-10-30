@@ -117,8 +117,9 @@ main{padding:0 22px 22px}
 .dg1>.dpanel,.dg2>.dpanel,.dg3>.dpanel,.dgm>.dpanel{margin-bottom:0}
 .dwrap{max-width:1150px;margin:0 auto}
 .dwrap .dg1,.dwrap .dg2,.dwrap .dg3,.dwrap .dgm,.dwrap .g4,.dwrap .dcol,.dwrap .dpair{gap:16px}
-.dwrap .dg1,.dwrap .dg2,.dwrap .dg3,.dwrap .tgt,.dwrap .bsp{margin-bottom:16px}
-.dwrap .tgt{margin-top:12px}
+.dwrap .dg1,.dwrap .dg2,.dwrap .dg3,.dwrap .tgtbox,.dwrap .bsp{margin-bottom:16px}
+.dwrap .tgtbox{margin-top:12px}
+.dwrap .tgtbox{padding:14px 20px}
 .dwrap .dpanel{padding:18px 20px}
 .dwrap .dpair>.dpanel{padding:14px 14px}
 .dwrap .mini{padding:14px 18px}
@@ -164,7 +165,7 @@ main{padding:0 22px 22px}
 .dh .k small{padding-right:0;font-weight:600}
 .g4{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:12px}
 .g4>.mini{display:flex;flex-direction:column;justify-content:center}
-.tgt{margin:10px 0 12px}
+.tgtbox{margin:10px 0 12px}
 .hero3 .bigp{font-size:34px;font-weight:700;line-height:1.2;margin:2px 0 8px}
 .hero3 .bigp.neg{color:var(--bad)}
 .hero3 small{display:block;color:var(--mut);font-size:13px}
@@ -185,7 +186,7 @@ main{padding:0 22px 22px}
 .mini b{display:block;font-size:22px;font-weight:600;line-height:1.3;margin-top:2px}
 .at2 .ic{background:transparent}
 .dpanel{background:linear-gradient(135deg,color-mix(in srgb,var(--ac,var(--brand)) 9%,var(--card)),var(--card) 85%)}
-.dpanel.ac,.hero3,.tgt,.mini,.dh .k{background:linear-gradient(135deg,color-mix(in srgb,var(--ac,var(--brand)) 16%,var(--card)),var(--card) 85%)}
+.dpanel.ac,.hero3,.tgtbox,.mini,.dh .k{background:linear-gradient(135deg,color-mix(in srgb,var(--ac,var(--brand)) 16%,var(--card)),var(--card) 85%)}
 @media(max-width:1000px){.dg1,.dg2,.dg3,.dgm{grid-template-columns:1fr!important}}
 .dmain{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:10px;align-items:start}
 .hb{display:grid;grid-template-columns:minmax(60px,1fr) 1.4fr auto;gap:8px;align-items:center;padding:4px 0;font-size:13px}
@@ -1840,7 +1841,7 @@ async function aDash(silent){
   if(A.unc)attRows.push(att('#c47f17','🏷️',A.unc+' item(s) have no cost set','Profit looks higher than it is until the cost is set','Set costs','subTo(\'menu\')'));
   if(A.unpaid>0)attRows.push(att('#c47f17','📒',fmt(A.unpaid)+' unpaid credit','In this period','Open','subTo(\'credits\')'));
   $('#aContent').innerHTML='<div class="dwrap">'+rangeBar('aDash',exportButtons('dash'))+`
-  <div class="dpanel tgt" style="--ac:#2f6fb3">${targetPanel(A,true)}</div>
+  <div class="dpanel tgtbox" style="--ac:#2f6fb3">${targetPanel(A,true)}</div>
   <div class="dg1">
     <div class="dpanel hero3" style="--ac:${A.net<0?'#b3392f':'#2f7d4f'}">
       <small>Net profit</small><div class="bigp ${A.net<0?'neg':''}">${fmt(A.net)}</div>
