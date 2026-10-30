@@ -441,7 +441,8 @@ code{background:#f1e9df;padding:1px 5px;border-radius:5px}
     <div class="sbox" id="topSearch"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="q" placeholder="Search menu items..." oninput="renderMenu()"></div>
     <h2 id="topTitle" style="display:none"></h2>
     <button id="scanBtn" class="scanbtn" onclick="openScan()"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="6.5" height="6.5" rx="1"/><rect x="14" y="3.5" width="6.5" height="6.5" rx="1"/><rect x="3.5" y="14" width="6.5" height="6.5" rx="1"/><path d="M14 14h3v3M20.5 14v.01M14 20.5h3.5M20.5 17.5v3"/></svg><span>Scan order</span></button>
-    <button id="onlBtn" class="scanbtn" onclick="showOnline()"><svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18.5h2"/></svg><span>Online</span><i id="onlN" class="onlbadge" style="display:none">0</i></button>
+    <button id="onlBtn" class="scanbtn" onclick="showOnline('online')"><svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18.5h2"/></svg><span>Online</span><i id="onlN" class="onlbadge" style="display:none">0</i></button>
+    <button id="delBtn" class="scanbtn" onclick="showOnline('delivery')"><svg viewBox="0 0 24 24"><circle cx="6" cy="17" r="2.5"/><circle cx="18" cy="17" r="2.5"/><path d="M8.5 17h5l2-6h3M6 14.5 5 9H3M12.5 8h3"/></svg><span>Delivery</span><i id="delN" class="onlbadge" style="display:none">0</i></button>
     <button id="drwBtn" class="scanbtn" style="display:none" onclick="openDrawer(true)"><svg viewBox="0 0 24 24"><rect x="3" y="9" width="18" height="10" rx="2"/><path d="M6 9V6h12v3M10 14h4"/></svg><span>Open drawer</span></button>
     <div class="clk"><span class="d"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg><i id="clkD" style="font-style:normal"></i></span><span><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg><i id="clkT" style="font-style:normal"></i></span></div>
   </div>
@@ -817,6 +818,7 @@ function markNav(){
   $('#topSearch').style.display=view==='pos'?'':'none';
   $('#scanBtn').style.display=view==='pos'?'':'none';
   $('#onlBtn').style.display=view==='pos'?'':'none';
+  $('#delBtn').style.display=view==='pos'?'':'none';
   $('#drwBtn').style.display=(view==='pos'&&ME&&ME.role==='admin'&&drawerCfg().on)?'':'none'; // admin only
   $('#topTitle').style.display=view==='pos'?'none':'block';
   $('#topTitle').textContent=T[on]||'';
@@ -1087,7 +1089,10 @@ async function loadPending(raw){
 /* ---------- online orders waiting at the counter ---------- */
 let PENDING=[];
 const livePending=()=>PENDING.filter(p=>(p.exp||0)>Date.now()).sort((a,b)=>a.ts-b.ts);
-function onlBadge(){const n=livePending().length,b=$('#onlN');if(b){b.textContent=n;b.style.display=n?'':'none'}}
+function onlBadge(){ // Online = dine-in and take-out, Delivery has its own count
+  const live=livePending(),counts={onlN:live.filter(p=>p.type!=='Delivery').length,delN:live.filter(p=>p.type==='Delivery').length};
+  Object.keys(counts).forEach(id=>{const b=$('#'+id);if(b){b.textContent=counts[id];b.style.display=counts[id]?'':'none'}});
+}
 setInterval(onlBadge,60000); // orders expire without any database change
 function startPending(){
   if(!ME||!can.pos.includes(ME.role))return; // baristas cannot read pending orders
@@ -1110,9 +1115,11 @@ async function cleanPending(auto){ // auto: only orders expired for over a day; 
     if(!auto)toast('Cleared '+q.size+' expired order(s)');
   }catch(e){if(!auto)toast(errMsg(e))}
 }
-function showOnline(){
+let onlKind='online'; // which list the modal shows: 'online' (dine-in, take-out) or 'delivery'
+function showOnline(kind){
   if(!ME||!can.pos.includes(ME.role))return;
-  modal(`<h3>Online orders</h3><div id="onlList"></div><div class="actions"><button class="ghost" onclick="closeModal()">Close</button></div>`);
+  onlKind=kind==='delivery'?'delivery':'online';
+  modal(`<h3>${onlKind==='delivery'?'Delivery orders':'Online orders'}</h3><div id="onlList"></div><div class="actions"><button class="ghost" onclick="closeModal()">Close</button></div>`);
   $('#modal').classList.add('wide');
   renderOnline();
 }
@@ -1123,11 +1130,10 @@ function onlineRow(p){
     ${delivery?`<small style="display:block">📞 ${esc(p.phone||'')} · 📍 ${esc(p.addr||'')}</small>`:''}</div>
     <div style="display:flex;gap:6px"><button onclick="loadOnline('${esc(p.id)}')">Load</button><button class="bad" onclick="cancelOnline('${esc(p.id)}')">Cancel</button></div></div>`;
 }
-function renderOnline(){ // delivery orders are listed apart from dine-in and take-out
-  const list=livePending(),old=PENDING.length-list.length;
-  const deliveryList=list.filter(p=>p.type==='Delivery'),otherList=list.filter(p=>p.type!=='Delivery');
-  const group=(title,rows)=>rows.length?`<h4 style="margin:12px 0 6px">${title} (${rows.length})</h4>`+rows.map(onlineRow).join(''):'';
-  $('#onlList').innerHTML=(group('🛵 Delivery',deliveryList)+group('🍽️ Dine-in / Take-out',otherList)||'<div class="empty">No new online orders.</div>')
+function renderOnline(){
+  const live=livePending(),old=PENDING.length-live.length;
+  const list=live.filter(p=>(p.type==='Delivery')===(onlKind==='delivery'));
+  $('#onlList').innerHTML=(list.map(onlineRow).join('')||`<div class="empty">${onlKind==='delivery'?'No new delivery orders.':'No new online orders.'}</div>`)
     +(old?`<div style="margin-top:10px;color:var(--mut);font-size:13px">${old} expired order(s) not scanned. <button class="ghost" style="padding:4px 10px" onclick="cleanPending(false)">Clear expired</button></div>`:'');
 }
 function loadOnline(code){
