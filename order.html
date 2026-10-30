@@ -373,7 +373,7 @@ function openCart(){
     <div class="mid"><b>${esc(c.name)}</b>${sub?`<div class="sub">${esc(sub)}</div>`:''}${c.note?`<div class="sub">“${esc(c.note)}”</div>`:''}${m.sized?`<button class="lnk" onclick="editLine(${i})">Edit</button>`:''}</div>
     <div class="rt"><div class="pr">${fmt(c.unit*c.qty)}</div>
     <select class="qsel" aria-label="Quantity" onchange="setQty(${i},this.value)">${Array.from({length:20},(_,k)=>`<option value="${k+1}" ${c.qty===k+1?'selected':''}>${k+1}</option>`).join('')}<option value="0">Remove</option></select></div></div>`}).join('')}
-  <div class="note">Pay at the counter. Prices may change slightly when the cashier confirms your order.</div>
+  <div class="note" id="payNote">Pay at the counter. Prices may change slightly when the cashier confirms your order.</div>
   <div class="two"><div><div class="lbl">Order type</div><select id="oType" onchange="onTypeChange()"><option>Dine-in</option><option>Take-out</option>${deliveryOn()?'<option>Delivery</option>':''}</select></div>
   <div><div class="lbl" id="oNameLbl">Your name (optional)</div><input id="oName" maxlength="30" placeholder="e.g. Ana"></div></div>
   <div id="delBox" style="display:none"><div class="lbl">Phone number</div><input id="oPhone" type="tel" maxlength="20" placeholder="e.g. 0917 123 4567" value="${esc(delForm.phone)}" oninput="delForm.phone=this.value">
@@ -390,6 +390,7 @@ function onTypeChange(){ // delivery needs a name, phone and address
   const delivery=($('#oType')||{}).value==='Delivery';
   $('#delBox').style.display=delivery?'block':'none';
   $('#oNameLbl').textContent=delivery?'Your name':'Your name (optional)';
+  $('#payNote').textContent=delivery?'Pay when your order is delivered. Prices may change slightly when the shop confirms your order.':'Pay at the counter. Prices may change slightly when the cashier confirms your order.';
 }
 function setQty(i,v){
   const c=cart[i];if(!c)return;
@@ -524,12 +525,13 @@ function applyStatus(p){
 function showDone(rec){
   setTab('order');
   let img='';try{img=`<img src="${qrImg('POS:'+rec.code)}" alt="Order QR">`}catch(e){}
+  const dl=rec.type==='Delivery';
   $('#main').innerHTML=`<div class="done"><h2 style="margin:6px 0">Order sent!</h2>
-  <div id="stat" class="stat new"><div class="ic">⏳</div><div><b>Waiting for the cashier</b><small>Show your QR when it is your turn.</small></div></div>
+  <div id="stat" class="stat new"><div class="ic">⏳</div><div>${dl?'<b>Waiting for the shop to confirm</b><small>The shop will contact you. Pay when your order is delivered.</small>':'<b>Waiting for the cashier</b><small>Show your QR when it is your turn.</small>'}</div></div>
   <div id="bigNo" class="bigno" style="display:none"></div>
   <div id="qrWrap"><div style="margin:16px 0">${img}</div>
   <div class="code">${esc(rec.code)}</div><div style="color:var(--mut)">${rec.count} item(s) · about ${fmt(rec.total)}</div>
-  <div class="note">Keep this page open. If the QR does not scan, tell the cashier your code.</div></div>
+  <div class="note">${dl?'Keep this page open to follow your order. Your code is '+esc(rec.code)+' if the shop asks for it.':'Keep this page open. If the QR does not scan, tell the cashier your code.'}</div></div>
   <button class="ghost" onclick="newOrder()">Start a new order</button></div>`;
   watch(rec.code);storeUI();
 }
