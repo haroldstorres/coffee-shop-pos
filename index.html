@@ -1336,7 +1336,7 @@ function showPaid(o){
 }
 function paidReceipt(print){
   if(!LASTPAID)return;
-  showReceipt(LASTPAID);
+  showReceipt(LASTPAID,true);
   if(print)setTimeout(()=>window.print(),250);
 }
 
@@ -1389,7 +1389,7 @@ function ono(o){return '#'+String(o.no).padStart(3,'0')}
 function bizHeader(){
   return `${S.logo?`<img class="logo" src="${S.logo}" alt="">`:''}<b>${esc(S.shop)}</b>${S.address?'<br>'+esc(S.address).replace(/\n/g,'<br>'):''}${S.phone?'<br>Tel: '+esc(S.phone):''}${S.tin?'<br>'+(S.vatOn?'VAT REG TIN: ':'NON-VAT REG TIN: ')+esc(S.tin):''}`;
 }
-function showReceipt(ref){
+function showReceipt(ref,backToPaid){ // backToPaid: opened from the payment card, so Back returns to it
   const o=typeof ref==='string'?(ORDERS.concat(RORDERS,CREDITS).find(x=>x.id===ref)):ref;
   if(!o)return;
   const adj=o.adj||0,vr=o.vatRate||0,excl=o.vatOn&&o.vatMode==='excl';
@@ -1422,7 +1422,7 @@ function showReceipt(ref){
     <div class="c">Thank you!<br>${esc(S.footer||'Please come again ☕').replace(/\n/g,'<br>')}</div>
     <div class="eq"></div>
   </div>
-  <div class="actions"><button class="ghost" onclick="closeModal()">Close</button><button onclick="window.print()">Print</button></div>`);
+  <div class="actions"><button class="ghost" onclick="${backToPaid?'showPaid(LASTPAID)':'closeModal()'}">${backToPaid?'Back':'Close'}</button><button onclick="window.print()">Print</button></div>`);
 }
 
 /* =====================================================================
