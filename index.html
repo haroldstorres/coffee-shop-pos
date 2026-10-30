@@ -126,6 +126,7 @@ main{padding:0 22px 22px}
 .dg2e .dpanel{min-width:0;overflow-x:auto}
 .dcol{display:flex;flex-direction:column;gap:12px;min-width:0}
 .dcol>.dpanel{margin:0;flex:1}
+.dcolL>.dpanel{flex:none}
 .dpair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
 .dpair>.dpanel{margin:0;min-width:0;padding:12px 12px}
 .dpair .dn2{flex-direction:column;align-items:flex-start;gap:6px;flex-wrap:nowrap}
@@ -1859,7 +1860,12 @@ async function aDash(silent){
     </div>
   </div>
   <div class="dg2">
-    ${hourPanel()}
+    <div class="dcol dcolL">
+      ${hourPanel()}
+        <div class="dpanel ac bsp" style="--ac:#6f4e37"><h4>Best sellers - ${rangeWord()} <small style="color:var(--mut);font-weight:400">top 5 per category</small><span class="sltabs"><button class="on" id="slT" onclick="swSell(1)">Top</button><button id="slS" onclick="swSell(2)">Slowest</button></span></h4>
+        <div id="sellTop" class="bsg">${bestCols||none('No sales in this period.')}</div>
+        <div id="sellSlow" class="bsg" style="display:none">${slowCols||none('No menu items yet.')}</div></div>
+    </div>
     <div class="dcol">
       <div class="dpair">
         <div class="dpanel ac" style="--ac:#2f6fb3"><h4>Where the sales went</h4>${donut(ringParts,A.sales>0?{t:pct(A.net,A.sales),s:'net profit'}:null)}
@@ -1869,9 +1875,6 @@ async function aDash(silent){
       <div class="dpanel ac" style="--ac:#c47f17"><h4>Needs attention${attRows.length?' <small style="color:var(--mut);font-weight:400">'+attRows.length+'</small>':''}</h4>${attRows.join('')||'<div style="color:var(--ok);padding:6px 0">Nothing needs attention right now.</div>'}</div>
     </div>
   </div>
-  <div class="dpanel ac bsp" style="--ac:#6f4e37"><h4>Best sellers - ${rangeWord()} <small style="color:var(--mut);font-weight:400">top 5 per category</small><span class="sltabs"><button class="on" id="slT" onclick="swSell(1)">Top</button><button id="slS" onclick="swSell(2)">Slowest</button></span></h4>
-    <div id="sellTop" class="bsg">${bestCols||none('No sales in this period.')}</div>
-    <div id="sellSlow" class="bsg" style="display:none">${slowCols||none('No menu items yet.')}</div></div>
   <div class="dg2" style="grid-template-columns:minmax(0,1fr)">
     <div class="dpanel ac" style="--ac:#2f7d4f"><h4>Recent orders</h4>${recent.map(o=>`<div class="ro"><span class="av2">${TYPEICO[o.type]||'☕'}</span><div><b>${esc(o.custName||o.type)}</b> <span class="pill">${esc(o.pay)}</span><small>${ono(o)} · ${dstr(o.ts)===todayStr()?'':dstr(o.ts)+' '}${tstr(o.ts)}</small></div><span class="am">${fmt(o.total)}</span></div>`).join('')||none('No orders in this period.')}</div>
   </div>
