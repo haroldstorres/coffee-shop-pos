@@ -97,6 +97,9 @@ main{padding:0 22px 22px}
 @media(max-width:900px){.scanbtn span{display:none}.scanbtn{padding:11px 12px}}
 .scanbox video{display:none;width:100%;max-height:320px;background:#000;border-radius:12px;object-fit:cover}
 .scanmsg{color:var(--mut);font-size:13px;margin:8px 0}
+.tgsw{display:inline-block;width:38px;height:22px;border-radius:999px;background:rgba(255,255,255,.35);position:relative;flex:none;margin-left:4px;cursor:pointer}
+.tgsw::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .15s}
+.tgsw.on{background:#4caf7a}.tgsw.on::after{left:19px}
 .onlbadge{background:#c9744a;color:#fff;border-radius:999px;padding:1px 8px;font-size:12px;font-style:normal}
 .dh{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:8px;margin:8px 0 10px}
 .dh .k{--ac:var(--brand);position:relative;background:linear-gradient(135deg,color-mix(in srgb,var(--ac) 13%,var(--card)),var(--card) 70%);border:1px solid var(--line);border-left:5px solid var(--ac);border-radius:12px;padding:10px 14px}
@@ -447,7 +450,7 @@ code{background:#f1e9df;padding:1px 5px;border-radius:5px}
     <h2 id="topTitle" style="display:none"></h2>
     <button id="scanBtn" class="scanbtn" onclick="openScan()"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="6.5" height="6.5" rx="1"/><rect x="14" y="3.5" width="6.5" height="6.5" rx="1"/><rect x="3.5" y="14" width="6.5" height="6.5" rx="1"/><path d="M14 14h3v3M20.5 14v.01M14 20.5h3.5M20.5 17.5v3"/></svg><span>Scan order</span></button>
     <button id="onlBtn" class="scanbtn" onclick="showOnline('online')"><svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18.5h2"/></svg><span>Online</span><i id="onlN" class="onlbadge" style="display:none">0</i></button>
-    <button id="delBtn" class="scanbtn" onclick="showOnline('delivery')"><svg viewBox="0 0 24 24"><circle cx="6" cy="17" r="2.5"/><circle cx="18" cy="17" r="2.5"/><path d="M8.5 17h5l2-6h3M6 14.5 5 9H3M12.5 8h3"/></svg><span>Delivery</span><i id="delN" class="onlbadge" style="display:none">0</i></button>
+    <button id="delBtn" class="scanbtn" onclick="showOnline('delivery')"><svg viewBox="0 0 24 24"><circle cx="6" cy="17" r="2.5"/><circle cx="18" cy="17" r="2.5"/><path d="M8.5 17h5l2-6h3M6 14.5 5 9H3M12.5 8h3"/></svg><span>Delivery</span><i id="delN" class="onlbadge" style="display:none">0</i><i id="delSw" class="tgsw on" role="switch" aria-checked="true" aria-label="Delivery available" onclick="event.stopPropagation();toggleDelivery()"></i></button>
     <button id="storeBtn" class="scanbtn" onclick="toggleStore()"><svg viewBox="0 0 24 24"><path d="M4 9l1.5-5h13L20 9"/><path d="M4 9v1a2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 5 0V9"/><path d="M5.5 13v7h13v-7M10 20v-4h4v4"/></svg><span id="storeTxt">Store open</span></button>
     <button id="drwBtn" class="scanbtn" style="display:none" onclick="openDrawer(true)"><svg viewBox="0 0 24 24"><rect x="3" y="9" width="18" height="10" rx="2"/><path d="M6 9V6h12v3M10 14h4"/></svg><span>Open drawer</span></button>
     <div class="clk"><span class="d"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg><i id="clkD" style="font-style:normal"></i></span><span><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg><i id="clkT" style="font-style:normal"></i></span></div>
@@ -1125,6 +1128,13 @@ function storeBadge(){
   b.style.background=open?'#2f5d4a':'#b3392f';
   $('#storeTxt').textContent=open?'Store open':'Store closed';
   b.title=open?'Tap to close the store for online orders':'Tap to open the store for online orders';
+  const d=$('#delBtn');
+  if(d){ // grey when delivery is switched off, so the cashier knows at a glance
+    const off=S.deliveryOn===false;
+    d.style.background=off?'#9a8f86':'';
+    d.title=off?'Delivery is NOT available. Tap the switch to turn it on.':'Delivery orders. Tap the switch to turn delivery off.';
+    const sw=$('#delSw');if(sw){sw.classList.toggle('on',!off);sw.setAttribute('aria-checked',String(!off))}
+  }
 }
 async function toggleStore(){
   if(!ME||!can.pos.includes(ME.role))return;
@@ -1134,6 +1144,17 @@ async function toggleStore(){
   try{
     await fs.collection('settings').doc('main').set({storeOpen:!open},{merge:true});
     toast(open?'Store closed':'Store open',2000);
+  }catch(e){toast(errMsg(e))}
+}
+
+async function toggleDelivery(){ // switch on the Delivery button: delivery available or not
+  if(!ME||!can.pos.includes(ME.role))return;
+  const on=S.deliveryOn!==false;
+  if(on&&!await askConfirm('Customers will not be able to choose Delivery. Delivery orders already sent stay in the list.',{title:'Turn off delivery?',yesText:'Turn off',noText:'Keep on',danger:true}))return;
+  if(!navigator.onLine){toast('No internet. A connection is needed to change this.');return}
+  try{
+    await fs.collection('settings').doc('main').set({deliveryOn:!on},{merge:true});
+    toast(on?'Delivery turned off':'Delivery turned on',2000);
   }catch(e){toast(errMsg(e))}
 }
 
@@ -1289,8 +1310,11 @@ function renderTotals(){
   $('#customPct').style.display=$('#disc').value==='custom'?'block':'none';
   $('#custBox').style.display=isDelivery||onCredit?'block':'none';
   $('#delBox').style.display=isDelivery?'block':'none';
-  const delOpt=[...$('#otype').options].find(o=>o.value==='Delivery');
-  if(delOpt)delOpt.hidden=S.deliveryOn===false&&$('#otype').value!=='Delivery'; // stays visible only if a delivery order is already loaded
+  const delOpt=[...$('#otype').options].find(o=>o.text.startsWith('Delivery'));
+  if(delOpt){ // greyed out and marked when delivery is off; still usable if a delivery order is already loaded
+    const off=S.deliveryOn===false&&$('#otype').value!=='Delivery';
+    delOpt.value='Delivery';delOpt.disabled=off;delOpt.textContent=S.deliveryOn===false?'Delivery (Not Available)':'Delivery';
+  }
   const feeOn=S.deliveryFeeAdd!==false;
   $('#dFee').style.display=feeOn?'':'none'; // no fee box when the fee is not added to the total
   if(isDelivery&&feeOn&&!feeEdited&&$('#dFee').value===''&&Number(S.deliveryFee)>0)$('#dFee').value=S.deliveryFee; // default fee, the cashier can change it
