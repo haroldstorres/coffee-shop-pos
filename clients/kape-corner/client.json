@@ -1,0 +1,22 @@
+{
+  "name": "Auntie Linda's Bakeshop",
+  "posName": "Auntie Linda's POS",
+  "orderName": "Auntie Linda's",
+  "firebase": {
+    "apiKey": "PASTE",
+    "authDomain": "PASTE",
+    "projectId": "PASTE",
+    "storageBucket": "PASTE",
+    "messagingSenderId": "PASTE",
+    "appId": "PASTE"
+  },
+  "colors": {
+    "dark": "#5b2318",
+    "brand": "#c2610c",
+    "accent": "#f57505",
+    "active": "#7d3322",
+    "iconBg": "#ffffff"
+  },
+  "logo": "logo.png",
+  "logoScale": 0.8
+}
