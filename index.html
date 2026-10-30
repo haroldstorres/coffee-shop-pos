@@ -234,6 +234,21 @@ main{padding:0 22px 22px}
 .cscroll{flex:1 1 auto;min-height:140px;overflow-y:auto;overscroll-behavior:contain;margin:8px -6px 0 0;padding-right:6px}
 .cfoot{padding-top:2px}
 @media(max-width:900px){.cartcard{position:static;max-height:none;overflow:visible}.cscroll{overflow:visible;margin-right:0;padding-right:0}}
+.paidpop{text-align:center;max-width:340px;margin:0 auto;padding:6px 4px 2px}
+.pdck{width:64px;height:64px;border-radius:50%;background:#2f5d4a;display:flex;align-items:center;justify-content:center;margin:4px auto 12px}
+.pdck.cr{background:#c47f17}
+.pdck svg{width:34px;height:34px;stroke:#fff;fill:none;stroke-width:3.2;stroke-linecap:round;stroke-linejoin:round}
+.paidpop h3{margin:0 0 2px;font-size:21px;padding:0}
+.paidpop .pds{color:var(--mut);font-size:13px;margin-bottom:12px}
+.paidpop .pdt{font-size:32px;font-weight:800;margin:0 0 12px;line-height:1.2}
+.pdr{display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--line);color:var(--mut);font-size:14px}
+.pdr b{color:var(--ink);font-weight:600}
+.pdc{margin-top:6px;padding:10px 14px;border-radius:10px;background:#dff2e5;color:#1f4a37;display:flex;justify-content:space-between;align-items:center;font-size:14px}
+.pdc b{font-size:24px}
+.pdc.cr{background:#fff4e0;color:#7a4b00}
+.pdbt{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+.pdbt button{padding:13px 8px;font-size:15px;border-radius:12px}
+.pdbt .pdn{grid-column:1/-1;background:#2f5d4a;color:#fff;font-weight:600;padding:15px;font-size:16px}
 .actbar{display:grid;grid-template-columns:1fr 1.5fr;gap:10px;margin-top:16px}
 .actbar button{display:flex;align-items:center;justify-content:center;gap:8px;padding:15px 10px;font-size:16px;font-weight:600;border-radius:12px}
 .actbar svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
@@ -1270,12 +1285,41 @@ async function placeOrder(){
     if(onCredit)$('#pay').value='Cash';
     if(isDelivery)$('#otype').value='Dine-in';
     placing=false;renderCart();
-    showReceipt(order);
+    showPaid(order);
     if(alerts.length)toast('Low stock: '+alerts.join(', '),6000);
   }catch(e){
     placing=false;renderTotals();
     toast(errMsg(e));
   }
+}
+
+/* ---------- payment successful popup ---------- */
+let LASTPAID=null;
+function showPaid(o){
+  LASTPAID=o;
+  const credit=o.pay==='Credit',cash=o.pay==='Cash',n=o.items.reduce((a,i)=>a+i.qty,0);
+  const row=(a,b)=>`<div class="pdr"><span>${a}</span><b>${b}</b></div>`;
+  modal(`<div class="paidpop">
+    <div class="pdck ${credit?'cr':''}"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+    <h3>${credit?'Order saved':'Payment successful'}</h3>
+    <div class="pds">Order ${ono(o)} · ${esc(o.type)} · ${n} item${n===1?'':'s'}${credit&&o.custName?' · '+esc(o.custName):''}</div>
+    <div class="pdt">${fmt(o.total)}</div>
+    ${row('Payment',esc(o.pay))}
+    ${cash?row('Cash received',fmt(o.tendered)):''}
+    ${cash?`<div class="pdc"><span>Change</span><b>${fmt(o.change)}</b></div>`:''}
+    ${credit?`<div class="pdc cr"><span>Balance due</span><b>${fmt(o.total)}</b></div>`:''}
+    <div class="pdbt">
+      <button class="ghost" onclick="paidReceipt(false)">View receipt</button>
+      <button class="ghost" onclick="paidReceipt(true)">Print receipt</button>
+      <button id="pdNew" class="pdn" onclick="closeModal()">New order</button>
+    </div>
+  </div>`);
+  setTimeout(()=>{const b=$('#pdNew');if(b)b.focus()},50);
+}
+function paidReceipt(print){
+  if(!LASTPAID)return;
+  showReceipt(LASTPAID);
+  if(print)setTimeout(()=>window.print(),250);
 }
 
 /* ---------- receipt ---------- */
