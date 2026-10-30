@@ -78,8 +78,8 @@ main{padding:0 22px 22px}
 .item .tag.hot{background:#c98a3a}.item .tag.iced{background:#5b7d99}
 .item.isbest{border-color:#d4a73a;box-shadow:0 0 0 1px rgba(212,167,58,.45),0 4px 14px rgba(212,167,58,.28)}
 .item .best{position:absolute;top:8px;left:8px;z-index:1;overflow:hidden;font-size:11px;font-weight:700;padding:3px 10px;border-radius:8px;color:#4a3300;background:linear-gradient(135deg,#f6d36b,#e0a526);box-shadow:0 2px 6px rgba(0,0,0,.25)}
-.item .best::after{content:"";position:absolute;top:0;left:-60%;width:40%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.75),transparent);transform:skewX(-20deg);animation:bshine 1.6s .5s 1}
-@keyframes bshine{from{left:-60%}to{left:130%}}
+.item .best::after{content:"";position:absolute;top:0;left:-60%;width:40%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.75),transparent);transform:skewX(-20deg);animation:bshine 5s .5s infinite}
+@keyframes bshine{0%{left:-60%}32%,100%{left:130%}} /* sweep takes ~1.6s, then rests until the 5s loop restarts */
 @media(prefers-reduced-motion:reduce){.item .best::after{animation:none}}
 .item .nm{padding:10px 12px 0;font-size:15px;font-weight:500}
 .item .pr{padding:4px 12px 0;color:var(--ink);font-weight:700}
@@ -876,7 +876,7 @@ setInterval(tick,30000);
 function catList(){return ['All',...new Set(MENU.map(m=>m.cat))]}
 function setCat(i){cat=catList()[i]||'All';renderMenu()}
 function renderMenu(){
-  $('#shopName').textContent=S.shop+' POS';
+  $('#shopName').textContent=S.shop;
   $('#brandImg').style.display=S.sideLogo?'block':'none';if(S.sideLogo)$('#brandImg').src=S.sideLogo;$('#brandSvg').style.display=S.sideLogo?'none':'';
   document.title=S.shop+' POS';
   storeBadge();
