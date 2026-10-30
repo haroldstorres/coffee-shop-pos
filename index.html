@@ -115,6 +115,13 @@ main{padding:0 22px 22px}
 .dg3{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr);gap:12px;margin-bottom:12px;align-items:stretch}
 .dgm{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start}
 .dg1>.dpanel,.dg2>.dpanel,.dg3>.dpanel,.dgm>.dpanel{margin-bottom:0}
+.dwrap{max-width:1150px;margin:0 auto}
+.dwrap .dg1,.dwrap .dg2,.dwrap .dg3,.dwrap .dgm,.dwrap .g4,.dwrap .dcol,.dwrap .dpair{gap:16px}
+.dwrap .dg1,.dwrap .dg2,.dwrap .dg3,.dwrap .tgt,.dwrap .bsp{margin-bottom:16px}
+.dwrap .tgt{margin-top:12px}
+.dwrap .dpanel{padding:18px 20px}
+.dwrap .dpair>.dpanel{padding:14px 14px}
+.dwrap .mini{padding:14px 18px}
 .dg2e{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 .dg2e .dpanel{min-width:0;overflow-x:auto}
 .dcol{display:flex;flex-direction:column;gap:12px;min-width:0}
@@ -1831,7 +1838,7 @@ async function aDash(silent){
   if(lowAll)attRows.push(att('#b3392f','📦',lowAll+' item(s) low or out',lowNames+(lowAll>3?' and more':''),'Open','subTo(\'ing\')'));
   if(A.unc)attRows.push(att('#c47f17','🏷️',A.unc+' item(s) have no cost set','Profit looks higher than it is until the cost is set','Set costs','subTo(\'menu\')'));
   if(A.unpaid>0)attRows.push(att('#c47f17','📒',fmt(A.unpaid)+' unpaid credit','In this period','Open','subTo(\'credits\')'));
-  $('#aContent').innerHTML=rangeBar('aDash',exportButtons('dash'))+`
+  $('#aContent').innerHTML='<div class="dwrap">'+rangeBar('aDash',exportButtons('dash'))+`
   <div class="dpanel tgt" style="--ac:#2f6fb3">${targetPanel(A,true)}</div>
   <div class="dg1">
     <div class="dpanel hero3" style="--ac:${A.net<0?'#b3392f':'#2f7d4f'}">
@@ -1882,7 +1889,7 @@ async function aDash(silent){
     <div class="dpanel"><h4>Sales per cashier</h4>${cash.map(([k,t])=>hbar(k,t.s,cashMax,fmt(r2(t.s))+' · '+t.n+' order(s)')).join('')||none('No sales in this period.')}</div>
     <div class="dpanel"><h4>Expenses by category</h4>${cats.map(([c,v])=>hbar(c,v,catMax,fmt(v)+' · '+pct(v,A.sales))).join('')||none('No expenses recorded for these dates.')}</div>
   </div>
-  <div style="color:var(--mut);font-size:12px;margin-top:10px">Net profit = Sales − Cost of goods − Expenses. Voided orders are excluded. Monthly and yearly expenses are spread evenly across the days of their month or year.${A.credit?' Credit sales count as sales when they are made, even if not paid yet.':''}${A.fees?' Delivery fees are not counted as sales or profit.':''}</div>`;
+  <div style="color:var(--mut);font-size:12px;margin-top:10px">Net profit = Sales − Cost of goods − Expenses. Voided orders are excluded. Monthly and yearly expenses are spread evenly across the days of their month or year.${A.credit?' Credit sales count as sales when they are made, even if not paid yet.':''}${A.fees?' Delivery fees are not counted as sales or profit.':''}</div></div>`;
   if(!yc)loadYear().then(c=>{const el=$('#yearBox');if(el&&view==='admin'&&aTab==='dash')el.innerHTML=yearBars(c)}).catch(e=>{const el=$('#yearBox');if(el)el.innerHTML='<div class="empty" style="padding:10px 0">Could not load the yearly numbers.</div>'});
 }
 
