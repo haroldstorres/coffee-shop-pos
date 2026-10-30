@@ -118,7 +118,7 @@ main{padding:0 22px 22px}
 .dg2e{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 .dg2e .dpanel{min-width:0;overflow-x:auto}
 .dcol{display:flex;flex-direction:column;gap:12px;min-width:0}
-.dcol>.dpanel{margin:0}
+.dcol>.dpanel{margin:0;flex:1}
 .mini{position:relative;border:1px solid var(--line);border-left:4px solid var(--ac);border-radius:12px;padding:12px 14px}
 .mini b{display:block;font-size:22px;line-height:1.3;margin-top:2px}
 .mini .mdot{position:absolute;top:12px;right:12px;width:10px;height:10px;border-radius:50%;background:var(--ac)}
@@ -1846,10 +1846,13 @@ async function aDash(silent){
   <div class="dg2">
     ${hourPanel()}
     <div class="dcol">
-      <div class="dpanel ac" style="--ac:#2f6fb3"><h4>Where the sales went</h4>${donut(ringParts,A.sales>0?{t:pct(A.net,A.sales),s:'net profit'}:null)}
-        ${A.net<0&&A.orders?`<div class="warnbox" style="margin:8px 0 0;padding:6px 10px;font-size:13px">Costs and expenses are higher than sales by ${fmt(-A.net)} in this period.</div>`:''}</div>
       <div class="dpanel ac" style="--ac:#c47f17"><h4>Needs attention${attRows.length?' <small style="color:var(--mut);font-weight:400">'+attRows.length+'</small>':''}</h4>${attRows.join('')||'<div style="color:var(--ok);padding:6px 0">Nothing needs attention right now.</div>'}</div>
     </div>
+  </div>
+  <div class="dg2 dg2e">
+    <div class="dpanel ac" style="--ac:#2f6fb3"><h4>Where the sales went</h4>${donut(ringParts,A.sales>0?{t:pct(A.net,A.sales),s:'net profit'}:null)}
+      ${A.net<0&&A.orders?`<div class="warnbox" style="margin:8px 0 0;padding:6px 10px;font-size:13px">Costs and expenses are higher than sales by ${fmt(-A.net)} in this period.</div>`:''}</div>
+    <div class="dpanel ac" style="--ac:#1f7a7a"><h4>Payment mix</h4>${donut(payParts)}</div>
   </div>
   <div class="dpanel ac bsp" style="--ac:#6f4e37"><h4>Best sellers - ${rangeWord()} <small style="color:var(--mut);font-weight:400">top 5 per category</small><span class="sltabs"><button class="on" id="slT" onclick="swSell(1)">Top</button><button id="slS" onclick="swSell(2)">Slowest</button></span></h4>
     <div id="sellTop" class="bsg">${bestCols||none('No sales in this period.')}</div>
@@ -1866,7 +1869,6 @@ async function aDash(silent){
   <div class="dpanel"><h4>Monthly sales this year</h4><div id="yearBox">${yc?yearBars(yc):'<div class="empty" style="padding:10px 0">Loading…</div>'}</div></div>
   </div>
   <div class="dgm">
-    <div class="dpanel"><h4>Payment mix</h4>${donut(payParts)}</div>
     <div class="dpanel"><h4>Dine-in, take-out and delivery</h4>${typeTot>0?`<div class="split">${types.map(([k,t])=>`<i style="width:${t.s/typeTot*100}%;background:${TYPECOL[k]||'#8a7a6a'}" title="${esc(k)} ${fmt(t.s)}"></i>`).join('')}</div>
       <div class="splitlg">${types.map(([k,t])=>`<span><i style="background:${TYPECOL[k]||'#8a7a6a'}"></i>${esc(k)} ${fmt(r2(t.s))} · ${t.n} order(s)</span>`).join('')}</div>`:none('No sales in this period.')}</div>
     <div class="dpanel"><h4>Sales per cashier</h4>${cash.map(([k,t])=>hbar(k,t.s,cashMax,fmt(r2(t.s))+' · '+t.n+' order(s)')).join('')||none('No sales in this period.')}</div>
