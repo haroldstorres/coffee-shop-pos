@@ -225,6 +225,10 @@ function applyStore(d){S.storeOpen=d.storeOpen;S.deliveryFeeAdd=d.deliveryFeeAdd
 function watchStore(){ // the page updates by itself when the cashier opens or closes the store
   storeUI();
   try{fs.collection('settings').doc('main').onSnapshot(d=>{if(d.exists)applyStore(d.data());storeUI();syncDelivery()},()=>{})}catch(e){}
+  try{fs.collection('menu').onSnapshot(q=>{ // sold-out items update on the customer's screen by themselves
+    MENU=q.docs.map(d=>Object.assign({id:d.id},d.data())).sort((a,b)=>String(a.cat).localeCompare(b.cat)||String(a.name).localeCompare(b.name));
+    if($('#grid'))renderGrid();
+  },()=>{})}catch(e){}
 }
 
 /* ---------- menu ---------- */
@@ -241,7 +245,7 @@ function renderGrid(){
   const q=($('#q').value||'').toLowerCase();
   const list=MENU.filter(m=>(cat==='All'||(cat===BEST?m.best:m.cat===cat))&&String(m.name).toLowerCase().includes(q)).sort((a,b)=>(!!b.best)-(!!a.best)); // best sellers first
   $('#grid').innerHTML=list.map(m=>{
-    const out=m.track&&m.stock<=0,tg=m.temp==='Hot'?'hot':m.temp==='Iced'?'iced':'';
+    const out=(m.track&&m.stock<=0)||m.na,tg=m.temp==='Hot'?'hot':m.temp==='Iced'?'iced':'';
     return `<button class="item ${out?'out':''}${m.best?' isbest':''}" ${out?'disabled':''} onclick="openItem('${m.id}')"><div class="ph">${m.photo?`<img src="${m.photo}" alt="" loading="lazy">`:(m.sized?'☕':'🍰')}</div>${m.best?'<span class="best">🔥 Best Seller</span>':''}${tg?`<span class="tag ${tg}">${m.temp}</span>`:''}<span class="nm">${esc(m.name)}</span><span class="pr">${out?'Sold out':fmt(m.price)+(m.sized?'+':'')}</span></button>`;
   }).join('')||'<div class="empty">No items.</div>';
 }
@@ -328,6 +332,7 @@ function editLine(i){
   openItem(c.id,i);
 }
 function addToCart(it,size,addons,qty,note){
+  if(it.na){toast('Sold out: '+it.name);return false}
   if(it.track){
     const have=cart.filter(c=>c.id===it.id).reduce((a,c)=>a+c.qty,0);
     if(have+qty>it.stock){toast('Only '+it.stock+' left: '+it.name);return false}
@@ -346,7 +351,7 @@ function loadCart(){ // bring back the cart after a refresh; prices are worked o
     const r=JSON.parse(localStorage.getItem(CART_KEY));
     if(!r||!Array.isArray(r.cart)||Date.now()-(r.ts||0)>12*3600*1000)return;
     r.cart.forEach(c=>{
-      const it=MENU.find(m=>m.id===c.id);if(!it||(it.track&&it.stock<=0))return;
+      const it=MENU.find(m=>m.id===c.id);if(!it||it.na||(it.track&&it.stock<=0))return;
       const size=it.sized?((S.sizes.find(z=>z.n===c.size)||S.sizes[0]||{}).n||''):'';
       const addons=it.sized?(c.addons||[]).filter(n=>S.addons.some(a=>a.n===n)):[];
       addToCart(it,size,addons,Math.min(20,Math.max(1,parseInt(c.qty)||1)),String(c.note||'').slice(0,60));
@@ -434,6 +439,7 @@ async function stockStillOk(){ // menu was loaded when the page opened, so check
     if(seen.has(c.id))return;seen.add(c.id);
     const it=MENU.find(m=>m.id===c.id),wanted=cart.filter(x=>x.id===c.id).reduce((a,x)=>a+x.qty,0);
     if(!it)short.push(c.name+' (no longer available)');
+    else if(it.na)short.push(c.name+' (sold out)');
     else if(it.track&&wanted>it.stock)short.push(c.name+(it.stock>0?' (only '+it.stock+' left)':' (sold out)'));
   });
   if(!short.length)return true;
