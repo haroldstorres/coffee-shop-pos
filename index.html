@@ -786,16 +786,16 @@ function startListeners(){
   }
   unsubs.push(fs.collection('settings').doc('main').onSnapshot(s=>{
     S=Object.assign(defaultSettings(),s.exists?s.data():{});
-    renderMenu();renderCart();
+    scheduleAvail();renderMenu();renderCart();
     if(view==='admin'&&aTab==='settings'&&!modalOpen()&&!document.activeElement.closest('#aContent'))aSettings();
   },er));
   unsubs.push(fs.collection('menu').onSnapshot(q=>{
     MENU=q.docs.map(d=>Object.assign({id:d.id},d.data())).sort((a,b)=>String(a.cat).localeCompare(b.cat)||String(a.name).localeCompare(b.name));
-    MENULOADED=true;initUsage();renderMenu();renderCart();
+    MENULOADED=true;initUsage();scheduleAvail();renderMenu();renderCart();
     if(view==='admin'&&aTab==='menu'&&!modalOpen())aMenu();
   },er));
   unsubs.push(fs.collection('ingredients').onSnapshot(q=>{
-    ING=q.docs.map(d=>Object.assign({id:d.id},d.data()));INGLOADED=true;
+    ING=q.docs.map(d=>Object.assign({id:d.id},d.data()));INGLOADED=true;scheduleAvail();
     ingBadge();renderMenu();
     const typing=/INPUT|SELECT|TEXTAREA/.test((document.activeElement||{}).tagName||'');
     if(view==='admin'&&!modalOpen()&&!typing){if(aTab==='ing')aIng();else if(aTab==='menu')aMenu()}
@@ -969,6 +969,18 @@ function shortIngredient(lines){ // first ingredient that cannot cover these lin
     if(g&&need[id]>(g.stock||0))return g.name+' (left: '+(g.stock||0)+' '+g.unit+')';
   }
   return '';
+}
+/* the customer page cannot read ingredient stock, so the POS marks items it cannot make (menu field "na") */
+let availT=null;
+function scheduleAvail(){clearTimeout(availT);availT=setTimeout(syncAvail,1500)}
+async function syncAvail(){
+  if(!ME||!can.pos.includes(ME.role)||!INGLOADED||!MENULOADED||!navigator.onLine)return;
+  const b=fs.batch();let n=0;
+  MENU.forEach(m=>{
+    const na=!!shortIngredient([{id:m.id,size:m.sized&&S.sizes[0]?S.sizes[0].n:'',addons:[],qty:1}]);
+    if(!!m.na!==na){b.update(fs.collection('menu').doc(m.id),{na});n++}
+  });
+  if(n)try{await b.commit()}catch(e){console.warn('availability sync',e)}
 }
 const LOG_LIMIT=150;
 function addLog(oldLog,type,change,after,note){ // keeps the newest entries only
