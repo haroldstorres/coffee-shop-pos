@@ -610,7 +610,7 @@ function download(name,text,type){
 
 /* ---------- defaults ---------- */
 function defaultSettings(){
-  return {shop:'Kape Corner',pwdRate:20,dailyTarget:0,deliveryFee:0,deliveryFeeAdd:true,storeOpen:true,openHour:8,closeHour:20,vatOn:false,vatRate:12,vatMode:'incl',pwdVatExempt:true,blockOnOut:true,address:'',phone:'',tin:'',footer:'',logo:'',sideLogo:'',orderUrl:'',
+  return {shop:'Kape Corner',pwdRate:20,dailyTarget:0,deliveryFee:0,deliveryFeeAdd:true,deliveryOn:true,storeOpen:true,openHour:8,closeHour:20,vatOn:false,vatRate:12,vatMode:'incl',pwdVatExempt:true,blockOnOut:true,address:'',phone:'',tin:'',footer:'',logo:'',sideLogo:'',orderUrl:'',
     sizes:[{n:'Small',up:0,mult:1},{n:'Medium',up:10,mult:1.25},{n:'Large',up:20,mult:1.5}],addonUse:[],groups:[],
     addons:[{n:'Extra shot',p:20},{n:'Oat milk',p:30},{n:'Whipped cream',p:15},{n:'Caramel syrup',p:15}]};
 }
@@ -1289,6 +1289,8 @@ function renderTotals(){
   $('#customPct').style.display=$('#disc').value==='custom'?'block':'none';
   $('#custBox').style.display=isDelivery||onCredit?'block':'none';
   $('#delBox').style.display=isDelivery?'block':'none';
+  const delOpt=[...$('#otype').options].find(o=>o.value==='Delivery');
+  if(delOpt)delOpt.hidden=S.deliveryOn===false&&$('#otype').value!=='Delivery'; // stays visible only if a delivery order is already loaded
   const feeOn=S.deliveryFeeAdd!==false;
   $('#dFee').style.display=feeOn?'':'none'; // no fee box when the fee is not added to the total
   if(isDelivery&&feeOn&&!feeEdited&&$('#dFee').value===''&&Number(S.deliveryFee)>0)$('#dFee').value=S.deliveryFee; // default fee, the cashier can change it
@@ -2658,6 +2660,8 @@ function aSettings(){
     <div class="shd"><b>Sales</b><small>Discounts, daily goal and selling rules.</small></div>
     <div class="scard"><h4>PWD / Senior discount</h4><div class="hint">Percent taken off when you pick this discount at checkout.</div>
       <div class="f" style="max-width:200px"><small>Discount (%)</small><input id="sPwd" type="number" min="0" max="100" value="${S.pwdRate}"></div></div>
+    <div class="scard"><h4>Delivery service</h4><div class="hint">Turn this off when you cannot deliver (no rider, bad weather). Customers will not see the Delivery choice on the order page, and the cashier will not see it at checkout.</div>
+      <label style="display:flex;gap:8px;align-items:center;margin-top:6px"><input id="sDelOn" type="checkbox" style="width:auto" ${S.deliveryOn!==false?'checked':''}> Delivery is available</label></div>
     <div class="scard"><h4>Default delivery fee</h4><div class="hint">Filled in automatically when the order type is Delivery. The cashier can still change it for each order. Use 0 for no default.</div>
       <div class="f" style="max-width:260px"><small>Delivery fee (₱)</small><input id="sDelFee" type="number" min="0" step="0.01" value="${S.deliveryFee||0}"></div>
       <label style="display:flex;gap:8px;align-items:center;margin-top:12px"><input id="sFeeAdd" type="checkbox" style="width:auto" ${S.deliveryFeeAdd!==false?'checked':''}> Add the delivery fee to the customer's total payment</label>
@@ -2894,7 +2898,7 @@ async function saveSettings(){
   const addRen=SET.addons.filter(a=>a._o&&cl(a.n)&&cl(a.n)!==a._o);
   const grpRen=SET.groups.filter(g=>g._o&&cl(g.n)&&cl(g.n)!==g._o).map(g=>[g._o,cl(g.n)]);
   const hr=(id,def,lo,hi)=>{const v=parseInt($(id).value);return isNaN(v)?def:Math.min(hi,Math.max(lo,v))};
-  const d={shop:$('#sShop').value.trim()||'Coffee Shop',pwdRate:Math.min(100,Math.max(0,parseFloat($('#sPwd').value)||0)),dailyTarget:Math.max(0,r2(parseFloat($('#sTgt').value)||0)),deliveryFee:Math.max(0,r2(parseFloat($('#sDelFee').value)||0)),deliveryFeeAdd:$('#sFeeAdd').checked,openHour:hr('#sOpen',8,0,23),closeHour:hr('#sClose',20,1,24),
+  const d={shop:$('#sShop').value.trim()||'Coffee Shop',pwdRate:Math.min(100,Math.max(0,parseFloat($('#sPwd').value)||0)),dailyTarget:Math.max(0,r2(parseFloat($('#sTgt').value)||0)),deliveryFee:Math.max(0,r2(parseFloat($('#sDelFee').value)||0)),deliveryFeeAdd:$('#sFeeAdd').checked,deliveryOn:$('#sDelOn').checked,openHour:hr('#sOpen',8,0,23),closeHour:hr('#sClose',20,1,24),
     sizes,addons:addonsNew,groups:gp.groups};
   Object.assign(d,{orderUrl:($('#sOrdUrl')||{value:''}).value.trim(),address:$('#sAddr').value.trim(),phone:$('#sPhone').value.trim(),tin:$('#sTin').value.trim(),footer:$('#sFoot').value.trim(),
     vatOn:$('#sVatOn').checked,vatRate:Math.min(100,Math.max(0,parseFloat($('#sVatRate').value)||0)),vatMode:$('#sVatMode').value,pwdVatExempt:$('#sPwdEx').checked,blockOnOut:$('#sBlock').checked});
