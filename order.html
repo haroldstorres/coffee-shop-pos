@@ -207,9 +207,21 @@ function storeUI(){
   if(wasClosed===true&&!closed)toast('We are open! You can place your order now.',4000);
   wasClosed=closed;
 }
+const deliveryOn=()=>S.deliveryOn!==false;
+function syncDelivery(){ // takes the Delivery choice out of an open cart when delivery is switched off
+  const sel=$('#oType');if(!sel)return;
+  const opt=[...sel.options].find(o=>o.value==='Delivery');
+  if(deliveryOn()){
+    if(!opt){const o=document.createElement('option');o.textContent='Delivery';sel.appendChild(o)}
+  }else{
+    if(sel.value==='Delivery'){sel.value='Dine-in';onTypeChange();toast('Sorry, delivery is not available right now.',5000)}
+    if(opt)opt.remove();
+  }
+}
+function applyStore(d){S.storeOpen=d.storeOpen;S.deliveryFeeAdd=d.deliveryFeeAdd;S.deliveryOn=d.deliveryOn}
 function watchStore(){ // the page updates by itself when the cashier opens or closes the store
   storeUI();
-  try{fs.collection('settings').doc('main').onSnapshot(d=>{if(d.exists){S.storeOpen=d.data().storeOpen;S.deliveryFeeAdd=d.data().deliveryFeeAdd}storeUI()},()=>{})}catch(e){}
+  try{fs.collection('settings').doc('main').onSnapshot(d=>{if(d.exists)applyStore(d.data());storeUI();syncDelivery()},()=>{})}catch(e){}
 }
 
 /* ---------- menu ---------- */
@@ -362,7 +374,7 @@ function openCart(){
     <div class="rt"><div class="pr">${fmt(c.unit*c.qty)}</div>
     <select class="qsel" aria-label="Quantity" onchange="setQty(${i},this.value)">${Array.from({length:20},(_,k)=>`<option value="${k+1}" ${c.qty===k+1?'selected':''}>${k+1}</option>`).join('')}<option value="0">Remove</option></select></div></div>`}).join('')}
   <div class="note">Pay at the counter. Prices may change slightly when the cashier confirms your order.</div>
-  <div class="two"><div><div class="lbl">Order type</div><select id="oType" onchange="onTypeChange()"><option>Dine-in</option><option>Take-out</option><option>Delivery</option></select></div>
+  <div class="two"><div><div class="lbl">Order type</div><select id="oType" onchange="onTypeChange()"><option>Dine-in</option><option>Take-out</option>${deliveryOn()?'<option>Delivery</option>':''}</select></div>
   <div><div class="lbl" id="oNameLbl">Your name (optional)</div><input id="oName" maxlength="30" placeholder="e.g. Ana"></div></div>
   <div id="delBox" style="display:none"><div class="lbl">Phone number</div><input id="oPhone" type="tel" maxlength="20" placeholder="e.g. 0917 123 4567" value="${esc(delForm.phone)}" oninput="delForm.phone=this.value">
   <div class="lbl">Delivery address</div><textarea id="oAddr" rows="2" maxlength="200" placeholder="House no., street, barangay, landmark" oninput="delForm.addr=this.value">${esc(delForm.addr)}</textarea>
@@ -371,6 +383,7 @@ function openCart(){
   <div class="actions" style="margin-top:8px"><button class="ghost" onclick="closeSheet()">Add more</button><button id="sendBtn" style="background:var(--ok)" onclick="submitOrder()">Place order</button></div></div>`);
   $('#sheet').classList.add('cartsheet');
   if(keepForm){if(keepForm.t)$('#oType').value=keepForm.t;if(keepForm.n)$('#oName').value=keepForm.n;keepForm=null}
+  if(!$('#oType').value)$('#oType').selectedIndex=0; // Delivery was chosen before but is not offered now
   onTypeChange();storeUI();
 }
 function onTypeChange(){ // delivery needs a name, phone and address
@@ -425,8 +438,9 @@ async function stockStillOk(){ // menu was loaded when the page opened, so check
 async function submitOrder(){
   if(sending||!cart.length)return;
   if(!navigator.onLine){toast('No internet connection');return}
-  try{const st=await fs.collection('settings').doc('main').get({source:'server'});if(st.exists){S.storeOpen=st.data().storeOpen;S.deliveryFeeAdd=st.data().deliveryFeeAdd}}catch(e){} // check again right before sending
+  try{const st=await fs.collection('settings').doc('main').get({source:'server'});if(st.exists)applyStore(st.data())}catch(e){} // check again right before sending
   if(isClosed()){storeUI();toast('Sorry, we are closed. Your order was not sent.',6000);return}
+  if($('#oType').value==='Delivery'&&!deliveryOn()){syncDelivery();return}
   if($('#oType').value==='Delivery'){
     if(!($('#oName').value||'').trim()){toast('Please enter your name for delivery');return}
     if(!(delForm.phone||'').trim()){toast('Please enter your phone number for delivery');return}
