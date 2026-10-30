@@ -609,7 +609,7 @@ function download(name,text,type){
 
 /* ---------- defaults ---------- */
 function defaultSettings(){
-  return {shop:'Kape Corner',pwdRate:20,dailyTarget:0,deliveryFee:0,openHour:8,closeHour:20,vatOn:false,vatRate:12,vatMode:'incl',pwdVatExempt:true,blockOnOut:true,address:'',phone:'',tin:'',footer:'',logo:'',sideLogo:'',orderUrl:'',
+  return {shop:'Kape Corner',pwdRate:20,dailyTarget:0,deliveryFee:0,deliveryFeeAdd:true,openHour:8,closeHour:20,vatOn:false,vatRate:12,vatMode:'incl',pwdVatExempt:true,blockOnOut:true,address:'',phone:'',tin:'',footer:'',logo:'',sideLogo:'',orderUrl:'',
     sizes:[{n:'Small',up:0,mult:1},{n:'Medium',up:10,mult:1.25},{n:'Large',up:20,mult:1.5}],addonUse:[],groups:[],
     addons:[{n:'Extra shot',p:20},{n:'Oat milk',p:30},{n:'Whipped cream',p:15},{n:'Caramel syrup',p:15}]};
 }
@@ -1245,7 +1245,8 @@ function calc(){
     if(incl){R.total=after;R.vatable=r2(after/(1+vr/100));R.vat=r2(R.total-R.vatable)}
     else{R.vatable=after;R.vat=r2(after*vr/100);R.total=r2(after+R.vat);R.adj=R.vat}
   }
-  const deliveryFee=$('#otype').value==='Delivery'?Math.max(0,r2(parseFloat($('#dFee').value)||0)):0;
+  // when "add delivery fee to the total" is off in Settings, the fee is never charged
+  const deliveryFee=$('#otype').value==='Delivery'&&S.deliveryFeeAdd!==false?Math.max(0,r2(parseFloat($('#dFee').value)||0)):0;
   R.fee=deliveryFee;R.total=r2(R.total+deliveryFee); // fee is added after discount and VAT
   return R;
 }
@@ -1266,7 +1267,9 @@ function renderTotals(){
   $('#customPct').style.display=$('#disc').value==='custom'?'block':'none';
   $('#custBox').style.display=isDelivery||onCredit?'block':'none';
   $('#delBox').style.display=isDelivery?'block':'none';
-  if(isDelivery&&!feeEdited&&$('#dFee').value===''&&Number(S.deliveryFee)>0)$('#dFee').value=S.deliveryFee; // default fee, the cashier can change it
+  const feeOn=S.deliveryFeeAdd!==false;
+  $('#dFee').style.display=feeOn?'':'none'; // no fee box when the fee is not added to the total
+  if(isDelivery&&feeOn&&!feeEdited&&$('#dFee').value===''&&Number(S.deliveryFee)>0)$('#dFee').value=S.deliveryFee; // default fee, the cashier can change it
   $('#creditNote').style.display=onCredit?'block':'none';
   const t=calc(),cash=$('#pay').value==='Cash';
   $('#tSub').textContent=fmt(t.sub);$('#tDisc').textContent='− '+fmt(t.disc);$('#tTotal').textContent=fmt(t.total);
@@ -2634,7 +2637,9 @@ function aSettings(){
     <div class="scard"><h4>PWD / Senior discount</h4><div class="hint">Percent taken off when you pick this discount at checkout.</div>
       <div class="f" style="max-width:200px"><small>Discount (%)</small><input id="sPwd" type="number" min="0" max="100" value="${S.pwdRate}"></div></div>
     <div class="scard"><h4>Default delivery fee</h4><div class="hint">Filled in automatically when the order type is Delivery. The cashier can still change it for each order. Use 0 for no default.</div>
-      <div class="f" style="max-width:260px"><small>Delivery fee (₱)</small><input id="sDelFee" type="number" min="0" step="0.01" value="${S.deliveryFee||0}"></div></div>
+      <div class="f" style="max-width:260px"><small>Delivery fee (₱)</small><input id="sDelFee" type="number" min="0" step="0.01" value="${S.deliveryFee||0}"></div>
+      <label style="display:flex;gap:8px;align-items:center;margin-top:12px"><input id="sFeeAdd" type="checkbox" style="width:auto" ${S.deliveryFeeAdd!==false?'checked':''}> Add the delivery fee to the customer's total payment</label>
+      <div class="hint" style="margin-top:6px">When off, delivery orders are charged without a delivery fee (for example free delivery, or the customer pays the rider directly). The fee box is hidden at checkout and the customer page says no fee is added.</div></div>
     <div class="scard"><h4>Daily sales target and opening hours</h4><div class="hint">Used for the "on pace" or "behind pace" message on the Dashboard and for the Sales by hour chart.</div>
       <div class="f" style="max-width:260px"><small>Daily sales target (₱, 0 hides it)</small><input id="sTgt" type="number" min="0" step="1" value="${S.dailyTarget||0}"></div>
       <div class="two" style="margin-top:8px"><div class="f"><small>Opens at (0 to 23)</small><input id="sOpen" type="number" min="0" max="23" value="${S.openHour==null?8:S.openHour}"></div>
@@ -2867,7 +2872,7 @@ async function saveSettings(){
   const addRen=SET.addons.filter(a=>a._o&&cl(a.n)&&cl(a.n)!==a._o);
   const grpRen=SET.groups.filter(g=>g._o&&cl(g.n)&&cl(g.n)!==g._o).map(g=>[g._o,cl(g.n)]);
   const hr=(id,def,lo,hi)=>{const v=parseInt($(id).value);return isNaN(v)?def:Math.min(hi,Math.max(lo,v))};
-  const d={shop:$('#sShop').value.trim()||'Coffee Shop',pwdRate:Math.min(100,Math.max(0,parseFloat($('#sPwd').value)||0)),dailyTarget:Math.max(0,r2(parseFloat($('#sTgt').value)||0)),deliveryFee:Math.max(0,r2(parseFloat($('#sDelFee').value)||0)),openHour:hr('#sOpen',8,0,23),closeHour:hr('#sClose',20,1,24),
+  const d={shop:$('#sShop').value.trim()||'Coffee Shop',pwdRate:Math.min(100,Math.max(0,parseFloat($('#sPwd').value)||0)),dailyTarget:Math.max(0,r2(parseFloat($('#sTgt').value)||0)),deliveryFee:Math.max(0,r2(parseFloat($('#sDelFee').value)||0)),deliveryFeeAdd:$('#sFeeAdd').checked,openHour:hr('#sOpen',8,0,23),closeHour:hr('#sClose',20,1,24),
     sizes,addons:addonsNew,groups:gp.groups};
   Object.assign(d,{orderUrl:($('#sOrdUrl')||{value:''}).value.trim(),address:$('#sAddr').value.trim(),phone:$('#sPhone').value.trim(),tin:$('#sTin').value.trim(),footer:$('#sFoot').value.trim(),
     vatOn:$('#sVatOn').checked,vatRate:Math.min(100,Math.max(0,parseFloat($('#sVatRate').value)||0)),vatMode:$('#sVatMode').value,pwdVatExempt:$('#sPwdEx').checked,blockOnOut:$('#sBlock').checked});
