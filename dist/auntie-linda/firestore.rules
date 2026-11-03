@@ -1,0 +1,179 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- helpers ----------
+    function signedIn() { return request.auth != null; }
+    function profilePath() { return /databases/$(database)/documents/users/$(request.auth.uid); }
+    function hasProfile() { return signedIn() && exists(profilePath()); }
+    function me() { return get(profilePath()).data; }
+    function isActive() { return hasProfile() && me().active == true; }
+    function isAdmin() { return isActive() && me().role == 'admin'; }
+    function isCashier() { return isActive() && me().role in ['admin', 'cashier']; }
+    function isStaff() { return isActive(); }
+    function setupDone() { return exists(/databases/$(database)/documents/meta/setup); }
+
+    // ---------- plan limits ----------
+    // meta/license = { maxItems, maxStaff } is written by the provider in the Firebase console only.
+    // meta/usage   = { items, staff } is a counter the app changes in the SAME batch as every add / delete / enable / disable.
+    // With no license document there is no limit.
+    function licPath() { return /databases/$(database)/documents/meta/license; }
+    function usagePath() { return /databases/$(database)/documents/meta/usage; }
+    function hasLic() { return exists(licPath()); }
+    function lic() { return get(licPath()).data; }
+    function maxItems() { return lic().get('maxItems', 1000000); }
+    function maxStaff() { return lic().get('maxStaff', 1000000); }
+    function usedBefore() { return get(usagePath()).data; }
+    function usedAfter() { return getAfter(usagePath()).data; }
+    function itemAddOk() { return !hasLic() || (usedAfter().items == usedBefore().items + 1 && usedAfter().items <= maxItems()); }
+    function itemRemoveOk() { return !hasLic() || usedAfter().items == usedBefore().items - 1; }
+    function staffAddOk() { return !hasLic() || (usedAfter().staff == usedBefore().staff + 1 && usedAfter().staff <= maxStaff()); }
+    function staffToggleOk() {
+      return resource.data.active == request.resource.data.active
+          || !hasLic()
+          || (request.resource.data.active == true
+              ? (usedAfter().staff == usedBefore().staff + 1 && usedAfter().staff <= maxStaff())
+              : usedAfter().staff == usedBefore().staff - 1);
+    }
+    // one step at a time: stay, go down by 1, or go up by 1 while under the limit
+    function stepOk(a, b, m) { return b >= 0 && (b == a || b == a - 1 || (b == a + 1 && b <= m)); }
+
+    // ---------- first-time setup marker ----------
+    // Public read so the app knows whether to show "first-time setup" or "login".
+    // Only the very first signed-in user can create it; it can never be changed after.
+    match /meta/setup {
+      allow read: if true;
+      allow create: if signedIn() && !setupDone();
+      allow update, delete: if false;
+    }
+
+    match /meta/license {
+      allow read: if isStaff();
+      allow write: if false;   // change it in the Firebase console
+    }
+    match /meta/usage {
+      allow read: if isAdmin();
+      allow create: if isAdmin() && !hasLic();
+      allow update: if isAdmin() && (!hasLic()
+                    || (request.resource.data.keys().hasOnly(['items', 'staff'])
+                        && stepOk(resource.data.items, request.resource.data.items, maxItems())
+                        && stepOk(resource.data.staff, request.resource.data.staff, maxStaff())));
+      allow delete: if false;
+    }
+
+    // ---------- staff accounts ----------
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      // very first admin (only while setup is not done)
+      allow create: if signedIn() && request.auth.uid == uid && !setupDone()
+                    && request.resource.data.role == 'admin'
+                    && request.resource.data.active == true;
+      // afterwards only an admin can add staff
+      allow create: if isAdmin()
+                    && request.resource.data.role in ['admin', 'cashier', 'barista']
+                    && request.resource.data.active == true
+                    && staffAddOk();
+      allow update: if isAdmin()
+                    && request.resource.data.role in ['admin', 'cashier', 'barista']
+                    && staffToggleOk();
+      allow delete: if false;
+    }
+
+    // ---------- shop settings ----------
+    // signedIn() also lets customers (anonymous sign-in) read it for the order page
+    match /settings/{id} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+      // cashiers may only open / close the store (storeOpen) and switch delivery on / off (deliveryOn), nothing else
+      allow update: if isCashier() && id == 'main'
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['storeOpen', 'deliveryOn'])
+                    && request.resource.data.get('storeOpen', true) is bool
+                    && request.resource.data.get('deliveryOn', true) is bool;
+    }
+
+    // ---------- menu ----------
+    match /menu/{id} {
+      allow read: if signedIn();   // staff and customers (anonymous sign-in)
+      allow create: if isAdmin() && itemAddOk();
+      allow delete: if isAdmin() && itemRemoveOk();
+      // cashiers may only change stock (when an order is placed) and the "na" flag (item cannot be made, shown on the customer page)
+      allow update: if isAdmin()
+                    || (isCashier()
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stock', 'na']));
+    }
+
+    // ---------- ingredients ----------
+    match /ingredients/{id} {
+      allow read: if isStaff();
+      allow create, delete: if isAdmin();
+      // cashiers may only change stock (when an order is placed)
+      allow update: if isAdmin()
+                    || (isCashier()
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stock']));
+    }
+
+    // ---------- expenses (admin only) ----------
+    match /expenses/{id} {
+      allow read, create, update, delete: if isAdmin();
+    }
+
+    // ---------- Z-Readings (admin; saved once per date, never edited or deleted) ----------
+    match /zreports/{date} {
+      allow read: if isAdmin();
+      allow create: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    // ---------- daily order counter ----------
+    match /counters/{day} {
+      allow read, create, update: if isCashier();
+      allow delete: if false;
+    }
+
+    // ---------- orders ----------
+    match /orders/{id} {
+      allow read: if isStaff();
+      allow create: if isCashier()
+                    && request.resource.data.status == 'preparing'
+                    && request.resource.data.cashierUid == request.auth.uid;
+      // admin can do anything (void); other staff can only move the status
+      allow update: if isAdmin()
+                    || (isStaff()
+                        && resource.data.status != 'void'
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+                        && request.resource.data.status in ['preparing', 'ready', 'served']);
+      allow delete: if false;
+    }
+
+    // ---------- customer self-orders waiting at the counter ----------
+    match /pending/{code} {
+      // A customer may only CREATE a new order. Cannot read, change or delete it afterwards.
+      // Delivery orders must also have a phone number and an address; other types must not have them.
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['code','ts','exp','uid','status','type','name','items','sub','phone','addr'])
+        && request.resource.data.code == code
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.status == 'new'
+        && request.resource.data.type in ['Dine-in','Take-out','Delivery']
+        && request.resource.data.name is string && request.resource.data.name.size() <= 30
+        && (request.resource.data.type != 'Delivery'
+            ? !request.resource.data.keys().hasAny(['phone','addr'])
+            : (request.resource.data.name.size() > 0
+               && request.resource.data.phone is string
+               && request.resource.data.phone.size() > 0 && request.resource.data.phone.size() <= 20
+               && request.resource.data.addr is string
+               && request.resource.data.addr.size() > 0 && request.resource.data.addr.size() <= 200))
+        && request.resource.data.items is list
+        && request.resource.data.items.size() > 0 && request.resource.data.items.size() <= 30
+        && request.resource.data.ts is number && request.resource.data.exp is number
+        && request.resource.data.sub is number;
+      // A customer can read ONLY their own order (to see Preparing / Ready on their phone).
+      allow get: if signedIn() && resource.data.uid == request.auth.uid;
+      // Admin and cashier can read, change and delete it.
+      allow read, delete: if isCashier();
+      // Staff (barista too) can move the status when they mark an order ready or served.
+      allow update: if isCashier()
+                    || (isStaff() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']));
+    }
+  }
+}
